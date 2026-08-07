@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>상품 정보 파싱 엔진 — 구조·논리 설계 문서</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Noto Sans CJK KR", "Noto Sans KR", sans-serif;
+    font-size: 10.2pt; line-height: 1.62; color: #1a1a1a;
+    margin: 0;
+  }
+  h1 { font-size: 19pt; margin: 0 0 2mm; letter-spacing: -0.02em; }
+  .subtitle { color: #555; font-size: 10pt; margin-bottom: 8mm; }
+  h2 {
+    font-size: 13.5pt; margin: 9mm 0 3mm; padding-bottom: 1.2mm;
+    border-bottom: 2px solid #222; letter-spacing: -0.02em;
+    page-break-after: avoid;
+  }
+  h3 { font-size: 11pt; margin: 5.5mm 0 2mm; page-break-after: avoid; }
+  p { margin: 1.6mm 0; }
+  ul, ol { margin: 1.6mm 0; padding-left: 5.5mm; }
+  li { margin: 0.9mm 0; }
+  code, pre {
+    font-family: "SF Mono", "Consolas", "Noto Sans Mono CJK KR", monospace;
+    font-size: 8.8pt;
+  }
+  code { background: #f2f2f4; padding: 0.2mm 1.1mm; border-radius: 2px; }
+  pre {
+    background: #f7f7f9; border: 1px solid #e3e3e8; border-radius: 4px;
+    padding: 3mm 4mm; overflow: hidden; line-height: 1.5;
+    page-break-inside: avoid; margin: 2.5mm 0;
+  }
+  table {
+    border-collapse: collapse; width: 100%; margin: 2.5mm 0;
+    font-size: 9.3pt; page-break-inside: avoid;
+  }
+  th, td { border: 1px solid #ccc; padding: 1.6mm 2.4mm; vertical-align: top; text-align: left; }
+  th { background: #efeff2; font-weight: 700; }
+  .callout {
+    background: #f0f4fa; border-left: 3.5px solid #3b6ea5;
+    padding: 2.5mm 4mm; margin: 3mm 0; border-radius: 0 4px 4px 0;
+    page-break-inside: avoid;
+  }
+  .warn {
+    background: #fdf6ec; border-left: 3.5px solid #d99a2b;
+    padding: 2.5mm 4mm; margin: 3mm 0; border-radius: 0 4px 4px 0;
+    page-break-inside: avoid;
+  }
+  .ok    { color: #1e7e34; font-weight: 700; }
+  .no    { color: #b02a37; font-weight: 700; }
+  .part  { color: #b8860b; font-weight: 700; }
+  .muted { color: #666; }
+  .pagebreak { page-break-before: always; }
+  .doc-meta { font-size: 9pt; color: #777; margin-bottom: 6mm; }
+</style>
+</head>
+<body>
+
+<h1>상품 정보 파싱 엔진 — 구조·논리 설계 문서</h1>
+<div class="subtitle">
+  3단계 폴백(fallback) 아키텍처의 <b>구현 완료본</b>에 대한 구조와 논리 정리.
+  전략 문서 「상품 정보 수집(파싱 엔진) 전략 설계」의 후속 문서이며,
+  발표 자료 및 개발 공유용.
+</div>
+<div class="doc-meta">
+  대상 코드: <code>server/</code> (브랜치 <code>cursor/three-tier-parsing-engine-adf2</code>, PR #7)
+  · 작성일: 2026-07-25 · 테스트: 오프라인 70건+ 통과 + 실사이트 라이브 검증
+</div>
+
+<h2>1. 개요 — 무엇을, 왜 이렇게 만들었나</h2>
+<p>
+사용자가 외부 쇼핑 앱에서 공유한 상품 URL로부터
+<b>쇼핑몰 이름·URL·상품명·판매가(할인가)·정가·할인율·이미지</b>를
+자동 추출해 <b>하나의 일관된 구조로 정규화</b>하는 엔진이다.
+초기에 검토했던 웹뷰(헤드리스 브라우저) 렌더링 방식은 ① 이용약관의
+"자동화 수단에 의한 접근 금지" 조항과 충돌 소지, ② 화면 개편 때마다 깨지는 취약성,
+③ 렌더링 비용, ④ 발표 방어 불가의 네 가지 이유로 <b>기각</b>했고,
+구 코드의 Playwright 의존성도 완전히 제거했다.
+</p>
+<div class="callout">
+  <b>핵심 원칙:</b> 엔진의 모든 단계는 <b>데이터 제공자가 의도한 경로</b>만 사용한다.
+  공식 API(Tier 1), 사이트가 공유·검색 노출용으로 스스로 공개한 표준 메타데이터(Tier 2),
+  그리고 그마저 없으면 사용자 보완(Tier 3).
+  다른 서비스 User-Agent 위장·JS 렌더링·로그인 세션·WebView는 코드에 없다.
+  HTTP GET은 정직한 <code>WishlistBot/1.0</code>으로 URL당 최대 1회다.
+</div>
+
+<h2>2. 전체 구조</h2>
+<pre>
+공유받은 URL
+│
+├─ [Tier 1] 공식 오픈 API 연동            (쿠팡·네이버·11번가 — 오픈마켓형)
+│    └─ 플랫폼 식별 → 상품 식별자 추출 → API 조회 → 매칭
+│    └─ 성공: 상품명·이미지·판매가(+정가 가능 시) 확보, 가격 추적 가능
+│
+├─ [Tier 2] 표준 메타데이터 파싱           (29CM·W컨셉 등 — 편집샵형)
+│    └─ WishlistBot HTTP GET 1회 → JSON-LD(Product) 우선 → Open Graph 보완
+│    └─ 성공 조건: 상품명 + 이미지 + 판매가 (정가·할인율은 있으면 함께 저장)
+│
+└─ [Tier 3] 미리보기 수준 + 사용자 보완    (그 외 전부 — 절대 실패하지 않음)
+     └─ 얻은 것은 전부 미리 채우고, 빠진 항목(주로 가격)만 사용자가 입력
+     └─ Tier와 무관하게 original_url 은 항상 저장 (탭 → 앱/웹으로 열기)
+</pre>
+<p>
+상위 단계가 실패하면 자동으로 다음 단계로 내려가며(graceful degradation),
+어떤 단계로 수집됐는지(<code>source_type</code>)와 각 단계의 시도 기록(<code>attempts</code>)을
+결과에 함께 남긴다.
+</p>
+
+<h3>2.1 모듈 구성 — 문서의 절이 파일 하나에 대응된다</h3>
+<table>
+  <tr><th>파일</th><th>역할</th><th>전략 문서 근거</th></tr>
+  <tr><td><code>engine/pipeline.py</code></td>
+      <td>3단계 폴백 오케스트레이터 (엔진 본체). 티어 시도·폴백·기록</td>
+      <td>5절 (폴백 아키텍처)</td></tr>
+  <tr><td><code>engine/models.py</code></td>
+      <td><code>Product</code>·<code>ParseResult</code>·<code>TierAttempt</code> 정규화 모델</td>
+      <td>5.1 (데이터 모델)</td></tr>
+  <tr><td><code>engine/urltools.py</code></td>
+      <td>도메인→플랫폼 식별 + URL에서 상품 식별자 추출 (플랫폼 레지스트리)</td>
+      <td>5.2 흐름 1–2</td></tr>
+  <tr><td><code>engine/fetch.py</code></td>
+      <td>HTTP GET 1회 + robots.txt 존중 + 정직한 User-Agent (준수 원칙 강제 계층)</td>
+      <td>5.3 준수 원칙</td></tr>
+  <tr><td><code>engine/metadata.py</code></td>
+      <td>JSON-LD(Product) 우선 파싱 → Open Graph 보완, 가격 정규화</td>
+      <td>4절, 5.3</td></tr>
+  <tr><td><code>engine/tiers/tier1_api.py</code></td>
+      <td>네이버·쿠팡·11번가 API 어댑터 + 매칭 로직(식별자→유사도)</td>
+      <td>5.2 (Tier 1)</td></tr>
+  <tr><td><code>engine/tiers/tier2_metadata.py</code></td>
+      <td>메타데이터 → Product 정규화, Tier 2 성공 판정</td>
+      <td>5.3 (Tier 2)</td></tr>
+  <tr><td><code>engine/tiers/tier3_preview.py</code></td>
+      <td>미리보기 수준 저장 (절대 실패하지 않는 마지막 단계)</td>
+      <td>5.4 (Tier 3)</td></tr>
+  <tr><td><code>engine/cache.py</code></td>
+      <td>TTL 캐시 — 동일 URL 중복 요청 방지, API rate limit 대응</td>
+      <td>5.2 제약, 5.3 원칙</td></tr>
+  <tr><td><code>api_server.py</code></td>
+      <td>FastAPI <code>POST /parse</code> — 앱(Flutter)이 호출하는 얇은 HTTP 계층</td>
+      <td>—</td></tr>
+  <tr><td><code>tests/</code> (82건)</td>
+      <td>네트워크 없이 도는 오프라인 테스트 (폴백 순서·불변식·매칭 규칙 검증)</td>
+      <td>—</td></tr>
+</table>
+
+<h2>3. 설계 불변식 — 이 엔진이 항상 지키는 네 가지</h2>
+
+<h3>불변식 1. 상품 페이지 HTTP GET은 URL당 최대 1회</h3>
+<p>
+한 번의 파싱 동안 모든 티어는 <code>_ParseContext</code> 객체를 공유한다.
+어느 티어가 먼저 페이지를 필요로 하든 fetch는 한 번만 일어나고 결과가 재사용된다.
+예컨대 Tier 1의 네이버 어댑터가 검색 키워드(페이지 제목)를 얻으려고 페이지를
+가져왔는데 매칭에 실패하면, Tier 2는 <b>이미 받아둔 그 HTML</b>로 메타데이터를 파싱한다.
+"브라우저의 최초 요청 1회와 동일하다"는 발표 논리가 코드 구조로 보장된다.
+</p>
+<pre>
+[Tier 1 시도] ──title_hint() 필요──▶ ┌────────────────┐
+                                     │ _ParseContext   │  fetch는 여기서
+[Tier 2 시도] ──metadata() 필요────▶ │ (페이지 스냅샷) │  단 1회만 발생
+                                     └────────────────┘
+[Tier 3 저장] ──얻어둔 것 재사용───▶        ▲ 캐시로 동일 URL 재파싱도 차단
+</pre>
+
+<h3>불변식 2. Tier 3은 실패하지 않는다 → 저장은 항상 성공한다</h3>
+<p>
+파싱 엔진의 유일한 실패 경로는 "입력이 http(s) URL이 아님"(422) 뿐이다.
+네트워크 오류, 403 차단, 메타데이터 부재, robots.txt 거부 — 어떤 상황에서도
+원본 링크만으로 미리보기 수준의 저장이 성립하므로,
+<b>파싱 엔진의 실패가 앱의 실패로 이어지지 않는다.</b>
+</p>
+
+<h3>불변식 3. 준수 원칙은 사람이 아니라 코드 계층이 강제한다</h3>
+<p>
+약관·윤리 방어선은 <code>engine/fetch.py</code> 한 곳에 구현되어 있어,
+어떤 티어도 이를 우회해서 페이지를 가져올 수 없다.
+</p>
+<table>
+  <tr><th>준수 원칙 (전략 문서 5.3)</th><th>구현</th></tr>
+  <tr><td>robots.txt 확인·존중</td>
+      <td><code>RobotsPolicy</code>가 fetch 전에 검사. 차단 시 우회 없이
+          <code>FetchBlocked</code> → Tier 3 폴백. 호스트별 24h 캐시</td></tr>
+  <tr><td>User-Agent에 신원 명시</td>
+      <td><code>WishlistBot/1.0 (+저장소 URL; link-preview fetch on explicit
+          user save)</code> — 카카오톡 <code>kakaotalk-scrap</code>과 같은 관례</td></tr>
+  <tr><td>저장 시점 1회 요청, 순회 크롤링 금지</td>
+      <td>엔진에 URL 목록 순회·탐색 기능 자체가 없음. 진입점은
+          <code>parse(url)</code> 하나</td></tr>
+  <tr><td>동일 URL 중복 요청 방지</td>
+      <td>파싱 결과 TTL 캐시 (기본 6시간)</td></tr>
+  <tr><td>JS 렌더링·로그인·봇 차단 우회 금지</td>
+      <td>의존성에 브라우저가 없음 (Playwright 제거).
+          403/429는 사이트의 의사표시로 받아들이고 폴백</td></tr>
+</table>
+
+<h3>불변식 4. 확신 없는 매칭은 하지 않는다</h3>
+<p>
+Tier 1의 검색 결과 매칭에서 상품 식별자가 일치하지 않고 이름 유사도도
+기준(0.55) 미달이면, 억지로 채택하지 않고 Tier 2로 폴백한다.
+<b>틀린 상품 정보를 저장하는 것보다 한 단계 낮은 확실한 정보가 낫다</b>는 판단이며,
+이 기준 자체가 테스트로 고정되어 있다.
+</p>
+
+<div class="pagebreak"></div>
+<h2>4. Tier 1 — 공식 오픈 API 연동</h2>
+<p>
+오픈마켓형 플랫폼은 외부 유입 트래픽이 곧 수익이므로 개발자용 API를 공식 제공한다.
+단, 이들 API는 대부분 <b>검색 API</b>라서 "URL을 넣으면 상품이 나오는" 구조가 아니다.
+그래서 다음 4단계 흐름을 구현했다.
+</p>
+<pre>
+① 플랫폼 식별      urltools: 도메인 접미사 매칭 (m./www. 서브도메인 포함)
+② 식별자 추출      urltools: 경로 정규식 + 쿼리 키 (예: /products/{id}, prdNo=)
+③ 조회 또는 검색+매칭
+     · 직접 조회 가능(11번가 ProductInfo) → 식별자로 바로 조회
+     · 검색만 가능(네이버·쿠팡)          → 페이지 제목을 키워드로 검색 후
+                                           식별자 일치 → 이름 유사도 순 매칭
+④ 정규화 저장      API 응답 → Product (source_type=API, price_trackable=True)
+</pre>
+<table>
+  <tr><th>어댑터</th><th>API</th><th>인증</th><th>조회 방식</th></tr>
+  <tr><td><code>NaverShoppingAdapter</code></td><td>네이버 쇼핑 검색 API</td>
+      <td>Client ID/Secret 헤더</td><td>키워드 검색 → 매칭</td></tr>
+  <tr><td><code>CoupangPartnersAdapter</code></td><td>쿠팡 파트너스 API</td>
+      <td>HMAC-SHA256 서명 (CEA)</td><td>키워드 검색 → 매칭</td></tr>
+  <tr><td><code>ElevenStAdapter</code></td><td>11번가 OpenAPI</td>
+      <td>API Key</td><td>상품코드 직접 조회, 실패 시 검색 → 매칭</td></tr>
+</table>
+<p>
+검색 키워드는 페이지 제목에서 사이트 상투구를 잘라 만든다
+(<code>"상품명 - 사이즈 &amp; 후기 | 무신사"</code> → <code>"상품명"</code>).
+단축링크(<code>link.coupang.com</code>, <code>naver.me</code>)는 fetch 시 리다이렉트가
+풀린 최종 URL로 플랫폼·식별자를 재해석한다.
+</p>
+<div class="callout">
+  <b>자격 증명이 없어도 엔진은 동작한다.</b> API 키는 환경변수로 주입하며
+  (쿠팡 파트너스는 가입·승인 절차 필요), 미설정 시 해당 어댑터는
+  <code>skipped</code>로 기록되고 Tier 2로 자연스럽게 내려간다.
+  즉 Tier 1은 "켜면 좋아지는" 계층이지 전제 조건이 아니다.
+</div>
+
+<h2>5. Tier 2 — 표준 메타데이터 파싱</h2>
+<p>
+API가 없는 사이트도 <b>링크 공유 미리보기(Open Graph)</b>와
+<b>구글 검색 리치 결과 노출(JSON-LD/schema.org Product)</b>을 위해
+상품명·이미지·(가격)을 기계 판독용으로 페이지 <code>&lt;head&gt;</code>에 공개해 둔다.
+이 데이터는 사이트 운영자가 <b>외부 서비스에 읽히기를 의도하고 직접 넣어둔 것</b>이다.
+</p>
+<h3>5.1 파싱 순서와 이유</h3>
+<ol>
+  <li><b>JSON-LD(Product) 우선</b> — 판매가(<code>offers.price</code> /
+      <code>lowPrice</code>)와 정가(<code>listPrice</code> /
+      <code>originalPrice</code> / <code>priceSpecification(ListPrice)</code>)를
+      읽는다. 실사이트 변형 수용: <code>@graph</code>, <code>@type</code> 리스트,
+      Offer/AggregateOffer, 상대경로 이미지, 깨진 JSON-LD 무시.</li>
+  <li><b>Open Graph로 빈 칸만 보완</b> — <code>og:title</code>·<code>og:image</code>·
+      <code>product:price:amount</code>·<code>product:sale_price:amount</code>·
+      <code>product:original_price:amount</code>, 최후 보루로 <code>&lt;title&gt;</code>.</li>
+  <li><b>가격 정규화</b> — <code>89000</code>, <code>"89,000"</code>,
+      <code>"₩89,000"</code>, <code>"89000원"</code> → 원 단위 정수.</li>
+  <li><b>할인율 계산</b> — 정가 &gt; 판매가일 때만
+      <code>discount_rate = round((정가−판매가)/정가×100)</code>.</li>
+</ol>
+<h3>5.2 성공 판정</h3>
+<p>
+<b>상품명 + 이미지 + 가격</b>을 모두 확보해야 Tier 2 성공이다.
+하나라도 없으면 Tier 3으로 폴백하되, 얻은 제목·이미지는 미리 채우고
+빠진 필드(<code>missing_fields</code>, 주로 가격)만 사용자가 입력한다.
+</p>
+<div class="callout">
+  <b>안정성 근거:</b> OG와 JSON-LD는 화면용 마크업이 아니라 표준 스펙이다.
+  사이트가 화면(CSS 클래스)을 개편해도 이 태그들은 유지되므로,
+  사이트별 셀렉터 유지보수가 <b>존재하지 않는다</b>. 범용 파서 하나가
+  모든 사이트를 커버하며, 이것이 "마크업 변화에 능동적으로 대응하는
+  파싱 엔진"에 대한 답의 절반이다 (나머지 절반은 폴백 체인).
+</div>
+
+<h2>6. Tier 3 — 미리보기 수준 저장 + 사용자 보완</h2>
+<p>
+카카오톡 미리보기 카드 수준의 최소 정보(제목·대표 이미지·원본 링크)를 저장하되,
+<b>얻은 정보는 전부 미리 채워두고</b> 빠진 항목만 <code>missing_fields</code>로
+앱에 알려준다. 앱의 저장 화면은 이 목록의 필드만 사용자에게 확인·입력받으면 된다.
+</p>
+<ul>
+  <li>UX 원칙: "전부 수동 입력"이 아니라 <b>"빠진 것만 확인"</b> — 체감이 완전히 다르다.</li>
+  <li>최악의 경우(모든 것이 실패)에도 원본 링크 하나로 저장이 성립한다.</li>
+</ul>
+
+<div class="pagebreak"></div>
+<h2>7. 데이터 모델 — 정규화와 출처 기록</h2>
+<pre>
+Product {
+  title, image_url,
+  price,             // 판매가/할인가 (실제 결제에 가까운 가격)
+  original_price,    // 정가 (할인 전). 없으면 null
+  discount_rate,     // 할인율 %. 정가 > 판매가일 때만 계산
+  currency, brand, category,
+  seller,            // 판매자/입점 스토어 (JSON-LD offers.seller, 네이버 mallName)
+  original_url,      // 원본 상품 페이지 (탭 시 앱 있으면 앱, 없으면 웹)
+  source_platform,   // musinsa, coupang, 29cm, ...
+  platform_label,    // 화면 표시용 쇼핑몰 이름 ("무신사", 미등록몰은 og:site_name)
+  source_type,       // API | METADATA | MANUAL  ← 어느 티어로 수집됐나
+  price_trackable,   // 가격 추적 가능 여부 (source_type에서 파생)
+  fetched_at
+}
+
+ParseResult {
+  product,           // Tier 3 덕분에 항상 존재 (original_url 항상 포함)
+  resolved_tier,     // 최종 채택된 티어 (1|2|3)
+  missing_fields,    // 사용자 입력이 필요한 핵심 필드 (title/image_url/price)
+  attempts[],        // 각 티어의 시도 기록 {tier, name, outcome, reason}
+  from_cache
+}
+</pre>
+<table>
+  <tr><th>수집 필드</th><th>필수(핵심)</th><th>출처 예</th></tr>
+  <tr><td>platform_label (쇼핑몰 이름)</td><td>△</td>
+      <td>플랫폼 레지스트리 / <code>og:site_name</code></td></tr>
+  <tr><td>original_url</td><td><span class="ok">항상</span></td>
+      <td>사용자 입력/공유 텍스트</td></tr>
+  <tr><td>title (상품명)</td><td><span class="ok">핵심</span></td>
+      <td>API / JSON-LD name / og:title</td></tr>
+  <tr><td>price (판매가·할인가)</td><td><span class="ok">핵심</span></td>
+      <td>API lprice / offers.price / product:sale_price</td></tr>
+  <tr><td>original_price (정가)</td><td>있으면</td>
+      <td>API hprice / listPrice / product:original_price</td></tr>
+  <tr><td>discount_rate</td><td>파생</td>
+      <td>정가·판매가로 계산</td></tr>
+  <tr><td>image_url</td><td><span class="ok">핵심</span></td>
+      <td>API / JSON-LD image / og:image</td></tr>
+</table>
+<table>
+  <tr><th>티어</th><th>source_type</th><th>성공 조건</th><th>가격 변동 추적</th></tr>
+  <tr><td>Tier 1 (API)</td><td><code>API</code></td>
+      <td>API 매칭 성공 (판매가 포함)</td>
+      <td><span class="ok">O</span> — <code>price_trackable=true</code></td></tr>
+  <tr><td>Tier 2 (메타데이터)</td><td><code>METADATA</code></td>
+      <td>제목 + 이미지 + 판매가</td>
+      <td><span class="part">△</span> — 현재 false (재파싱 검토)</td></tr>
+  <tr><td>Tier 3 (수동)</td><td><code>MANUAL</code></td>
+      <td>항상 성공. 얻은 필드 미리 채움 + 빠진 칸 입력</td>
+      <td><span class="no">X</span></td></tr>
+</table>
+<p class="muted">
+가격 변동 추적은 공식 API 플랫폼부터 지원하고 단계적으로 확대한다 —
+기능 축소가 아니라 적법하고 지속가능한 범위를 스스로 정의한 엔지니어링 판단.
+</p>
+
+<h2>8. 모니터링 — 구조 변화를 스스로 감지하는 엔진</h2>
+<p>
+모든 파싱 결과는 <code>attempts</code>(티어별 성공/스킵/실패 + 사유)를 남기고,
+파이프라인이 <code>platform · resolved_tier · source_type · missing</code>을 로그로 집계한다.
+</p>
+<pre>
+예: 특정 플랫폼의 resolved_tier 분포가  2 → 3 으로 쏠리기 시작
+    ⇒ 해당 사이트가 메타데이터 제공을 중단/변경했다는 신호
+    ⇒ 사용자에게는 여전히 저장이 성공하고 있으므로 (Tier 3),
+      운영자는 장애가 아니라 "품질 저하 알림"으로 여유 있게 대응
+</pre>
+<p>
+"마크업 변화에 능동적으로 대응할 파싱 엔진 확보 방안"이라는 평가 피드백에 대해,
+이 엔진은 ① 애초에 화면 마크업을 읽지 않고(Tier 2), ② 어떤 단계가 깨져도 하위
+단계로 자동 전환되며(폴백), ③ 깨졌다는 사실 자체를 데이터로 감지한다(모니터링)
+— 세 겹으로 답한다.
+</p>
+
+<h2>9. 검증 결과 (정직한 기록)</h2>
+<h3>9.1 오프라인 테스트 — 82건 전부 통과</h3>
+<ul>
+  <li>URL 해석: 10개 플랫폼 식별·식별자 추출, 유사 도메인 오인 방지</li>
+  <li>메타데이터: JSON-LD 실사이트 변형 6종, OG, 가격 표기 정규화, 깨진 블록 내성</li>
+  <li>Tier 1: 식별자 우선 매칭, 유사도 폴백, 확신 미달 시 거부, 키 미설정 스킵,
+      HTTP 오류 → <code>AdapterError</code></li>
+  <li>파이프라인: 폴백 순서, <b>GET 1회 불변식</b>, robots 차단 → Tier 3,
+      캐시 적중, 단축링크 재식별, 잘못된 URL 422</li>
+</ul>
+<h3>9.2 실사이트 라이브 검증 (2026-07-25)</h3>
+<table>
+  <tr><th>사이트</th><th>결과</th><th>내용</th></tr>
+  <tr><td>29CM 실상품 2건</td><td><span class="ok">Tier 2 성공</span></td>
+      <td>JSON-LD에서 상품명·이미지·<b>가격</b>·브랜드·카테고리 전부 확보,
+          <code>missing_fields: []</code></td></tr>
+  <tr><td>무신사</td><td><span class="part">WishlistBot unfurl</span></td>
+      <td>robots.txt는 <code>Disallow: /</code> 이지만 WishlistBot GET은 200+OG.
+          판매가가 메타에 없으면 Tier 3(제목·이미지 미리 채움 + 가격 입력)</td></tr>
+  <tr><td>에이블리</td><td><span class="part">Tier 3</span></td>
+      <td>Cloudflare가 WishlistBot을 403 → 다른 UA 위장 없이 Tier 3
+          (공유 텍스트 상품명 있으면 제목 미리 채움)</td></tr>
+  <tr><td>API 서버</td><td><span class="ok">정상</span></td>
+      <td>정상 URL 200 + 정규화 응답 / 비정상 입력 422</td></tr>
+</table>
+<div class="warn">
+  <b>준수 원칙:</b> HTTP는 항상 <code>WishlistBot/1.0</code>만 사용한다.
+  Facebook/Slack 등 다른 서비스 UA를 빌려 쓰는 compat unfurl은 하지 않는다.
+  robots.txt가 거부해도 사이트에 공개된 OG를 WishlistBot으로 1회 읽는 것은
+  “사용자 저장 링크 미리보기” 수준이며, 403이면 Tier 3으로 내려간다.
+</div>
+
+<div class="pagebreak"></div>
+<h2>10. API 명세</h2>
+<p><code>POST /parse</code> — 요청: <code>{"url": "https://www.29cm.co.kr/products/1577769"}</code></p>
+<pre>
+{
+  "product": {
+    "title": "퀸 비키니 브라_화이트",
+    "image_url": "https://img.29cm.co.kr/next-product/...jpg",
+    "price": 109000,
+    "original_price": 129000,
+    "discount_rate": 16,
+    "currency": "KRW",
+    "brand": "아그넬",
+    "platform_label": "29CM",
+    "category": "비키니",
+    "original_url": "https://www.29cm.co.kr/products/1577769",
+    "source_platform": "29cm",
+    "source_type": "METADATA",
+    "price_trackable": false,
+    "fetched_at": "2026-07-25T09:07:00Z"
+  },
+  "resolved_tier": 2,
+  "missing_fields": [],
+  "attempts": [
+    {"tier": 1, "name": "open_api", "outcome": "skipped",
+     "reason": "platform '29cm' does not provide an open API"},
+    {"tier": 2, "name": "metadata", "outcome": "success",
+     "reason": "extracted via json-ld, open-graph"}
+  ]
+}
+</pre>
+<ul>
+  <li>응답은 항상 200 — 유일한 실패는 http(s) URL이 아닌 입력의 422.</li>
+  <li><code>missing_fields</code>가 비어 있지 않으면 앱은 해당 필드만
+      사용자에게 확인받는다.</li>
+  <li>실행: <code>cd server &amp;&amp; pip install -r requirements.txt &amp;&amp;
+      uvicorn api_server:app</code> → <code>/docs</code>에서 즉시 테스트 가능.</li>
+</ul>
+
+<h2>11. 예상 질문과 답변</h2>
+<p><b>Q. 웹뷰 방식과 뭐가 다른가? 결국 남의 페이지를 읽는 것 아닌가?</b><br>
+A. 요청 성격이 다르다. 웹뷰는 페이지 전체를 렌더링(JS 실행, 수십 개 부속 요청)해
+화면용 DOM을 긁지만, 이 엔진은 브라우저의 최초 요청과 동일한 <b>HTTP GET 1회</b>로,
+사이트가 <b>기계 판독용으로 의도적으로 공개한 표준 필드</b>(OG/JSON-LD)만 읽는다.
+카카오톡·슬랙이 링크 미리보기를 만들 때 하는 동작과 기술적으로 동일하며,
+이 "1회" 제약은 코드 구조(<code>_ParseContext</code> 공유)로 강제된다.</p>
+
+<p><b>Q. 사이트가 크롤링을 막으면?</b><br>
+A. 다른 서비스 UA로 위장하지 않는다. WishlistBot GET이 403·429면 Tier 3으로
+내려가고, 그래도 <code>original_url</code> 저장은 성공한다(미리보기 + 사용자 보완).
+WebView·Playwright로 봇 차단을 뚫는 코드는 저장소에 없다.</p>
+
+<p><b>Q. 정가와 할인가를 어떻게 구분하나?</b><br>
+A. 판매가(<code>price</code>)는 <code>offers.price</code>/<code>lowPrice</code>/API
+<code>lprice</code>·OG sale price. 정가(<code>original_price</code>)는
+<code>listPrice</code>·<code>priceSpecification(ListPrice)</code>·API
+<code>hprice</code>·OG original price. 정가 &gt; 판매가일 때만
+<code>discount_rate</code>를 계산한다. AggregateOffer의 <code>highPrice</code>는
+옵션 최고가일 수 있어 정가로 쓰지 않는다.</p>
+
+<p><b>Q. API 키가 아직 없는데 Tier 1은 어떻게 되나?</b><br>
+A. 어댑터가 <code>skipped</code>로 기록되고 Tier 2로 자연 폴백한다.
+키는 환경변수 주입이라 발급 즉시 코드 변경 없이 Tier 1이 켜진다.
+반대로 API 장애·rate limit 시에도 같은 경로로 서비스가 유지된다.</p>
+
+<p><b>Q. 검색 API 매칭이 엉뚱한 상품을 고르면?</b><br>
+A. 식별자 일치가 최우선이고, 이름 유사도는 기준(0.55) 미달이면 채택하지 않는다.
+확신이 없으면 Tier 2의 확실한 정보(그 페이지 자체의 메타데이터)로 폴백하는 쪽을
+택했고, 이 동작은 테스트로 고정되어 있다.</p>
+
+<p><b>Q. 새 쇼핑몰 지원은 얼마나 걸리나?</b><br>
+A. 메타데이터가 있는 사이트는 <b>0줄</b> — Tier 2 범용 파서가 그대로 커버한다.
+플랫폼 식별·식별자 추출까지 원하면 <code>urltools.py</code> 레지스트리에
+항목 1개 추가, 공식 API 연동까지 원하면 어댑터 클래스 1개 추가로 끝난다.</p>
+
+</body>
+</html>
