@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "828519649900",
+    "project_id": "softstudio-wishlist-app",
+    "storage_bucket": "softstudio-wishlist-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:828519649900:android:26b03443c184ebb9313e49",
+        "android_client_info": {
+          "package_name": "com.softstudio.wishlist"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "828519649900-povc98i1b2cpfgjcp5l8uoothh3ch67c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUilvVOTPnvnl4Be9QNOiqZyvjYPG0qv0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "828519649900-povc98i1b2cpfgjcp5l8uoothh3ch67c.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "828519649900-kfu55h8bveterj3of2rqv5u8kvi1hrmq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.softstudio.wishlist"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

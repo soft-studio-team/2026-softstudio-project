@@ -1,22 +1,27 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../firebase_options.dart';
 import '../models/models.dart';
+import '../services/account_repository.dart';
 import '../theme/diary_theme.dart';
 
 class AppStore extends ChangeNotifier {
-  static const _tabsKey = 'wishlist_tabs';
-  static const _productsKey = 'wishlist_products';
-  static const _authKey = 'auth_logged_in';
   static const _basketKey = 'basket_items';
-  static const _userKey = 'current_user';
-  static const _friendsKey = 'friends_follow';
   static const _sharedKey = 'shared_baskets';
 
+  AppStore({AccountRepository? repository})
+      : _repo = repository ?? AccountRepository();
+
+  final AccountRepository _repo;
+
   bool ready = false;
+  bool firebaseReady = false;
+  String? firebaseError;
   bool isLoggedIn = false;
 
   List<WishlistTab> tabs = [];
@@ -30,125 +35,125 @@ class AppStore extends ChangeNotifier {
   String? pendingShareUrl;
 
   AppUser currentUser = AppUser(
-    name: '김지은',
-    handle: '@kimjieun',
-    avatarUrl:
-        'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop',
-    followers: 127,
-    following: 89,
+    name: '게스트',
+    handle: '@guest',
+    avatarUrl: 'https://api.dicebear.com/7.x/thumbs/png?seed=guest',
   );
 
   Future<void> init() async {
-    final prefs = await SharedPreferences.getInstance();
-    isLoggedIn = prefs.getBool(_authKey) ?? false;
-
-    final tabsRaw = prefs.getString(_tabsKey);
-    if (tabsRaw != null) {
-      tabs = (jsonDecode(tabsRaw) as List)
-          .map((e) => WishlistTab.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } else {
-      tabs = List.from(_initialTabs);
+    firebaseReady = isFirebaseConfigured;
+    if (!firebaseReady) {
+      firebaseError =
+          'Firebase 키가 아직 설정되지 않았어요. FIREBASE_SETUP.md 를 따라 앱을 등록해 주세요.';
+      ready = true;
+      notifyListeners();
+      return;
     }
 
-    final productsRaw = prefs.getString(_productsKey);
-    if (productsRaw != null) {
-      products = (jsonDecode(productsRaw) as List)
-          .map((e) => Product.fromJson(e as Map<String, dynamic>))
-          .toList();
-    } else {
-      products = List.from(_initialProducts);
-    }
-
-    final basketRaw = prefs.getString(_basketKey);
-    if (basketRaw != null) {
-      final ids = (jsonDecode(basketRaw) as List).cast<int>();
-      basket = ids
-          .map((id) {
-            final p = products.where((e) => e.id == id).firstOrNull;
-            return p == null ? null : BasketItem(product: p);
-          })
-          .whereType<BasketItem>()
-          .toList();
-    }
-
-    final userRaw = prefs.getString(_userKey);
-    if (userRaw != null) {
-      final map = jsonDecode(userRaw) as Map<String, dynamic>;
-      currentUser = AppUser(
-        name: map['name'] as String? ?? currentUser.name,
-        handle: map['handle'] as String? ?? currentUser.handle,
-        avatarUrl: map['avatarUrl'] as String? ?? currentUser.avatarUrl,
-        followers: map['followers'] as int? ?? currentUser.followers,
-        following: map['following'] as int? ?? currentUser.following,
-      );
-    }
-
-    friends = List.from(_initialFriends);
-    final followRaw = prefs.getString(_friendsKey);
-    if (followRaw != null) {
-      final followMap = (jsonDecode(followRaw) as Map<String, dynamic>)
-          .map((k, v) => MapEntry(k, v == true));
-      friends = friends
-          .map((f) => followMap.containsKey(f.id)
-              ? f.copyWith(isFollowing: followMap[f.id]!)
-              : f)
-          .toList();
-    }
-    _syncFollowingCount();
-    friendWishlists = _buildFriendWishlists(products);
-    friends = friends
-        .map((f) {
-          final lists =
-              friendWishlists.where((w) => w.friendId == f.id).toList();
-          final items = lists.fold<int>(0, (sum, w) => sum + w.items.length);
-          return f.copyWith(
-            wishlistCount: lists.length,
-            itemCount: items,
-          );
-        })
-        .toList();
-
-    final sharedRaw = prefs.getString(_sharedKey);
-    if (sharedRaw != null) {
-      final list = jsonDecode(sharedRaw) as List;
-      for (final e in list) {
-        final map = e as Map<String, dynamic>;
-        final id = map['id'] as String;
-        sharedBaskets[id] = SharedBasket(
-          id: id,
-          title: map['title'] as String? ?? '공유 바구니',
-          ownerName: map['ownerName'] as String? ?? currentUser.name,
-          items: (map['items'] as List? ?? [])
-              .map((p) => Product.fromJson(p as Map<String, dynamic>))
-              .toList(),
-          createdAt: DateTime.tryParse(map['createdAt'] as String? ?? '') ??
-              DateTime.now(),
-        );
+    try {
+      // Initialized in main.dart — just sync auth state.
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await _hydrateSession(user);
       }
+    } catch (e) {
+      firebaseError = e.toString();
     }
 
+    await _loadLocalExtras();
     ready = true;
     notifyListeners();
   }
 
-  Future<void> login({required String email, required String password}) async {
-    // Local prototype auth — no backend yet.
+  Future<void> _hydrateSession(User user) async {
+    await _repo.ensureProfile(user);
+    final profile = await _repo.loadProfile(user.uid);
+    if (profile != null) {
+      currentUser = profile;
+    }
+    tabs = await _repo.loadTabs(user.uid);
+    products = await _repo.loadProducts(user.uid);
+    final following = (await _repo.followingIds(user.uid)).toSet();
+    friends = await _repo.loadDirectory(myUid: user.uid, following: following);
+    friendWishlists = await _repo.loadFriendWishlists(friends);
+    _syncFriendCounts();
+    currentUser = currentUser.copyWith(
+      following: following.length,
+    );
+    isLoggedIn = true;
+    selectedTabId = 'all';
+  }
+
+  Future<void> _clearSessionLocal() async {
+    isLoggedIn = false;
+    tabs = [];
+    products = [];
+    basket = [];
+    friends = [];
+    friendWishlists = [];
+    currentUser = AppUser(
+      name: '게스트',
+      handle: '@guest',
+      avatarUrl: 'https://api.dicebear.com/7.x/thumbs/png?seed=guest',
+    );
+    selectedTabId = 'all';
+  }
+
+  Future<void> register({
+    required String email,
+    required String password,
+    String name = '',
+    String handle = '',
+  }) async {
+    _ensureFirebase();
     if (email.trim().isEmpty || password.trim().isEmpty) {
       throw Exception('이메일과 비밀번호를 입력해 주세요.');
     }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_authKey, true);
-    isLoggedIn = true;
+    if (password.trim().length < 6) {
+      throw Exception('비밀번호는 6자 이상이어야 해요.');
+    }
+    final derivedHandle =
+        handle.trim().isEmpty ? email.split('@').first : handle;
+    final cred = await _repo.register(
+      email: email,
+      password: password,
+      name: name,
+      handle: derivedHandle,
+    );
+    await _hydrateSession(cred.user!);
+    await _restoreBasketForUser();
+    notifyListeners();
+  }
+
+  Future<void> login({required String email, required String password}) async {
+    _ensureFirebase();
+    if (email.trim().isEmpty || password.trim().isEmpty) {
+      throw Exception('이메일과 비밀번호를 입력해 주세요.');
+    }
+    final cred = await _repo.login(email: email, password: password);
+    await _hydrateSession(cred.user!);
+    await _restoreBasketForUser();
     notifyListeners();
   }
 
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_authKey, false);
-    isLoggedIn = false;
+    if (firebaseReady) {
+      await _repo.logout();
+    }
+    await _clearSessionLocal();
     notifyListeners();
   }
+
+  void _ensureFirebase() {
+    if (!firebaseReady) {
+      throw Exception(
+        'Firebase가 연결되지 않았어요. 콘솔에서 앱 등록 후 firebase_options.dart 를 채워 주세요.',
+      );
+    }
+  }
+
+  String? get uid =>
+      currentUser.uid.isNotEmpty ? currentUser.uid : _repo.firebaseUser?.uid;
 
   List<Product> get displayedProducts {
     if (selectedTabId == 'all') return products;
@@ -158,12 +163,10 @@ class AppStore extends ChangeNotifier {
   WishlistTab get selectedTab =>
       tabs.firstWhere((t) => t.id == selectedTabId, orElse: () => tabs.first);
 
-  /// Custom lists only (excludes the fixed "전체" tab).
   List<WishlistTab> get customTabs =>
       tabs.where((t) => t.id != 'all').toList();
 
   Color tabColor(WishlistTab tab) {
-    // Seeded lists map onto the neutral file palette.
     const map = {
       'all': DiaryColors.fileCream,
       'summer': DiaryColors.fileSand,
@@ -182,7 +185,6 @@ class AppStore extends ChangeNotifier {
     return DiaryColors.fileCream;
   }
 
-  /// Pick a file color that isn't already used when possible.
   Color nextFileColor() {
     final used = <int>{
       for (final t in tabs.where((t) => t.id != 'all'))
@@ -195,8 +197,6 @@ class AppStore extends ChangeNotifier {
     return pool[Random().nextInt(pool.length)];
   }
 
-  /// Reorder custom tabs. Indices are among tabs excluding 'all'.
-  /// Matches [ReorderableListView.onReorder] (adjusts newIndex when moving down).
   Future<void> reorderTabs(int oldIndex, int newIndex) async {
     final allTab = tabs.firstWhere((t) => t.id == 'all');
     final rest = tabs.where((t) => t.id != 'all').toList();
@@ -207,7 +207,7 @@ class AppStore extends ChangeNotifier {
     final item = rest.removeAt(oldIndex);
     rest.insert(target, item);
     tabs = [allTab, ...rest];
-    await _persist();
+    await _persistTabs();
     notifyListeners();
   }
 
@@ -221,20 +221,10 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _tabsKey,
-      jsonEncode(tabs.map((e) => e.toJson()).toList()),
-    );
-    await prefs.setString(
-      _productsKey,
-      jsonEncode(products.map((e) => e.toJson()).toList()),
-    );
-    await prefs.setString(
-      _basketKey,
-      jsonEncode(basket.map((e) => e.product.id).toList()),
-    );
+  Future<void> _persistTabs() async {
+    final id = uid;
+    if (id == null) return;
+    await _repo.saveTabs(id, tabs);
   }
 
   Future<void> addTab(String name, {bool isPublic = false}) async {
@@ -249,13 +239,13 @@ class AppStore extends ChangeNotifier {
     );
     tabs = [...tabs, tab];
     selectedTabId = tab.id;
-    await _persist();
+    await _persistTabs();
     notifyListeners();
   }
 
   Future<void> renameTab(String id, String name) async {
     tabs = tabs.map((t) => t.id == id ? t.copyWith(name: name) : t).toList();
-    await _persist();
+    await _persistTabs();
     notifyListeners();
   }
 
@@ -263,7 +253,11 @@ class AppStore extends ChangeNotifier {
     if (id == 'all') return;
     tabs = tabs.where((t) => t.id != id).toList();
     if (selectedTabId == id) selectedTabId = 'all';
-    await _persist();
+    final userId = uid;
+    if (userId != null) {
+      await _repo.deleteTabDoc(userId, id);
+      await _persistTabs();
+    }
     notifyListeners();
   }
 
@@ -271,14 +265,18 @@ class AppStore extends ChangeNotifier {
     tabs = tabs
         .map((t) => t.id == id ? t.copyWith(isPublic: !t.isPublic) : t)
         .toList();
-    await _persist();
+    await _persistTabs();
     notifyListeners();
   }
 
   Future<void> removeProduct(int id) async {
     products = products.where((p) => p.id != id).toList();
     basket = basket.where((b) => b.product.id != id).toList();
-    await _persist();
+    final userId = uid;
+    if (userId != null) {
+      await _repo.deleteProduct(userId, id);
+    }
+    await _persistBasket();
     notifyListeners();
   }
 
@@ -286,21 +284,29 @@ class AppStore extends ChangeNotifier {
     products = products
         .map((p) => p.id == id ? p.copyWith(listId: listId) : p)
         .toList();
-    await _persist();
+    final userId = uid;
+    final product = productById(id);
+    if (userId != null && product != null) {
+      await _repo.upsertProduct(userId, product);
+    }
     notifyListeners();
   }
 
   Future<void> updateMemo(int id, String memo) async {
     products =
         products.map((p) => p.id == id ? p.copyWith(memo: memo) : p).toList();
-    await _persist();
+    final userId = uid;
+    final product = productById(id);
+    if (userId != null && product != null) {
+      await _repo.upsertProduct(userId, product);
+    }
     notifyListeners();
   }
 
   Future<void> addToBasket(Product product) async {
     if (basket.any((b) => b.product.id == product.id)) return;
     basket = [...basket, BasketItem(product: product)];
-    await _persist();
+    await _persistBasket();
     notifyListeners();
   }
 
@@ -310,13 +316,13 @@ class AppStore extends ChangeNotifier {
             ? b.copyWith(isSelected: !b.isSelected)
             : b)
         .toList();
-    await _persist();
+    await _persistBasket();
     notifyListeners();
   }
 
   Future<void> removeFromBasket(int id) async {
     basket = basket.where((b) => b.product.id != id).toList();
-    await _persist();
+    await _persistBasket();
     notifyListeners();
   }
 
@@ -326,7 +332,7 @@ class AppStore extends ChangeNotifier {
   }) async {
     final id = (products.map((e) => e.id).fold<int>(0, max)) + 1;
     final product = Product(
-      id: id,
+      id: id == 0 ? DateTime.now().millisecondsSinceEpoch : id,
       listId: listId == 'all' ? 'summer' : listId,
       name: info.name,
       price: info.price,
@@ -339,7 +345,10 @@ class AppStore extends ChangeNotifier {
       productUrl: info.productUrl,
     );
     products = [...products, product];
-    await _persist();
+    final userId = uid;
+    if (userId != null) {
+      await _repo.upsertProduct(userId, product);
+    }
     notifyListeners();
     return product;
   }
@@ -364,31 +373,51 @@ class AppStore extends ChangeNotifier {
 
   SharedBasket? sharedBasketById(String id) => sharedBaskets[id];
 
-  /// Instagram-style follow toggle. Updates button label + following count.
-  Future<void> toggleFollow(String friendId) async {
-    final idx = friends.indexWhere((f) => f.id == friendId);
-    if (idx < 0) return;
-    final wasFollowing = friends[idx].isFollowing;
-    friends = [
-      for (var i = 0; i < friends.length; i++)
-        if (i == idx)
-          friends[i].copyWith(isFollowing: !wasFollowing)
-        else
-          friends[i],
-    ];
-    _syncFollowingCount();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _friendsKey,
-      jsonEncode({for (final f in friends) f.id: f.isFollowing}),
-    );
+  Future<void> refreshFriends() async {
+    final userId = uid;
+    if (userId == null) return;
+    final following = (await _repo.followingIds(userId)).toSet();
+    friends = await _repo.loadDirectory(myUid: userId, following: following);
+    friendWishlists = await _repo.loadFriendWishlists(friends);
+    _syncFriendCounts();
+    final profile = await _repo.loadProfile(userId);
+    if (profile != null) currentUser = profile;
     notifyListeners();
   }
 
-  void _syncFollowingCount() {
+  Future<void> toggleFollow(String friendId) async {
+    final userId = uid;
+    if (userId == null) return;
+    final idx = friends.indexWhere((f) => f.id == friendId);
+    if (idx < 0) return;
+    final wasFollowing = friends[idx].isFollowing;
+    final next = !wasFollowing;
+    await _repo.setFollowing(
+      myUid: userId,
+      targetUid: friendId,
+      follow: next,
+    );
+    friends = [
+      for (var i = 0; i < friends.length; i++)
+        if (i == idx)
+          friends[i].copyWith(isFollowing: next)
+        else
+          friends[i],
+    ];
     currentUser = currentUser.copyWith(
       following: friends.where((f) => f.isFollowing).length,
     );
+    friendWishlists = await _repo.loadFriendWishlists(friends);
+    _syncFriendCounts();
+    notifyListeners();
+  }
+
+  void _syncFriendCounts() {
+    friends = friends.map((f) {
+      final lists = friendWishlists.where((w) => w.friendId == f.id).toList();
+      final items = lists.fold<int>(0, (sum, w) => sum + w.items.length);
+      return f.copyWith(wishlistCount: lists.length, itemCount: items);
+    }).toList();
   }
 
   Future<void> updateProfile({
@@ -405,23 +434,16 @@ class AppStore extends ChangeNotifier {
       handle: nextHandle.isNotEmpty ? nextHandle : null,
       avatarUrl: avatarUrl?.trim().isNotEmpty == true ? avatarUrl!.trim() : null,
     );
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _userKey,
-      jsonEncode({
-        'name': currentUser.name,
-        'handle': currentUser.handle,
-        'avatarUrl': currentUser.avatarUrl,
-        'followers': currentUser.followers,
-        'following': currentUser.following,
-      }),
-    );
+    final userId = uid;
+    if (userId != null) {
+      await _repo.updateProfile(userId, currentUser);
+    }
     notifyListeners();
   }
 
-  /// Creates a shareable basket snapshot from selected basket items.
   Future<SharedBasket> createSharedBasketFromSelection() async {
-    final selected = basket.where((b) => b.isSelected).map((b) => b.product).toList();
+    final selected =
+        basket.where((b) => b.isSelected).map((b) => b.product).toList();
     if (selected.isEmpty) {
       throw Exception('공유할 상품을 선택해 주세요.');
     }
@@ -458,6 +480,55 @@ class AppStore extends ChangeNotifier {
     );
   }
 
+  Future<void> _persistBasket() async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '${_basketKey}_${uid ?? 'guest'}';
+    await prefs.setString(
+      key,
+      jsonEncode(basket.map((e) => e.product.id).toList()),
+    );
+  }
+
+  Future<void> _restoreBasketForUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '${_basketKey}_${uid ?? 'guest'}';
+    final basketRaw = prefs.getString(key);
+    if (basketRaw == null) {
+      basket = [];
+      return;
+    }
+    final ids = (jsonDecode(basketRaw) as List).cast<int>();
+    basket = ids
+        .map((id) {
+          final p = products.where((e) => e.id == id).firstOrNull;
+          return p == null ? null : BasketItem(product: p);
+        })
+        .whereType<BasketItem>()
+        .toList();
+  }
+
+  Future<void> _loadLocalExtras() async {
+    final prefs = await SharedPreferences.getInstance();
+    final sharedRaw = prefs.getString(_sharedKey);
+    if (sharedRaw != null) {
+      final list = jsonDecode(sharedRaw) as List;
+      for (final e in list) {
+        final map = e as Map<String, dynamic>;
+        final id = map['id'] as String;
+        sharedBaskets[id] = SharedBasket(
+          id: id,
+          title: map['title'] as String? ?? '공유 바구니',
+          ownerName: map['ownerName'] as String? ?? currentUser.name,
+          items: (map['items'] as List? ?? [])
+              .map((p) => Product.fromJson(p as Map<String, dynamic>))
+              .toList(),
+          createdAt: DateTime.tryParse(map['createdAt'] as String? ?? '') ??
+              DateTime.now(),
+        );
+      }
+    }
+  }
+
   Product? findCatalogProduct(int id) {
     final own = productById(id);
     if (own != null) return own;
@@ -472,192 +543,3 @@ class AppStore extends ChangeNotifier {
     return null;
   }
 }
-
-final _initialFriends = [
-  Friend(
-    id: '1',
-    name: '김민지',
-    username: '@minji_style',
-    avatar:
-        'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop',
-    isFollowing: true,
-    wishlistCount: 2,
-    itemCount: 5,
-  ),
-  Friend(
-    id: '2',
-    name: '이서연',
-    username: '@seoyeon',
-    avatar:
-        'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&h=200&fit=crop',
-    isFollowing: false,
-    wishlistCount: 1,
-    itemCount: 3,
-  ),
-  Friend(
-    id: '3',
-    name: '박준호',
-    username: '@junho_daily',
-    avatar:
-        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop',
-    isFollowing: true,
-    wishlistCount: 1,
-    itemCount: 2,
-  ),
-];
-
-List<FriendWishlist> _buildFriendWishlists(List<Product> seedProducts) {
-  Product pick(int i) {
-    if (seedProducts.isEmpty) {
-      return Product(
-        id: 9000 + i,
-        listId: 'friend',
-        name: '친구 추천 아이템',
-        price: 39000,
-        image:
-            'https://images.unsplash.com/photo-1524275406383-49f669cf763a?w=400&h=400&fit=crop',
-        platform: '무신사',
-      );
-    }
-    final src = seedProducts[i % seedProducts.length];
-    return Product(
-      id: 9000 + i,
-      listId: 'friend',
-      name: src.name,
-      price: src.price,
-      image: src.image,
-      platform: src.platform,
-      originalPrice: src.originalPrice,
-      discount: src.discount,
-      productUrl: src.productUrl,
-    );
-  }
-
-  return [
-    FriendWishlist(
-      id: 'fw-1a',
-      friendId: '1',
-      friendName: '김민지',
-      listName: '봄 데일리룩',
-      isPublic: true,
-      items: [pick(0), pick(1), pick(3)],
-    ),
-    FriendWishlist(
-      id: 'fw-1b',
-      friendId: '1',
-      friendName: '김민지',
-      listName: '주말 코디',
-      isPublic: true,
-      items: [pick(4), pick(2)],
-    ),
-    FriendWishlist(
-      id: 'fw-2a',
-      friendId: '2',
-      friendName: '이서연',
-      listName: '미니멀 옷장',
-      isPublic: true,
-      items: [pick(1), pick(5), pick(6)],
-    ),
-    FriendWishlist(
-      id: 'fw-3a',
-      friendId: '3',
-      friendName: '박준호',
-      listName: '데일리 슈즈',
-      isPublic: true,
-      items: [pick(7), pick(3)],
-    ),
-  ];
-}
-
-final _initialTabs = [
-  WishlistTab(id: 'all', name: '전체', isPublic: true),
-  WishlistTab(id: 'summer', name: '여름 여행 옷', isPublic: true),
-  WishlistTab(id: 'daily', name: '일상 윗옷', isPublic: true),
-  WishlistTab(id: 'accessories', name: '악세서리', isPublic: false),
-  WishlistTab(id: 'beauty', name: '뷰티', isPublic: true),
-  WishlistTab(id: 'shoes', name: '신발', isPublic: false),
-];
-
-final _initialProducts = [
-  Product(
-    id: 1,
-    listId: 'summer',
-    name: '린넨 블렌드 셔츠',
-    price: 45000,
-    originalPrice: 58000,
-    image:
-        'https://images.unsplash.com/photo-1624222244232-5f1ae13bbd53?w=400&h=400&fit=crop&auto=format',
-    platform: '무신사',
-    discount: 22,
-    productUrl: 'https://www.musinsa.com',
-  ),
-  Product(
-    id: 2,
-    listId: 'daily',
-    name: '베이직 화이트 티셔츠',
-    price: 29000,
-    image:
-        'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=400&h=400&fit=crop&auto=format',
-    platform: '지그재그',
-  ),
-  Product(
-    id: 3,
-    listId: 'accessories',
-    name: '실버 체인 브레이슬릿',
-    price: 38000,
-    originalPrice: 48000,
-    image:
-        'https://images.unsplash.com/photo-1621341103818-01dada8c6ef8?w=400&h=400&fit=crop&auto=format',
-    platform: '29CM',
-    discount: 21,
-  ),
-  Product(
-    id: 4,
-    listId: 'summer',
-    name: '베이지 롱 코트',
-    price: 128000,
-    image:
-        'https://images.unsplash.com/photo-1544022613-e87ca75a784a?w=400&h=400&fit=crop&auto=format',
-    platform: '무신사',
-  ),
-  Product(
-    id: 5,
-    listId: 'daily',
-    name: '화이트 와이드 팬츠',
-    price: 52000,
-    originalPrice: 69000,
-    image:
-        'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=400&h=400&fit=crop&auto=format',
-    platform: '쿠팡',
-    discount: 25,
-  ),
-  Product(
-    id: 6,
-    listId: 'accessories',
-    name: '골드 링 세트',
-    price: 24000,
-    image:
-        'https://images.unsplash.com/photo-1623251738730-c43469a8aefc?w=400&h=400&fit=crop&auto=format',
-    platform: '지그재그',
-  ),
-  Product(
-    id: 7,
-    listId: 'beauty',
-    name: '파스텔 니트 가디건',
-    price: 42000,
-    image:
-        'https://images.unsplash.com/photo-1524275406383-49f669cf763a?w=400&h=400&fit=crop&auto=format',
-    platform: '29CM',
-  ),
-  Product(
-    id: 8,
-    listId: 'shoes',
-    name: '미니멀 안경',
-    price: 68000,
-    originalPrice: 85000,
-    image:
-        'https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=400&h=400&fit=crop&auto=format',
-    platform: '무신사',
-    discount: 20,
-  ),
-];

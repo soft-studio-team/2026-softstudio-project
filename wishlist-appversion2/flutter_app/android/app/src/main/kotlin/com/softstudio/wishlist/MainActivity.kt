@@ -1,4 +1,4 @@
-package com.wishlist.figmadesign
+package com.softstudio.wishlist
 
 import io.flutter.embedding.android.FlutterActivity
 
