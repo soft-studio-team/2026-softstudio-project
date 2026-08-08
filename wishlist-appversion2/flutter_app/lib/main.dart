@@ -250,13 +250,15 @@ class HomeShell extends StatelessWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: DiaryColors.folderYellow,
-        foregroundColor: DiaryColors.ink,
-        onPressed: () => context.push('/share'),
-        label: const Text('공유 담기'),
-        icon: const Icon(Icons.add_link),
-      ),
+      floatingActionButton: navigationShell.currentIndex == 0
+          ? FloatingActionButton.extended(
+              backgroundColor: DiaryColors.folderYellow,
+              foregroundColor: DiaryColors.ink,
+              onPressed: () => context.push('/share'),
+              label: const Text('공유 담기'),
+              icon: const Icon(Icons.add_link),
+            )
+          : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
     );
   }

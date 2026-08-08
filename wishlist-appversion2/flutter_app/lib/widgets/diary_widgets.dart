@@ -168,34 +168,39 @@ class DiaryButton extends StatelessWidget {
   });
 
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final bool filled;
   final Color color;
   final IconData? icon;
 
+  bool get _disabled => onPressed == null;
+
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: filled ? color : DiaryColors.white,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onPressed,
+    return Opacity(
+      opacity: _disabled ? 0.45 : 1,
+      child: Material(
+        color: filled ? color : DiaryColors.white,
         borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: DiaryColors.ink.withValues(alpha: 0.7), width: 1.2),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 18, color: DiaryColors.ink),
-                const SizedBox(width: 6),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: DiaryColors.ink.withValues(alpha: 0.7), width: 1.2),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 18, color: DiaryColors.ink),
+                  const SizedBox(width: 6),
+                ],
+                Text(label, style: DiaryTheme.body(13, weight: FontWeight.w600)),
               ],
-              Text(label, style: DiaryTheme.body(13, weight: FontWeight.w600)),
-            ],
+            ),
           ),
         ),
       ),

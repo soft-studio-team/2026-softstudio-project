@@ -53,7 +53,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '더블탭: 편집 · 꾹 눌러 드래그: 순서 변경',
+                  '스와이프: 스크롤 · 더블탭: 편집 · 꾹 눌러 드래그: 순서 변경',
                   style: DiaryTheme.ui(11, color: DiaryColors.inkMuted),
                 ),
               ),
@@ -331,7 +331,9 @@ class _WishlistScreenState extends State<WishlistScreen> {
 
 /// Fixed "전체" + long-press drag reorder for custom lists.
 /// Double-tap opens the edit sheet (rename / delete / privacy).
-class _TabsRow extends StatelessWidget {
+/// Plain swipe scrolls; ReorderableDelayedDragStartListener's delay is what
+/// lets that swipe pass through to the scrollable instead of starting a drag.
+class _TabsRow extends StatefulWidget {
   const _TabsRow({
     required this.store,
     required this.onDoubleTapTab,
@@ -343,63 +345,133 @@ class _TabsRow extends StatelessWidget {
   final VoidCallback onAdd;
 
   @override
+  State<_TabsRow> createState() => _TabsRowState();
+}
+
+class _TabsRowState extends State<_TabsRow> {
+  final _scrollController = ScrollController();
+  final Map<String, GlobalKey> _chipKeys = {};
+
+  // AppStore is a single ChangeNotifier instance passed by reference, and
+  // selectTab mutates selectedTabId in place before notifying — so
+  // oldWidget.store and widget.store are identical() and comparing their
+  // selectedTabId always reads the same (already-updated) value. Track the
+  // id we last scrolled to ourselves instead of diffing old vs new widget.
+  String? _lastScrolledId;
+
+  GlobalKey _keyFor(String tabId) =>
+      _chipKeys.putIfAbsent(tabId, () => GlobalKey());
+
+  void _scheduleScrollToSelected() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _scrollToSelected();
+    });
+  }
+
+  void _scrollToSelected() {
+    final targetContext = _chipKeys[widget.store.selectedTabId]?.currentContext;
+    if (targetContext == null) return;
+    if (!_scrollController.hasClients) return;
+    Scrollable.ensureVisible(
+      targetContext,
+      alignment: 0.5,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  // Scrolls only when the selected id itself changed, so a rename or
+  // reorder of the currently-selected tab (same id, different label/
+  // position) never causes a jump.
+  void _maybeScrollToSelected() {
+    final id = widget.store.selectedTabId;
+    if (id == _lastScrolledId) return;
+    _lastScrolledId = id;
+    _scheduleScrollToSelected();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _maybeScrollToSelected();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TabsRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _maybeScrollToSelected();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final store = widget.store;
     final custom = store.customTabs;
     final allTab = store.tabs.first;
-    return Row(
-      children: [
-        const SizedBox(width: 12),
-        _FolderTab(
+    final validIds = {allTab.id, ...custom.map((t) => t.id)};
+    _chipKeys.removeWhere((id, _) => !validIds.contains(id));
+    return ReorderableListView.builder(
+      scrollDirection: Axis.horizontal,
+      scrollController: _scrollController,
+      physics: const BouncingScrollPhysics(),
+      buildDefaultDragHandles: false,
+      proxyDecorator: (child, index, animation) {
+        return Material(
+          elevation: 3,
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          child: child,
+        );
+      },
+      onReorder: store.reorderTabs,
+      header: Padding(
+        padding: const EdgeInsets.only(left: 12, right: 6),
+        child: _FolderTab(
+          key: _keyFor(allTab.id),
           tab: allTab,
           selected: store.selectedTabId == 'all',
           count: store.countFor(allTab),
           color: store.tabColor(allTab),
           onTap: () => store.selectTab('all'),
         ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: ReorderableListView.builder(
-            scrollDirection: Axis.horizontal,
-            buildDefaultDragHandles: false,
-            proxyDecorator: (child, index, animation) {
-              return Material(
-                elevation: 3,
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-                child: child,
-              );
-            },
-            onReorder: store.reorderTabs,
-            itemCount: custom.length,
-            itemBuilder: (context, index) {
-              final tab = custom[index];
-              return ReorderableDelayedDragStartListener(
-                key: ValueKey(tab.id),
-                index: index,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: _FolderTab(
-                    tab: tab,
-                    selected: store.selectedTabId == tab.id,
-                    count: store.countFor(tab),
-                    color: store.tabColor(tab),
-                    onTap: () => store.selectTab(tab.id),
-                    onDoubleTap: () => onDoubleTapTab(tab),
-                  ),
-                ),
-              );
-            },
+      ),
+      footer: Padding(
+        padding: const EdgeInsets.only(right: 12),
+        child: _AddListTab(onTap: widget.onAdd),
+      ),
+      itemCount: custom.length,
+      itemBuilder: (context, index) {
+        final tab = custom[index];
+        return ReorderableDelayedDragStartListener(
+          key: ValueKey(tab.id),
+          index: index,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: _FolderTab(
+              key: _keyFor(tab.id),
+              tab: tab,
+              selected: store.selectedTabId == tab.id,
+              count: store.countFor(tab),
+              color: store.tabColor(tab),
+              onTap: () => store.selectTab(tab.id),
+              onDoubleTap: () => widget.onDoubleTapTab(tab),
+            ),
           ),
-        ),
-        _AddListTab(onTap: onAdd),
-        const SizedBox(width: 12),
-      ],
+        );
+      },
     );
   }
 }
 
 class _FolderTab extends StatelessWidget {
   const _FolderTab({
+    super.key,
     required this.tab,
     required this.selected,
     required this.count,
