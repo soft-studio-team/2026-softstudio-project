@@ -72,18 +72,22 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      _TabChip(
-                        label: '팔로잉',
-                        color: DiaryColors.folderBlue,
-                        active: tab == 0,
-                        onTap: () => setState(() => tab = 0),
+                      Expanded(
+                        child: _TabChip(
+                          label: '팔로잉',
+                          color: DiaryColors.folderBlue,
+                          active: tab == 0,
+                          onTap: () => setState(() => tab = 0),
+                        ),
                       ),
                       const SizedBox(width: 8),
-                      _TabChip(
-                        label: '위시리스트',
-                        color: DiaryColors.folderPink,
-                        active: tab == 1,
-                        onTap: () => setState(() => tab = 1),
+                      Expanded(
+                        child: _TabChip(
+                          label: '위시리스트',
+                          color: DiaryColors.folderPink,
+                          active: tab == 1,
+                          onTap: () => setState(() => tab = 1),
+                        ),
                       ),
                     ],
                   ),
@@ -360,6 +364,7 @@ class _TabChip extends StatelessWidget {
         ),
         child: Text(
           label,
+          textAlign: TextAlign.center,
           style: DiaryTheme.body(
             13,
             weight: active ? FontWeight.w700 : FontWeight.w500,
