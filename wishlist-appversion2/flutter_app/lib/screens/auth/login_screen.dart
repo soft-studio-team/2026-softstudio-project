@@ -58,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Wish List', style: DiaryTheme.display(42)),
+                    Text('wishkit', style: DiaryTheme.display(42)),
                     const SizedBox(height: 4),
                     Container(
                       height: 6,

@@ -79,7 +79,7 @@ class _WishlistAppState extends State<WishlistApp> {
     return ChangeNotifierProvider.value(
       value: widget.store,
       child: MaterialApp.router(
-        title: '통합 위시리스트',
+        title: 'wishkit',
         debugShowCheckedModeBanner: false,
         theme: DiaryTheme.light,
         routerConfig: router,
@@ -219,7 +219,7 @@ class HomeShell extends StatelessWidget {
               children: [
                 _NavItem(
                   index: 0,
-                  label: 'wishlist',
+                  label: 'wishkit',
                   icon: Icons.star_border,
                   activeIcon: Icons.star,
                   shell: navigationShell,
