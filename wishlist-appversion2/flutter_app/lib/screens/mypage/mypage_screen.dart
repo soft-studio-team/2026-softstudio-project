@@ -104,49 +104,58 @@ class MyPageScreen extends StatelessWidget {
               const SizedBox(height: 18),
               Text('내 wishlist', style: DiaryTheme.display(26)),
               const SizedBox(height: 10),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  for (final tab in folders)
-                    _FolderChip(
-                      label: tab.name,
-                      color: store.tabColor(tab),
-                      onTap: () {
-                        store.selectTab(tab.id);
-                        // Switch to wishlist tab in bottom nav.
-                        StatefulNavigationShell.maybeOf(context)
-                            ?.goBranch(0);
-                        context.go('/');
-                      },
-                    ),
-                  _FolderChip(
-                    label: '+',
-                    color: DiaryColors.folderLilac,
-                    onTap: () async {
-                      final ctrl = TextEditingController();
-                      final name = await showDialog<String>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('폴더 추가'),
-                          content: TextField(controller: ctrl),
-                          actions: [
-                            TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('취소')),
-                            TextButton(
-                                onPressed: () =>
-                                    Navigator.pop(context, ctrl.text.trim()),
-                                child: const Text('추가')),
-                          ],
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  const spacing = 16.0;
+                  final chipWidth = (constraints.maxWidth - spacing) / 2;
+                  return Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: spacing,
+                    runSpacing: 10,
+                    children: [
+                      for (final tab in folders)
+                        _FolderChip(
+                          label: tab.name,
+                          color: store.tabColor(tab),
+                          width: chipWidth,
+                          onTap: () {
+                            store.selectTab(tab.id);
+                            // Switch to wishlist tab in bottom nav.
+                            StatefulNavigationShell.maybeOf(context)
+                                ?.goBranch(0);
+                            context.go('/');
+                          },
                         ),
-                      );
-                      if (name != null && name.isNotEmpty) {
-                        await store.addTab(name);
-                      }
-                    },
-                  ),
-                ],
+                      _FolderChip(
+                        label: '+',
+                        color: DiaryColors.folderLilac,
+                        width: chipWidth,
+                        onTap: () async {
+                          final ctrl = TextEditingController();
+                          final name = await showDialog<String>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('폴더 추가'),
+                              content: TextField(controller: ctrl),
+                              actions: [
+                                TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('취소')),
+                                TextButton(
+                                    onPressed: () => Navigator.pop(
+                                        context, ctrl.text.trim()),
+                                    child: const Text('추가')),
+                              ],
+                            ),
+                          );
+                          if (name != null && name.isNotEmpty) {
+                            await store.addTab(name);
+                          }
+                        },
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 18),
               DiaryButton(
@@ -255,11 +264,13 @@ class _FolderChip extends StatelessWidget {
   const _FolderChip({
     required this.label,
     required this.color,
+    required this.width,
     required this.onTap,
   });
 
   final String label;
   final Color color;
+  final double width;
   final VoidCallback onTap;
 
   @override
@@ -267,7 +278,7 @@ class _FolderChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 150,
+        width: width,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
           color: color,
