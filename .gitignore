@@ -1,0 +1,6 @@
+
+# Firebase local config files (do not commit)
+**/google-services.json
+**/GoogleService-Info.plist
+.DS_Store
+__MACOSX/

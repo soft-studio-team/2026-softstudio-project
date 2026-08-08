@@ -17,6 +17,22 @@ class FriendsScreen extends StatefulWidget {
 class _FriendsScreenState extends State<FriendsScreen> {
   int tab = 0; // 0 following, 1 wishlist
   final searchCtrl = TextEditingController();
+  bool refreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final store = context.read<AppStore>();
+      if (!store.firebaseReady || !store.isLoggedIn) return;
+      setState(() => refreshing = true);
+      try {
+        await store.refreshFriends();
+      } finally {
+        if (mounted) setState(() => refreshing = false);
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -53,13 +69,39 @@ class _FriendsScreenState extends State<FriendsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('내 친구', style: DiaryTheme.display(34)),
+                  Row(
+                    children: [
+                      Text('내 친구', style: DiaryTheme.display(34)),
+                      const Spacer(),
+                      if (refreshing)
+                        const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else
+                        IconButton(
+                          tooltip: '친구 목록 새로고침',
+                          onPressed: () async {
+                            setState(() => refreshing = true);
+                            try {
+                              await store.refreshFriends();
+                            } finally {
+                              if (mounted) {
+                                setState(() => refreshing = false);
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.refresh),
+                        ),
+                    ],
+                  ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: searchCtrl,
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
-                      hintText: '친구검색',
+                      hintText: '이름·핸들로 친구 검색',
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
                       fillColor: DiaryColors.white,

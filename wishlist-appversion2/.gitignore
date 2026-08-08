@@ -1,0 +1,36 @@
+# Flutter / Dart
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+**/Generated.xcconfig
+**/flutter_export_environment.sh
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+__MACOSX/
+
+# Firebase local secrets (keep firebase_options.dart in repo as template;
+# real downloaded config files stay local)
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local data
+**/server/data/*.json
+!**/server/data/.gitkeep
