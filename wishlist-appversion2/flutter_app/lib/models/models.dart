@@ -105,14 +105,14 @@ class Product {
       };
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
-        id: json['id'] as int,
+        id: (json['id'] as num).toInt(),
         listId: json['listId'] as String,
         name: json['name'] as String,
-        price: json['price'] as int,
-        image: json['image'] as String,
-        platform: json['platform'] as String,
-        originalPrice: json['originalPrice'] as int?,
-        discount: json['discount'] as int?,
+        price: (json['price'] as num?)?.toInt() ?? 0,
+        image: json['image'] as String? ?? '',
+        platform: json['platform'] as String? ?? '',
+        originalPrice: (json['originalPrice'] as num?)?.toInt(),
+        discount: (json['discount'] as num?)?.toInt(),
         productUrl: json['productUrl'] as String?,
         memo: json['memo'] as String?,
       );
@@ -123,10 +123,14 @@ class AppUser {
     required this.name,
     required this.handle,
     required this.avatarUrl,
+    this.uid = '',
+    this.email = '',
     this.followers = 0,
     this.following = 0,
   });
 
+  final String uid;
+  final String email;
   final String name;
   final String handle;
   final String avatarUrl;
@@ -134,6 +138,8 @@ class AppUser {
   final int following;
 
   AppUser copyWith({
+    String? uid,
+    String? email,
     String? name,
     String? handle,
     String? avatarUrl,
@@ -141,6 +147,8 @@ class AppUser {
     int? following,
   }) {
     return AppUser(
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
       name: name ?? this.name,
       handle: handle ?? this.handle,
       avatarUrl: avatarUrl ?? this.avatarUrl,
@@ -148,6 +156,27 @@ class AppUser {
       following: following ?? this.following,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'uid': uid,
+        'email': email,
+        'name': name,
+        'handle': handle,
+        'avatarUrl': avatarUrl,
+        'followers': followers,
+        'following': following,
+      };
+
+  factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
+        uid: json['uid'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+        name: json['name'] as String? ?? '사용자',
+        handle: json['handle'] as String? ?? '@user',
+        avatarUrl: json['avatarUrl'] as String? ??
+            'https://api.dicebear.com/7.x/thumbs/png?seed=user',
+        followers: (json['followers'] as num?)?.toInt() ?? 0,
+        following: (json['following'] as num?)?.toInt() ?? 0,
+      );
 }
 
 class Friend {
