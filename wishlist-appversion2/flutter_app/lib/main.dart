@@ -10,6 +10,7 @@ import 'data/app_store.dart';
 import 'firebase_options.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/friends/friends_screen.dart';
+import 'screens/mypage/follow_list_screen.dart';
 import 'screens/mypage/mypage_screen.dart';
 import 'screens/product/product_detail_screen.dart';
 import 'screens/salkamalka/salkamalka_screen.dart';
@@ -150,6 +151,16 @@ GoRouter _buildRouter(AppStore store) {
             accentColor: DiaryColors.folderPink,
           );
         },
+      ),
+      GoRoute(
+        path: '/followers',
+        builder: (context, state) =>
+            const FollowListScreen(kind: FollowListKind.followers),
+      ),
+      GoRoute(
+        path: '/following',
+        builder: (context, state) =>
+            const FollowListScreen(kind: FollowListKind.following),
       ),
       GoRoute(
         path: '/shared/:id',

@@ -157,6 +157,53 @@ class WhiteProductCard extends StatelessWidget {
   }
 }
 
+/// Avatar + name + handle row shared by friend / follower / following lists.
+class PersonRow extends StatelessWidget {
+  const PersonRow({
+    super.key,
+    required this.name,
+    required this.handle,
+    required this.avatarUrl,
+    this.onTap,
+    this.subtitle,
+    this.trailing,
+  });
+
+  final String name;
+  final String handle;
+  final String avatarUrl;
+  final VoidCallback? onTap;
+  final String? subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return WhiteProductCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          CircleAvatar(radius: 24, backgroundImage: NetworkImage(avatarUrl)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: DiaryTheme.body(14, weight: FontWeight.w700)),
+                Text(handle,
+                    style: DiaryTheme.body(12, color: DiaryColors.inkMuted)),
+                if (subtitle != null)
+                  Text(subtitle!,
+                      style: DiaryTheme.body(11, color: DiaryColors.accent)),
+              ],
+            ),
+          ),
+          if (trailing != null) trailing!,
+        ],
+      ),
+    );
+  }
+}
+
 class DiaryButton extends StatelessWidget {
   const DiaryButton({
     super.key,

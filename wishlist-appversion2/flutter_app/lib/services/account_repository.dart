@@ -171,6 +171,23 @@ class AccountRepository {
     return snap.docs.map((d) => d.id).toList();
   }
 
+  Future<List<String>> followerIds(String uid) async {
+    final snap = await _followers(uid).get();
+    return snap.docs.map((d) => d.id).toList();
+  }
+
+  Future<List<AppUser>> loadUsers(List<String> uids) async {
+    final out = <AppUser>[];
+    for (final id in uids) {
+      final doc = await _userDoc(id).get();
+      if (doc.exists && doc.data() != null) {
+        out.add(AppUser.fromJson(doc.data()!..['uid'] = id));
+      }
+    }
+    out.sort((a, b) => a.name.compareTo(b.name));
+    return out;
+  }
+
   Future<List<Friend>> loadDirectory({
     required String myUid,
     required Set<String> following,
