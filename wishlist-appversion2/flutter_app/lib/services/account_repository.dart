@@ -192,12 +192,28 @@ class AccountRepository {
     String? exceptUid,
   }) async {
     final key = _normalizeHandle(handle).toLowerCase();
+
+    // Source of truth: a living profile that still uses this id.
+    final taken = await _db
+        .collection('users')
+        .where('handleLower', isEqualTo: key)
+        .limit(1)
+        .get();
+    if (taken.docs.isNotEmpty && taken.docs.first.id != exceptUid) {
+      throw Exception('이미 사용 중인 아이디예요.');
+    }
+
     final snap = await _handleDoc(key).get();
     if (!snap.exists) return;
     final owner = snap.data()?['uid'] as String?;
-    if (owner != null && owner != exceptUid) {
-      throw Exception('이미 사용 중인 아이디예요.');
-    }
+    if (owner == null || owner == exceptUid) return;
+
+    // Orphan reservation (e.g. Auth user deleted in Firebase Console).
+    // Treat as free here; claim overwrites it after the user is signed in.
+    final ownerProfile = await _userDoc(owner).get();
+    if (!ownerProfile.exists) return;
+
+    throw Exception('이미 사용 중인 아이디예요.');
   }
 
   Future<void> _claimHandleInTransaction({
@@ -213,7 +229,14 @@ class AccountRepository {
     if (snap.exists) {
       final owner = snap.data()?['uid'] as String?;
       if (owner != null && owner != uid) {
-        throw Exception('이미 사용 중인 아이디예요.');
+        final ownerUser = await tx.get(_userDoc(owner));
+        final ownerHandle =
+            (ownerUser.data()?['handleLower'] as String?)?.toLowerCase();
+        // Block only when a real profile still owns this id.
+        if (ownerUser.exists && ownerHandle == key) {
+          throw Exception('이미 사용 중인 아이디예요.');
+        }
+        // Otherwise overwrite the stale/orphaned reservation.
       }
     }
     tx.set(ref, {
