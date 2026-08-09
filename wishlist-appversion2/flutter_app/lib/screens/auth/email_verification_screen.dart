@@ -129,7 +129,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                     TextButton(
                       onPressed: busy ? null : _cancel,
                       child: Text(
-                        '다른 이메일로 돌아가기',
+                        '돌아가기',
                         style: DiaryTheme.body(12, color: DiaryColors.inkMuted),
                       ),
                     ),

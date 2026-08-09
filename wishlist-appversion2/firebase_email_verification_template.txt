@@ -1,17 +1,15 @@
 Firebase Console → Authentication → Templates → Email address verification
-아래 문구를 그대로 붙여 넣으면 됩니다. (담백한 톤 / 브랜드: wishkit)
-재발송·만료는 Firebase 기본값을 그대로 사용합니다.
+아래 문구를 그대로 붙여 넣으세요. (%LINK% 는 Firebase가 인증 링크로 바꿉니다.)
 
 --- Subject ---
-[wishkit] 이메일 인증을 완료해 주세요
+wishkit 이메일 인증 요청
 
---- Body (HTML 템플릿 본문 예시) ---
+--- Message body ---
 안녕하세요.
-
-wishkit 가입을 위해 아래 링크를 눌러 이메일을 인증해 주세요.
+이 링크를 눌러 이메일 주소를 인증하세요.
 
 %LINK%
 
-본인이 요청하지 않았다면 이 메일은 무시해 주세요.
+이메일 인증을 요청하지 않았다면, 이 이메일을 무시해도 됩니다.
 
-wishkit
+감사합니다.
