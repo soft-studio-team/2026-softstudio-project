@@ -104,6 +104,14 @@ class MyPageScreen extends StatelessWidget {
               const SizedBox(height: 18),
               Text('내 wishlist', style: DiaryTheme.display(26)),
               const SizedBox(height: 10),
+              if (folders.isEmpty) ...[
+                Text(
+                  '아직 폴더가 없어요. + 를 눌러 첫 폴더를 만들어보세요',
+                  textAlign: TextAlign.center,
+                  style: DiaryTheme.body(12, color: DiaryColors.inkMuted),
+                ),
+                const SizedBox(height: 10),
+              ],
               LayoutBuilder(
                 builder: (context, constraints) {
                   const spacing = 16.0;

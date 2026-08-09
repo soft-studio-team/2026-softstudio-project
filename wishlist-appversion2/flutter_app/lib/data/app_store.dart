@@ -169,11 +169,6 @@ class AppStore extends ChangeNotifier {
   Color tabColor(WishlistTab tab) {
     const map = {
       'all': DiaryColors.fileCream,
-      'summer': DiaryColors.fileSand,
-      'daily': DiaryColors.fileStone,
-      'accessories': DiaryColors.fileMauve,
-      'beauty': DiaryColors.fileClay,
-      'shoes': DiaryColors.fileWarmGray,
     };
     if (tab.colorHex != null && tab.colorHex!.isNotEmpty) {
       final hex = tab.colorHex!.replaceFirst('#', '');
@@ -333,7 +328,7 @@ class AppStore extends ChangeNotifier {
     final id = (products.map((e) => e.id).fold<int>(0, max)) + 1;
     final product = Product(
       id: id == 0 ? DateTime.now().millisecondsSinceEpoch : id,
-      listId: listId == 'all' ? 'summer' : listId,
+      listId: listId,
       name: info.name,
       price: info.price,
       image: info.image.isEmpty
