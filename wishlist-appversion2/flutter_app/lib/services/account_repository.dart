@@ -263,20 +263,10 @@ class AccountRepository {
     return result;
   }
 
+  /// New accounts start with only the fixed '전체' tab — no demo categories.
   Future<void> _seedDefaultTabs(String uid) async {
-    final defaults = [
-      WishlistTab(id: 'all', name: '전체', isPublic: true),
-      WishlistTab(id: 'summer', name: '여름 여행 옷', isPublic: true),
-      WishlistTab(id: 'daily', name: '일상 윗옷', isPublic: true),
-      WishlistTab(id: 'accessories', name: '악세서리', isPublic: false),
-      WishlistTab(id: 'beauty', name: '뷰티', isPublic: true),
-      WishlistTab(id: 'shoes', name: '신발', isPublic: false),
-    ];
-    final batch = _db.batch();
-    for (final tab in defaults) {
-      batch.set(_tabs(uid).doc(tab.id), tab.toJson());
-    }
-    await batch.commit();
+    final allTab = WishlistTab(id: 'all', name: '전체', isPublic: true);
+    await _tabs(uid).doc(allTab.id).set(allTab.toJson());
   }
 
   String _normalizeHandle(String raw) {
