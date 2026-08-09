@@ -183,52 +183,28 @@ class _FollowingList extends StatelessWidget {
       itemCount: friends.length,
       itemBuilder: (context, i) {
         final f = friends[i];
-        return WhiteProductCard(
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundImage: NetworkImage(f.avatar),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      f.name,
-                      style: DiaryTheme.body(14, weight: FontWeight.w700),
-                    ),
-                    Text(
-                      f.username,
-                      style: DiaryTheme.body(12, color: DiaryColors.inkMuted),
-                    ),
-                    Text(
-                      '위시리스트 ${f.wishlistCount}  ·  아이템 ${f.itemCount}',
-                      style: DiaryTheme.body(11, color: DiaryColors.accent),
-                    ),
-                  ],
+        return PersonRow(
+          name: f.name,
+          handle: f.username,
+          avatarUrl: f.avatar,
+          subtitle: '위시리스트 ${f.wishlistCount}  ·  아이템 ${f.itemCount}',
+          trailing: _FollowButton(
+            isFollowing: f.isFollowing,
+            onPressed: () async {
+              final willFollow = !f.isFollowing;
+              await onToggleFollow(f);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    willFollow
+                        ? '${f.name} 님을 팔로우했어요'
+                        : '${f.name} 님 팔로우를 취소했어요',
+                  ),
+                  duration: const Duration(seconds: 1),
                 ),
-              ),
-              _FollowButton(
-                isFollowing: f.isFollowing,
-                onPressed: () async {
-                  final willFollow = !f.isFollowing;
-                  await onToggleFollow(f);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        willFollow
-                            ? '${f.name} 님을 팔로우했어요'
-                            : '${f.name} 님 팔로우를 취소했어요',
-                      ),
-                      duration: const Duration(seconds: 1),
-                    ),
-                  );
-                },
-              ),
-            ],
+              );
+            },
           ),
         );
       },
@@ -285,7 +261,7 @@ class _FriendWishlistsPane extends StatelessWidget {
     if (followingEmpty) {
       return Center(
         child: Text(
-          '팔로우한 친구가 없어요\n팔로잉 탭에서 친구를 팔로우해 보세요',
+          '내 친구의 wishkit',
           textAlign: TextAlign.center,
           style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
         ),
