@@ -63,9 +63,30 @@ class MyPageScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 6),
-                            Text(
-                              '${user.followers} 팔로워  |  ${user.following} 팔로잉  |  ${store.products.length} 아이템',
-                              style: DiaryTheme.body(11),
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                GestureDetector(
+                                  onTap: () => context.push('/followers'),
+                                  child: Text(
+                                    '${user.followers} 팔로워',
+                                    style: DiaryTheme.body(11),
+                                  ),
+                                ),
+                                Text('  |  ', style: DiaryTheme.body(11)),
+                                GestureDetector(
+                                  onTap: () => context.push('/following'),
+                                  child: Text(
+                                    '${user.following} 팔로잉',
+                                    style: DiaryTheme.body(11),
+                                  ),
+                                ),
+                                Text('  |  ', style: DiaryTheme.body(11)),
+                                Text(
+                                  '${store.products.length} 아이템',
+                                  style: DiaryTheme.body(11),
+                                ),
+                              ],
                             ),
                           ],
                         ),

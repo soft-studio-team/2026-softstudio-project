@@ -543,6 +543,20 @@ class AppStore extends ChangeNotifier {
 
   SharedBasket? sharedBasketById(String id) => sharedBaskets[id];
 
+  Future<List<AppUser>> loadFollowers() async {
+    final id = uid;
+    if (id == null) return [];
+    final ids = await _repo.followerIds(id);
+    return _repo.loadUsers(ids);
+  }
+
+  Future<List<AppUser>> loadFollowingUsers() async {
+    final id = uid;
+    if (id == null) return [];
+    final ids = await _repo.followingIds(id);
+    return _repo.loadUsers(ids);
+  }
+
   Future<void> refreshFriends() async {
     final userId = uid;
     if (userId == null) return;
