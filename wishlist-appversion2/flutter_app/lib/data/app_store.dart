@@ -13,6 +13,8 @@ import '../theme/diary_theme.dart';
 class AppStore extends ChangeNotifier {
   static const _basketKey = 'basket_items';
   static const _sharedKey = 'shared_baskets';
+  static const _pendingNameKey = 'pending_register_name';
+  static const _pendingHandleKey = 'pending_register_handle';
 
   AppStore({AccountRepository? repository})
       : _repo = repository ?? AccountRepository();
@@ -55,6 +57,7 @@ class AppStore extends ChangeNotifier {
     }
 
     try {
+      await _loadPendingProfileDraft();
       // Initialized in main.dart — just sync auth state.
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
@@ -69,6 +72,34 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _loadPendingProfileDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    _pendingName = prefs.getString(_pendingNameKey);
+    _pendingHandle = prefs.getString(_pendingHandleKey);
+  }
+
+  Future<void> _savePendingProfileDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_pendingName != null) {
+      await prefs.setString(_pendingNameKey, _pendingName!);
+    } else {
+      await prefs.remove(_pendingNameKey);
+    }
+    if (_pendingHandle != null) {
+      await prefs.setString(_pendingHandleKey, _pendingHandle!);
+    } else {
+      await prefs.remove(_pendingHandleKey);
+    }
+  }
+
+  Future<void> _clearPendingProfileDraft() async {
+    _pendingName = null;
+    _pendingHandle = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_pendingNameKey);
+    await prefs.remove(_pendingHandleKey);
+  }
+
   Future<void> _hydrateSession(User user) async {
     await user.reload();
     final fresh = FirebaseAuth.instance.currentUser ?? user;
@@ -81,13 +112,13 @@ class AppStore extends ChangeNotifier {
 
     awaitingEmailVerification = false;
     pendingVerificationEmail = null;
+    await _loadPendingProfileDraft();
     await _repo.ensureProfile(
       fresh,
       name: _pendingName,
       handle: _pendingHandle,
     );
-    _pendingName = null;
-    _pendingHandle = null;
+    await _clearPendingProfileDraft();
     final profile = await _repo.loadProfile(fresh.uid);
     if (profile != null) {
       currentUser = profile;
@@ -109,8 +140,6 @@ class AppStore extends ChangeNotifier {
     isLoggedIn = false;
     awaitingEmailVerification = false;
     pendingVerificationEmail = null;
-    _pendingName = null;
-    _pendingHandle = null;
     tabs = [];
     products = [];
     basket = [];
@@ -137,8 +166,13 @@ class AppStore extends ChangeNotifier {
     if (password.trim().length < 6) {
       throw Exception('비밀번호는 6자 이상이어야 해요.');
     }
+    if (handle.trim().isEmpty) {
+      throw Exception('아이디를 입력해 주세요.');
+    }
+    await _repo.assertHandleAvailable(handle);
     _pendingName = name.trim().isEmpty ? null : name.trim();
-    _pendingHandle = handle.trim().isEmpty ? null : handle.trim();
+    _pendingHandle = handle.trim();
+    await _savePendingProfileDraft();
     await _repo.registerPending(email: email, password: password);
     awaitingEmailVerification = true;
     pendingVerificationEmail = email.trim();
@@ -190,6 +224,7 @@ class AppStore extends ChangeNotifier {
     if (firebaseReady) {
       await _repo.logout();
     }
+    await _clearPendingProfileDraft();
     await _clearSessionLocal();
     notifyListeners();
   }
@@ -213,7 +248,7 @@ class AppStore extends ChangeNotifier {
   Future<String?> findMaskedEmailByHandle(String handle) async {
     _ensureFirebase();
     if (handle.trim().isEmpty) {
-      throw Exception('핸들을 입력해 주세요.');
+      throw Exception('아이디를 입력해 주세요.');
     }
     return _repo.findMaskedEmailByHandle(handle);
   }
@@ -528,19 +563,30 @@ class AppStore extends ChangeNotifier {
     String? handle,
     String? avatarUrl,
   }) async {
+    final previousHandle = currentUser.handle;
     var nextHandle = handle?.trim() ?? currentUser.handle;
-    if (nextHandle.isNotEmpty && !nextHandle.startsWith('@')) {
+    if (nextHandle.isEmpty) {
+      throw Exception('아이디를 입력해 주세요.');
+    }
+    if (!nextHandle.startsWith('@')) {
       nextHandle = '@$nextHandle';
     }
-    currentUser = currentUser.copyWith(
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    await _repo.assertHandleAvailable(nextHandle, exceptUid: userId);
+    final nextUser = currentUser.copyWith(
       name: name?.trim().isNotEmpty == true ? name!.trim() : null,
-      handle: nextHandle.isNotEmpty ? nextHandle : null,
+      handle: nextHandle,
       avatarUrl: avatarUrl?.trim().isNotEmpty == true ? avatarUrl!.trim() : null,
     );
-    final userId = uid;
-    if (userId != null) {
-      await _repo.updateProfile(userId, currentUser);
-    }
+    await _repo.updateProfile(
+      userId,
+      nextUser,
+      previousHandle: previousHandle,
+    );
+    currentUser = nextUser;
     notifyListeners();
   }
 

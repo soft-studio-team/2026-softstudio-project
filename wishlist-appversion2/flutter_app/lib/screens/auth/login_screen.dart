@@ -142,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: handleCtrl,
-                          decoration: _input('핸들 (@없이 입력 가능)'),
+                          decoration: _input('아이디 (@없이 입력 가능)'),
                         ),
                         const SizedBox(height: 12),
                       ],

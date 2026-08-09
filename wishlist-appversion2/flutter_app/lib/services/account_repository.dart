@@ -107,7 +107,10 @@ class AccountRepository {
     await user.updatePassword(newPassword);
   }
 
-  /// Looks up a profile by handle and returns a masked email for recovery UI.
+  DocumentReference<Map<String, dynamic>> _handleDoc(String handleLower) =>
+      _db.collection('handles').doc(handleLower);
+
+  /// Looks up a profile by id/handle and returns a masked email for recovery UI.
   Future<String?> findMaskedEmailByHandle(String handle) async {
     final normalized = _normalizeHandle(handle).toLowerCase();
     final snap = await _db
@@ -119,6 +122,51 @@ class AccountRepository {
     final email = (snap.docs.first.data()['email'] as String?)?.trim() ?? '';
     if (email.isEmpty) return null;
     return _maskEmail(email);
+  }
+
+  Future<void> assertHandleAvailable(
+    String handle, {
+    String? exceptUid,
+  }) async {
+    final key = _normalizeHandle(handle).toLowerCase();
+    final snap = await _handleDoc(key).get();
+    if (!snap.exists) return;
+    final owner = snap.data()?['uid'] as String?;
+    if (owner != null && owner != exceptUid) {
+      throw Exception('이미 사용 중인 아이디예요.');
+    }
+  }
+
+  Future<void> _claimHandleInTransaction({
+    required Transaction tx,
+    required String uid,
+    required String handle,
+    String? previousHandle,
+  }) async {
+    final normalized = _normalizeHandle(handle);
+    final key = normalized.toLowerCase();
+    final ref = _handleDoc(key);
+    final snap = await tx.get(ref);
+    if (snap.exists) {
+      final owner = snap.data()?['uid'] as String?;
+      if (owner != null && owner != uid) {
+        throw Exception('이미 사용 중인 아이디예요.');
+      }
+    }
+    tx.set(ref, {
+      'uid': uid,
+      'handle': normalized,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    if (previousHandle == null || previousHandle.trim().isEmpty) return;
+    final prevKey = _normalizeHandle(previousHandle).toLowerCase();
+    if (prevKey == key) return;
+    final prevRef = _handleDoc(prevKey);
+    final prevSnap = await tx.get(prevRef);
+    if (prevSnap.exists && prevSnap.data()?['uid'] == uid) {
+      tx.delete(prevRef);
+    }
   }
 
   String _maskEmail(String email) {
@@ -148,14 +196,33 @@ class AccountRepository {
       throw Exception('이메일 인증이 완료된 뒤에만 계정을 만들 수 있어요.');
     }
     final existing = await _userDoc(user.uid).get();
-    if (existing.exists) return;
+    if (existing.exists) {
+      final data = existing.data();
+      final currentHandle = data?['handle'] as String?;
+      if (currentHandle != null && currentHandle.isNotEmpty) {
+        final key = _normalizeHandle(currentHandle).toLowerCase();
+        final owned = await _handleDoc(key).get();
+        final owner = owned.data()?['uid'] as String?;
+        if (!owned.exists || owner == user.uid) {
+          await _db.runTransaction((tx) async {
+            await _claimHandleInTransaction(
+              tx: tx,
+              uid: user.uid,
+              handle: currentHandle,
+            );
+          });
+        }
+      }
+      return;
+    }
     final email = user.email ?? '';
     final base = email.contains('@') ? email.split('@').first : 'user';
     final resolvedName =
         (name != null && name.trim().isNotEmpty) ? name.trim() : base;
-    final resolvedHandle = _normalizeHandle(
-      (handle != null && handle.trim().isNotEmpty) ? handle : base,
-    );
+    if (handle == null || handle.trim().isEmpty) {
+      throw Exception('아이디를 입력해 주세요.');
+    }
+    final resolvedHandle = _normalizeHandle(handle);
     final profile = AppUser(
       uid: user.uid,
       email: email,
@@ -163,21 +230,44 @@ class AccountRepository {
       handle: resolvedHandle,
       avatarUrl: _defaultAvatar(resolvedHandle),
     );
-    await _userDoc(user.uid).set({
-      ...profile.toJson(),
-      'handleLower': resolvedHandle.toLowerCase(),
-      'emailVerified': true,
-      'createdAt': FieldValue.serverTimestamp(),
+    await _db.runTransaction((tx) async {
+      await _claimHandleInTransaction(
+        tx: tx,
+        uid: user.uid,
+        handle: resolvedHandle,
+      );
+      tx.set(_userDoc(user.uid), {
+        ...profile.toJson(),
+        'handleLower': resolvedHandle.toLowerCase(),
+        'emailVerified': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     });
     await _seedDefaultTabs(user.uid);
   }
 
-  Future<void> updateProfile(String uid, AppUser user) async {
-    await _userDoc(uid).set({
-      ...user.toJson(),
-      'handleLower': user.handle.toLowerCase(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+  Future<void> updateProfile(
+    String uid,
+    AppUser user, {
+    String? previousHandle,
+  }) async {
+    await _db.runTransaction((tx) async {
+      await _claimHandleInTransaction(
+        tx: tx,
+        uid: uid,
+        handle: user.handle,
+        previousHandle: previousHandle,
+      );
+      tx.set(
+        _userDoc(uid),
+        {
+          ...user.toJson(),
+          'handleLower': user.handle.toLowerCase(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    });
   }
 
   Future<List<WishlistTab>> loadTabs(String uid) async {

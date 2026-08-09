@@ -101,7 +101,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     controller: searchCtrl,
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
-                      hintText: '이름·핸들로 친구 검색',
+                      hintText: '이름·아이디로 친구 검색',
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
                       fillColor: DiaryColors.white,

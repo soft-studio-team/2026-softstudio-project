@@ -49,7 +49,7 @@ class _AccountRecoveryScreenState extends State<AccountRecoveryScreen> {
         final masked = await store.findMaskedEmailByHandle(handleCtrl.text);
         if (!mounted) return;
         if (masked == null) {
-          setState(() => error = '해당 핸들로 가입된 계정을 찾지 못했어요.');
+          setState(() => error = '해당 아이디로 가입된 계정을 찾지 못했어요.');
         } else {
           setState(() => message = '가입 이메일: $masked');
         }
@@ -129,7 +129,7 @@ class _AccountRecoveryScreenState extends State<AccountRecoveryScreen> {
                       Text(
                         mode == _RecoveryMode.password
                             ? '가입한 이메일을 입력하면 재설정 메일을 보내드려요.'
-                            : '가입할 때 만든 핸들을 입력하면 이메일을 알려드려요.',
+                            : '가입할 때 만든 아이디를 입력하면 이메일을 알려드려요.',
                         style: DiaryTheme.body(13, color: DiaryColors.inkMuted),
                       ),
                       const SizedBox(height: 16),
@@ -143,7 +143,7 @@ class _AccountRecoveryScreenState extends State<AccountRecoveryScreen> {
                       else
                         TextField(
                           controller: handleCtrl,
-                          decoration: _input('핸들 (@없이 입력 가능)'),
+                          decoration: _input('아이디 (@없이 입력 가능)'),
                           onSubmitted: (_) => _submit(),
                         ),
                       if (message != null) ...[

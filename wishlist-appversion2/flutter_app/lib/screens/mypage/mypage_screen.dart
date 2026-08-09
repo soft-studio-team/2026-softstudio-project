@@ -97,6 +97,26 @@ class MyPageScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: DiaryColors.inkMuted,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () => store.logout(),
+                      child: Text(
+                        '로그아웃',
+                        style: DiaryTheme.body(11, weight: FontWeight.w700),
+                      ),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 18),
@@ -220,15 +240,6 @@ class MyPageScreen extends StatelessWidget {
                   onTap: () {
                     Navigator.pop(ctx);
                     _openChangePassword(context, store);
-                  },
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.logout),
-                  title: Text('로그아웃', style: DiaryTheme.body(14)),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    await store.logout();
                   },
                 ),
               ],
@@ -365,7 +376,7 @@ class MyPageScreen extends StatelessWidget {
               ),
               TextField(
                 controller: handleCtrl,
-                decoration: const InputDecoration(labelText: '핸들 (@username)'),
+                decoration: const InputDecoration(labelText: '아이디 (@없이 입력 가능)'),
               ),
               TextField(
                 controller: avatarCtrl,
