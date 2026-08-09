@@ -1,0 +1,31 @@
+Firebase Console → Authentication → Templates
+재발송·만료는 Firebase 기본값을 그대로 사용합니다.
+(%LINK% 는 Firebase가 링크로 바꿉니다.)
+
+========== Email address verification ==========
+--- Subject ---
+wishkit 이메일 인증 요청
+
+--- Message body ---
+안녕하세요.
+이 링크를 눌러 이메일 주소를 인증하세요.
+
+%LINK%
+
+이메일 인증을 요청하지 않았다면, 이 이메일을 무시해도 됩니다.
+
+감사합니다.
+
+========== Password reset ==========
+--- Subject ---
+wishkit 비밀번호 재설정
+
+--- Message body ---
+안녕하세요.
+아래 링크를 눌러 비밀번호를 재설정해 주세요.
+
+%LINK%
+
+비밀번호 재설정을 요청하지 않았다면, 이 이메일을 무시해도 됩니다.
+
+감사합니다.

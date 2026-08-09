@@ -45,32 +45,33 @@ class AccountRepository {
   CollectionReference<Map<String, dynamic>> _followers(String uid) =>
       _userDoc(uid).collection('followers');
 
-  Future<UserCredential> register({
+  /// Creates Auth credentials and sends a verification email only.
+  /// Firestore profile is created later via [ensureProfile] after verification.
+  Future<UserCredential> registerPending({
     required String email,
     required String password,
-    required String name,
-    required String handle,
   }) async {
     final cred = await _auth.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
-    final uid = cred.user!.uid;
-    final normalized = _normalizeHandle(handle);
-    final profile = AppUser(
-      uid: uid,
-      email: email.trim(),
-      name: name.trim().isEmpty ? email.split('@').first : name.trim(),
-      handle: normalized,
-      avatarUrl: _defaultAvatar(normalized),
-    );
-    await _userDoc(uid).set({
-      ...profile.toJson(),
-      'handleLower': normalized.toLowerCase(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    await _seedDefaultTabs(uid);
+    await cred.user!.sendEmailVerification();
     return cred;
+  }
+
+  Future<void> sendVerificationEmail([User? user]) async {
+    final target = user ?? _auth.currentUser;
+    if (target == null) {
+      throw Exception('인증 메일을 보낼 사용자가 없어요. 다시 로그인해 주세요.');
+    }
+    await target.sendEmailVerification();
+  }
+
+  Future<User?> reloadUser() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    await user.reload();
+    return _auth.currentUser;
   }
 
   Future<UserCredential> login({
@@ -85,39 +86,389 @@ class AccountRepository {
 
   Future<void> logout() => _auth.signOut();
 
+  Future<void> sendPasswordResetEmail(String email) {
+    return _auth.sendPasswordResetEmail(email: email.trim());
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    final email = user?.email;
+    if (user == null || email == null || email.isEmpty) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    final cred = EmailAuthProvider.credential(
+      email: email,
+      password: currentPassword,
+    );
+    await user.reauthenticateWithCredential(cred);
+    await user.updatePassword(newPassword);
+  }
+
+  Future<void> deleteAccount({required String password}) async {
+    final user = _auth.currentUser;
+    final email = user?.email;
+    if (user == null || email == null || email.isEmpty) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    final cred = EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
+    await user.reauthenticateWithCredential(cred);
+
+    final uid = user.uid;
+    final profile = await loadProfile(uid);
+    await _deleteFirestoreUserTree(
+      uid,
+      handle: profile?.handle,
+      unlinkSocial: true,
+    );
+    await user.delete();
+  }
+
+  /// Removes Firestore data for [uid]. Used by account deletion and by reclaim
+  /// after Auth-only deletes in Firebase Console.
+  Future<void> _deleteFirestoreUserTree(
+    String uid, {
+    String? handle,
+    bool unlinkSocial = false,
+  }) async {
+    if (unlinkSocial) {
+      final followingSnap = await _following(uid).get();
+      for (final doc in followingSnap.docs) {
+        await setFollowing(myUid: uid, targetUid: doc.id, follow: false);
+      }
+
+      final followersSnap = await _followers(uid).get();
+      for (final doc in followersSnap.docs) {
+        final followerUid = doc.id;
+        final batch = _db.batch();
+        batch.delete(_following(followerUid).doc(uid));
+        batch.delete(_followers(uid).doc(followerUid));
+        final followerProfile = await _userDoc(followerUid).get();
+        if (followerProfile.exists) {
+          batch.update(_userDoc(followerUid), {
+            'following': FieldValue.increment(-1),
+          });
+        }
+        await batch.commit();
+      }
+    }
+
+    await _deleteCollectionDocs(_tabs(uid));
+    await _deleteCollectionDocs(_products(uid));
+    await _deleteCollectionDocs(_following(uid));
+    await _deleteCollectionDocs(_followers(uid));
+
+    if (handle != null && handle.isNotEmpty) {
+      final key = _normalizeHandle(handle).toLowerCase();
+      final handleSnap = await _handleDoc(key).get();
+      if (handleSnap.exists && handleSnap.data()?['uid'] == uid) {
+        await _handleDoc(key).delete();
+      }
+    }
+    await _userDoc(uid).delete();
+  }
+
+  /// Clears leftover profiles/handles for the same email (Console Auth delete).
+  Future<void> reclaimIdentityIfNeeded({
+    required String newUid,
+    required String email,
+    required String handle,
+  }) async {
+    final emailKey = email.trim().toLowerCase();
+    final handleKey = _normalizeHandle(handle).toLowerCase();
+
+    final byHandle = await _db
+        .collection('users')
+        .where('handleLower', isEqualTo: handleKey)
+        .limit(10)
+        .get();
+    for (final doc in byHandle.docs) {
+      if (doc.id == newUid) continue;
+      final ownerEmail =
+          (doc.data()['email'] as String?)?.trim().toLowerCase() ?? '';
+      if (ownerEmail != emailKey) {
+        throw Exception('이미 사용 중인 아이디예요.');
+      }
+      await _deleteFirestoreUserTree(
+        doc.id,
+        handle: doc.data()['handle'] as String? ?? handle,
+      );
+    }
+
+    // Same email, possibly different id — also leftover from Console deletes.
+    for (final candidate in {email.trim(), emailKey}) {
+      final byEmail = await _db
+          .collection('users')
+          .where('email', isEqualTo: candidate)
+          .limit(10)
+          .get();
+      for (final doc in byEmail.docs) {
+        if (doc.id == newUid) continue;
+        await _deleteFirestoreUserTree(
+          doc.id,
+          handle: doc.data()['handle'] as String?,
+        );
+      }
+    }
+
+    final handleSnap = await _handleDoc(handleKey).get();
+    if (handleSnap.exists) {
+      final owner = handleSnap.data()?['uid'] as String?;
+      if (owner != null && owner != newUid) {
+        final ownerProfile = await _userDoc(owner).get();
+        if (!ownerProfile.exists) {
+          await _handleDoc(handleKey).delete();
+        } else {
+          final ownerEmail =
+              (ownerProfile.data()?['email'] as String?)?.trim().toLowerCase();
+          if (ownerEmail == emailKey) {
+            await _deleteFirestoreUserTree(
+              owner,
+              handle: ownerProfile.data()?['handle'] as String? ?? handle,
+            );
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteCollectionDocs(
+    CollectionReference<Map<String, dynamic>> col,
+  ) async {
+    final snap = await col.limit(200).get();
+    if (snap.docs.isEmpty) return;
+    final batch = _db.batch();
+    for (final doc in snap.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+    if (snap.docs.length >= 200) {
+      await _deleteCollectionDocs(col);
+    }
+  }
+
+  DocumentReference<Map<String, dynamic>> _handleDoc(String handleLower) =>
+      _db.collection('handles').doc(handleLower);
+
+  /// Looks up a profile by id/handle and returns a masked email for recovery UI.
+  Future<String?> findMaskedEmailByHandle(String handle) async {
+    final normalized = _normalizeHandle(handle).toLowerCase();
+    final snap = await _db
+        .collection('users')
+        .where('handleLower', isEqualTo: normalized)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+    final email = (snap.docs.first.data()['email'] as String?)?.trim() ?? '';
+    if (email.isEmpty) return null;
+    return _maskEmail(email);
+  }
+
+  Future<void> assertHandleAvailable(
+    String handle, {
+    String? exceptUid,
+    String? email,
+  }) async {
+    final key = _normalizeHandle(handle).toLowerCase();
+    final emailKey = email?.trim().toLowerCase();
+
+    // Source of truth: a living profile that still uses this id.
+    final taken = await _db
+        .collection('users')
+        .where('handleLower', isEqualTo: key)
+        .limit(1)
+        .get();
+    if (taken.docs.isNotEmpty && taken.docs.first.id != exceptUid) {
+      final ownerEmail = (taken.docs.first.data()['email'] as String?)
+              ?.trim()
+              .toLowerCase() ??
+          '';
+      // Same email can reclaim after Auth-only delete in Firebase Console.
+      if (emailKey == null ||
+          emailKey.isEmpty ||
+          ownerEmail.isEmpty ||
+          ownerEmail != emailKey) {
+        throw Exception('이미 사용 중인 아이디예요.');
+      }
+    }
+
+    final snap = await _handleDoc(key).get();
+    if (!snap.exists) return;
+    final owner = snap.data()?['uid'] as String?;
+    if (owner == null || owner == exceptUid) return;
+
+    final ownerProfile = await _userDoc(owner).get();
+    if (!ownerProfile.exists) return;
+    final ownerEmail =
+        (ownerProfile.data()?['email'] as String?)?.trim().toLowerCase() ?? '';
+    if (emailKey != null &&
+        emailKey.isNotEmpty &&
+        ownerEmail.isNotEmpty &&
+        ownerEmail == emailKey) {
+      return;
+    }
+
+    throw Exception('이미 사용 중인 아이디예요.');
+  }
+
+  Future<void> _claimHandleInTransaction({
+    required Transaction tx,
+    required String uid,
+    required String handle,
+    String? previousHandle,
+    String? email,
+  }) async {
+    final normalized = _normalizeHandle(handle);
+    final key = normalized.toLowerCase();
+    final emailKey = email?.trim().toLowerCase();
+    final ref = _handleDoc(key);
+    final snap = await tx.get(ref);
+    if (snap.exists) {
+      final owner = snap.data()?['uid'] as String?;
+      if (owner != null && owner != uid) {
+        final ownerUser = await tx.get(_userDoc(owner));
+        final ownerHandle =
+            (ownerUser.data()?['handleLower'] as String?)?.toLowerCase();
+        final ownerEmail =
+            (ownerUser.data()?['email'] as String?)?.trim().toLowerCase() ?? '';
+        final sameEmail = emailKey != null &&
+            emailKey.isNotEmpty &&
+            ownerEmail.isNotEmpty &&
+            ownerEmail == emailKey;
+        // Block only when another living profile still owns this id.
+        if (ownerUser.exists && ownerHandle == key && !sameEmail) {
+          throw Exception('이미 사용 중인 아이디예요.');
+        }
+        // Otherwise overwrite the stale/orphaned reservation.
+      }
+    }
+    tx.set(ref, {
+      'uid': uid,
+      'handle': normalized,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    if (previousHandle == null || previousHandle.trim().isEmpty) return;
+    final prevKey = _normalizeHandle(previousHandle).toLowerCase();
+    if (prevKey == key) return;
+    final prevRef = _handleDoc(prevKey);
+    final prevSnap = await tx.get(prevRef);
+    if (prevSnap.exists && prevSnap.data()?['uid'] == uid) {
+      tx.delete(prevRef);
+    }
+  }
+
+  String _maskEmail(String email) {
+    final parts = email.split('@');
+    if (parts.length != 2) return '***';
+    final local = parts[0];
+    final domain = parts[1];
+    if (local.isEmpty) return '***@$domain';
+    if (local.length == 1) return '*@$domain';
+    if (local.length == 2) return '${local[0]}*@$domain';
+    return '${local[0]}***${local[local.length - 1]}@$domain';
+  }
+
   Future<AppUser?> loadProfile(String uid) async {
     final snap = await _userDoc(uid).get();
     if (!snap.exists || snap.data() == null) return null;
     return AppUser.fromJson(snap.data()!..['uid'] = uid);
   }
 
-  Future<void> ensureProfile(User user) async {
+  /// Creates the app account in Firestore only for a verified user.
+  Future<void> ensureProfile(
+    User user, {
+    String? name,
+    String? handle,
+  }) async {
+    if (!user.emailVerified) {
+      throw Exception('이메일 인증이 완료된 뒤에만 계정을 만들 수 있어요.');
+    }
     final existing = await _userDoc(user.uid).get();
-    if (existing.exists) return;
+    if (existing.exists) {
+      final data = existing.data();
+      final currentHandle = data?['handle'] as String?;
+      if (currentHandle != null && currentHandle.isNotEmpty) {
+        final key = _normalizeHandle(currentHandle).toLowerCase();
+        final owned = await _handleDoc(key).get();
+        final owner = owned.data()?['uid'] as String?;
+        if (!owned.exists || owner == user.uid) {
+          await _db.runTransaction((tx) async {
+            await _claimHandleInTransaction(
+              tx: tx,
+              uid: user.uid,
+              handle: currentHandle,
+            );
+          });
+        }
+      }
+      return;
+    }
     final email = user.email ?? '';
     final base = email.contains('@') ? email.split('@').first : 'user';
-    final handle = _normalizeHandle(base);
+    final resolvedName =
+        (name != null && name.trim().isNotEmpty) ? name.trim() : base;
+    if (handle == null || handle.trim().isEmpty) {
+      throw Exception('아이디를 입력해 주세요.');
+    }
+    final resolvedHandle = _normalizeHandle(handle);
+    await reclaimIdentityIfNeeded(
+      newUid: user.uid,
+      email: email,
+      handle: resolvedHandle,
+    );
     final profile = AppUser(
       uid: user.uid,
       email: email,
-      name: base,
-      handle: handle,
-      avatarUrl: _defaultAvatar(handle),
+      name: resolvedName,
+      handle: resolvedHandle,
+      avatarUrl: _defaultAvatar(resolvedHandle),
     );
-    await _userDoc(user.uid).set({
-      ...profile.toJson(),
-      'handleLower': handle.toLowerCase(),
-      'createdAt': FieldValue.serverTimestamp(),
+    await _db.runTransaction((tx) async {
+      await _claimHandleInTransaction(
+        tx: tx,
+        uid: user.uid,
+        handle: resolvedHandle,
+        email: email,
+      );
+      tx.set(_userDoc(user.uid), {
+        ...profile.toJson(),
+        'handleLower': resolvedHandle.toLowerCase(),
+        'emailLower': email.trim().toLowerCase(),
+        'emailVerified': true,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
     });
     await _seedDefaultTabs(user.uid);
   }
 
-  Future<void> updateProfile(String uid, AppUser user) async {
-    await _userDoc(uid).set({
-      ...user.toJson(),
-      'handleLower': user.handle.toLowerCase(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+  Future<void> updateProfile(
+    String uid,
+    AppUser user, {
+    String? previousHandle,
+  }) async {
+    await _db.runTransaction((tx) async {
+      await _claimHandleInTransaction(
+        tx: tx,
+        uid: uid,
+        handle: user.handle,
+        previousHandle: previousHandle,
+      );
+      tx.set(
+        _userDoc(uid),
+        {
+          ...user.toJson(),
+          'handleLower': user.handle.toLowerCase(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    });
   }
 
   Future<List<WishlistTab>> loadTabs(String uid) async {

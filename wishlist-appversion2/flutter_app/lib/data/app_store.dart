@@ -13,6 +13,8 @@ import '../theme/diary_theme.dart';
 class AppStore extends ChangeNotifier {
   static const _basketKey = 'basket_items';
   static const _sharedKey = 'shared_baskets';
+  static const _pendingNameKey = 'pending_register_name';
+  static const _pendingHandleKey = 'pending_register_handle';
 
   AppStore({AccountRepository? repository})
       : _repo = repository ?? AccountRepository();
@@ -23,6 +25,11 @@ class AppStore extends ChangeNotifier {
   bool firebaseReady = false;
   String? firebaseError;
   bool isLoggedIn = false;
+  bool awaitingEmailVerification = false;
+  bool showSignupWelcome = false;
+  String? pendingVerificationEmail;
+  String? _pendingName;
+  String? _pendingHandle;
 
   List<WishlistTab> tabs = [];
   List<Product> products = [];
@@ -51,6 +58,7 @@ class AppStore extends ChangeNotifier {
     }
 
     try {
+      await _loadPendingProfileDraft();
       // Initialized in main.dart — just sync auth state.
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
@@ -65,16 +73,61 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _loadPendingProfileDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    _pendingName = prefs.getString(_pendingNameKey);
+    _pendingHandle = prefs.getString(_pendingHandleKey);
+  }
+
+  Future<void> _savePendingProfileDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_pendingName != null) {
+      await prefs.setString(_pendingNameKey, _pendingName!);
+    } else {
+      await prefs.remove(_pendingNameKey);
+    }
+    if (_pendingHandle != null) {
+      await prefs.setString(_pendingHandleKey, _pendingHandle!);
+    } else {
+      await prefs.remove(_pendingHandleKey);
+    }
+  }
+
+  Future<void> _clearPendingProfileDraft() async {
+    _pendingName = null;
+    _pendingHandle = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_pendingNameKey);
+    await prefs.remove(_pendingHandleKey);
+  }
+
   Future<void> _hydrateSession(User user) async {
-    await _repo.ensureProfile(user);
-    final profile = await _repo.loadProfile(user.uid);
+    await user.reload();
+    final fresh = FirebaseAuth.instance.currentUser ?? user;
+    if (!fresh.emailVerified) {
+      awaitingEmailVerification = true;
+      pendingVerificationEmail = fresh.email;
+      isLoggedIn = false;
+      return;
+    }
+
+    awaitingEmailVerification = false;
+    pendingVerificationEmail = null;
+    await _loadPendingProfileDraft();
+    await _repo.ensureProfile(
+      fresh,
+      name: _pendingName,
+      handle: _pendingHandle,
+    );
+    await _clearPendingProfileDraft();
+    final profile = await _repo.loadProfile(fresh.uid);
     if (profile != null) {
       currentUser = profile;
     }
-    tabs = await _repo.loadTabs(user.uid);
-    products = await _repo.loadProducts(user.uid);
-    final following = (await _repo.followingIds(user.uid)).toSet();
-    friends = await _repo.loadDirectory(myUid: user.uid, following: following);
+    tabs = await _repo.loadTabs(fresh.uid);
+    products = await _repo.loadProducts(fresh.uid);
+    final following = (await _repo.followingIds(fresh.uid)).toSet();
+    friends = await _repo.loadDirectory(myUid: fresh.uid, following: following);
     friendWishlists = await _repo.loadFriendWishlists(friends);
     _syncFriendCounts();
     currentUser = currentUser.copyWith(
@@ -86,6 +139,9 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _clearSessionLocal() async {
     isLoggedIn = false;
+    awaitingEmailVerification = false;
+    showSignupWelcome = false;
+    pendingVerificationEmail = null;
     tabs = [];
     products = [];
     basket = [];
@@ -112,16 +168,17 @@ class AppStore extends ChangeNotifier {
     if (password.trim().length < 6) {
       throw Exception('비밀번호는 6자 이상이어야 해요.');
     }
-    final derivedHandle =
-        handle.trim().isEmpty ? email.split('@').first : handle;
-    final cred = await _repo.register(
-      email: email,
-      password: password,
-      name: name,
-      handle: derivedHandle,
-    );
-    await _hydrateSession(cred.user!);
-    await _restoreBasketForUser();
+    if (handle.trim().isEmpty) {
+      throw Exception('아이디를 입력해 주세요.');
+    }
+    await _repo.assertHandleAvailable(handle, email: email);
+    _pendingName = name.trim().isEmpty ? null : name.trim();
+    _pendingHandle = handle.trim();
+    await _savePendingProfileDraft();
+    await _repo.registerPending(email: email, password: password);
+    awaitingEmailVerification = true;
+    pendingVerificationEmail = email.trim();
+    isLoggedIn = false;
     notifyListeners();
   }
 
@@ -131,8 +188,53 @@ class AppStore extends ChangeNotifier {
       throw Exception('이메일과 비밀번호를 입력해 주세요.');
     }
     final cred = await _repo.login(email: email, password: password);
-    await _hydrateSession(cred.user!);
+    final user = cred.user!;
+    await user.reload();
+    final fresh = FirebaseAuth.instance.currentUser ?? user;
+    if (!fresh.emailVerified) {
+      awaitingEmailVerification = true;
+      pendingVerificationEmail = fresh.email ?? email.trim();
+      isLoggedIn = false;
+      notifyListeners();
+      return;
+    }
+    await _hydrateSession(fresh);
     await _restoreBasketForUser();
+    notifyListeners();
+  }
+
+  Future<void> resendVerificationEmail() async {
+    _ensureFirebase();
+    await _repo.sendVerificationEmail();
+  }
+
+  /// Returns true when the email is verified and the app account is ready.
+  Future<bool> confirmEmailVerified() async {
+    _ensureFirebase();
+    final user = await _repo.reloadUser();
+    if (user == null) {
+      throw Exception('로그인 세션이 없어요. 다시 로그인해 주세요.');
+    }
+    if (!user.emailVerified) return false;
+    await _hydrateSession(user);
+    await _restoreBasketForUser();
+    showSignupWelcome = true;
+    notifyListeners();
+    return true;
+  }
+
+  void dismissSignupWelcome() {
+    if (!showSignupWelcome) return;
+    showSignupWelcome = false;
+    notifyListeners();
+  }
+
+  Future<void> cancelEmailVerification() async {
+    if (firebaseReady) {
+      await _repo.logout();
+    }
+    await _clearPendingProfileDraft();
+    await _clearSessionLocal();
     notifyListeners();
   }
 
@@ -142,6 +244,79 @@ class AppStore extends ChangeNotifier {
     }
     await _clearSessionLocal();
     notifyListeners();
+  }
+
+  Future<void> deleteAccount({required String password}) async {
+    _ensureFirebase();
+    if (password.isEmpty) {
+      throw Exception('비밀번호를 입력해 주세요.');
+    }
+    try {
+      await _repo.deleteAccount(password: password);
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'wrong-password':
+        case 'invalid-credential':
+          throw Exception('비밀번호가 맞지 않아요.');
+        case 'requires-recent-login':
+          throw Exception('보안을 위해 다시 로그인한 뒤 탈퇴해 주세요.');
+        default:
+          throw Exception(e.message ?? '탈퇴에 실패했어요 (${e.code})');
+      }
+    }
+    await _clearPendingProfileDraft();
+    await _clearSessionLocal();
+    notifyListeners();
+  }
+
+  Future<void> sendPasswordResetEmail(String email) async {
+    _ensureFirebase();
+    if (email.trim().isEmpty) {
+      throw Exception('가입한 이메일을 입력해 주세요.');
+    }
+    await _repo.sendPasswordResetEmail(email);
+  }
+
+  Future<String?> findMaskedEmailByHandle(String handle) async {
+    _ensureFirebase();
+    if (handle.trim().isEmpty) {
+      throw Exception('아이디를 입력해 주세요.');
+    }
+    return _repo.findMaskedEmailByHandle(handle);
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _ensureFirebase();
+    if (currentPassword.isEmpty || newPassword.isEmpty) {
+      throw Exception('현재 비밀번호와 새 비밀번호를 입력해 주세요.');
+    }
+    if (newPassword.trim().length < 6) {
+      throw Exception('새 비밀번호는 6자 이상이어야 해요.');
+    }
+    if (currentPassword == newPassword) {
+      throw Exception('새 비밀번호는 현재 비밀번호와 달라야 해요.');
+    }
+    try {
+      await _repo.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'wrong-password':
+        case 'invalid-credential':
+          throw Exception('현재 비밀번호가 맞지 않아요.');
+        case 'weak-password':
+          throw Exception('새 비밀번호가 너무 짧아요 (6자 이상).');
+        case 'requires-recent-login':
+          throw Exception('보안을 위해 다시 로그인한 뒤 변경해 주세요.');
+        default:
+          throw Exception(e.message ?? '비밀번호 변경에 실패했어요 (${e.code})');
+      }
+    }
   }
 
   void _ensureFirebase() {
@@ -434,19 +609,30 @@ class AppStore extends ChangeNotifier {
     String? handle,
     String? avatarUrl,
   }) async {
+    final previousHandle = currentUser.handle;
     var nextHandle = handle?.trim() ?? currentUser.handle;
-    if (nextHandle.isNotEmpty && !nextHandle.startsWith('@')) {
+    if (nextHandle.isEmpty) {
+      throw Exception('아이디를 입력해 주세요.');
+    }
+    if (!nextHandle.startsWith('@')) {
       nextHandle = '@$nextHandle';
     }
-    currentUser = currentUser.copyWith(
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    await _repo.assertHandleAvailable(nextHandle, exceptUid: userId);
+    final nextUser = currentUser.copyWith(
       name: name?.trim().isNotEmpty == true ? name!.trim() : null,
-      handle: nextHandle.isNotEmpty ? nextHandle : null,
+      handle: nextHandle,
       avatarUrl: avatarUrl?.trim().isNotEmpty == true ? avatarUrl!.trim() : null,
     );
-    final userId = uid;
-    if (userId != null) {
-      await _repo.updateProfile(userId, currentUser);
-    }
+    await _repo.updateProfile(
+      userId,
+      nextUser,
+      previousHandle: previousHandle,
+    );
+    currentUser = nextUser;
     notifyListeners();
   }
 

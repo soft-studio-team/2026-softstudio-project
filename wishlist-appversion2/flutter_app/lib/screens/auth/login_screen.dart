@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
@@ -74,6 +75,8 @@ class _LoginScreenState extends State<LoginScreen> {
         return '이메일 또는 비밀번호가 맞지 않아요.';
       case 'network-request-failed':
         return '네트워크 연결을 확인해 주세요.';
+      case 'too-many-requests':
+        return '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.';
       default:
         return e.message ?? '인증에 실패했어요 (${e.code})';
     }
@@ -111,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 10),
                       Text(
                         isRegister
-                            ? '계정을 만들고 나만의 위시리스트를 시작해요'
+                            ? '이메일 인증 후 계정이 만들어져요'
                             : '계정으로 로그인하고 위시리스트를 이어가요',
                         style: DiaryTheme.body(13, color: DiaryColors.inkMuted),
                       ),
@@ -139,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: handleCtrl,
-                          decoration: _input('핸들 (@없이 입력 가능)'),
+                          decoration: _input('아이디 (@없이 입력 가능)'),
                         ),
                         const SizedBox(height: 12),
                       ],
@@ -173,6 +176,23 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? () {}
                             : _submit,
                       ),
+                      if (!isRegister) ...[
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: loading
+                                ? null
+                                : () => context.push('/account-recovery'),
+                            child: Text(
+                              '이메일 / 비밀번호 찾기',
+                              style: DiaryTheme.body(
+                                12,
+                                color: DiaryColors.inkMuted,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       TextButton(
                         onPressed: loading
