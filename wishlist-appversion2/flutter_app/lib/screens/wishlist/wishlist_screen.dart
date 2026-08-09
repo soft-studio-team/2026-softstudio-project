@@ -30,7 +30,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
           children: [
             const SizedBox(height: 8),
             Text(
-              'Wish List',
+              'wishkit',
               style: DiaryTheme.display(34, weight: FontWeight.w700),
             ),
             CustomPaint(
