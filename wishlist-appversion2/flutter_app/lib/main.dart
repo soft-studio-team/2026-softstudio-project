@@ -8,6 +8,7 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'data/app_store.dart';
 import 'firebase_options.dart';
+import 'screens/auth/email_verification_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/friends/friends_screen.dart';
 import 'screens/mypage/mypage_screen.dart';
@@ -97,17 +98,31 @@ class _WishlistAppState extends State<WishlistApp> {
 
 GoRouter _buildRouter(AppStore store) {
   return GoRouter(
-    initialLocation: store.isLoggedIn ? '/' : '/login',
+    initialLocation: store.isLoggedIn
+        ? '/'
+        : (store.awaitingEmailVerification ? '/verify-email' : '/login'),
     refreshListenable: store,
     redirect: (context, state) {
       final loggedIn = store.isLoggedIn;
-      final onLogin = state.matchedLocation == '/login';
+      final awaiting = store.awaitingEmailVerification;
+      final loc = state.matchedLocation;
+      final onLogin = loc == '/login';
+      final onVerify = loc == '/verify-email';
+
+      if (awaiting) {
+        if (!onVerify) return '/verify-email';
+        return null;
+      }
       if (!loggedIn && !onLogin) return '/login';
-      if (loggedIn && onLogin) return '/';
+      if (loggedIn && (onLogin || onVerify)) return '/';
       return null;
     },
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(
+        path: '/verify-email',
+        builder: (_, __) => const EmailVerificationScreen(),
+      ),
       GoRoute(
         path: '/share',
         builder: (context, state) => ShareIntakeScreen(

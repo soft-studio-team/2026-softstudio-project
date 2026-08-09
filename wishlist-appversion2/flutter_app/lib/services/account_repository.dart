@@ -45,32 +45,33 @@ class AccountRepository {
   CollectionReference<Map<String, dynamic>> _followers(String uid) =>
       _userDoc(uid).collection('followers');
 
-  Future<UserCredential> register({
+  /// Creates Auth credentials and sends a verification email only.
+  /// Firestore profile is created later via [ensureProfile] after verification.
+  Future<UserCredential> registerPending({
     required String email,
     required String password,
-    required String name,
-    required String handle,
   }) async {
     final cred = await _auth.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password,
     );
-    final uid = cred.user!.uid;
-    final normalized = _normalizeHandle(handle);
-    final profile = AppUser(
-      uid: uid,
-      email: email.trim(),
-      name: name.trim().isEmpty ? email.split('@').first : name.trim(),
-      handle: normalized,
-      avatarUrl: _defaultAvatar(normalized),
-    );
-    await _userDoc(uid).set({
-      ...profile.toJson(),
-      'handleLower': normalized.toLowerCase(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    await _seedDefaultTabs(uid);
+    await cred.user!.sendEmailVerification();
     return cred;
+  }
+
+  Future<void> sendVerificationEmail([User? user]) async {
+    final target = user ?? _auth.currentUser;
+    if (target == null) {
+      throw Exception('인증 메일을 보낼 사용자가 없어요. 다시 로그인해 주세요.');
+    }
+    await target.sendEmailVerification();
+  }
+
+  Future<User?> reloadUser() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+    await user.reload();
+    return _auth.currentUser;
   }
 
   Future<UserCredential> login({
@@ -91,22 +92,35 @@ class AccountRepository {
     return AppUser.fromJson(snap.data()!..['uid'] = uid);
   }
 
-  Future<void> ensureProfile(User user) async {
+  /// Creates the app account in Firestore only for a verified user.
+  Future<void> ensureProfile(
+    User user, {
+    String? name,
+    String? handle,
+  }) async {
+    if (!user.emailVerified) {
+      throw Exception('이메일 인증이 완료된 뒤에만 계정을 만들 수 있어요.');
+    }
     final existing = await _userDoc(user.uid).get();
     if (existing.exists) return;
     final email = user.email ?? '';
     final base = email.contains('@') ? email.split('@').first : 'user';
-    final handle = _normalizeHandle(base);
+    final resolvedName =
+        (name != null && name.trim().isNotEmpty) ? name.trim() : base;
+    final resolvedHandle = _normalizeHandle(
+      (handle != null && handle.trim().isNotEmpty) ? handle : base,
+    );
     final profile = AppUser(
       uid: user.uid,
       email: email,
-      name: base,
-      handle: handle,
-      avatarUrl: _defaultAvatar(handle),
+      name: resolvedName,
+      handle: resolvedHandle,
+      avatarUrl: _defaultAvatar(resolvedHandle),
     );
     await _userDoc(user.uid).set({
       ...profile.toJson(),
-      'handleLower': handle.toLowerCase(),
+      'handleLower': resolvedHandle.toLowerCase(),
+      'emailVerified': true,
       'createdAt': FieldValue.serverTimestamp(),
     });
     await _seedDefaultTabs(user.uid);

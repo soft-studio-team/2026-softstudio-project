@@ -23,6 +23,10 @@ class AppStore extends ChangeNotifier {
   bool firebaseReady = false;
   String? firebaseError;
   bool isLoggedIn = false;
+  bool awaitingEmailVerification = false;
+  String? pendingVerificationEmail;
+  String? _pendingName;
+  String? _pendingHandle;
 
   List<WishlistTab> tabs = [];
   List<Product> products = [];
@@ -66,15 +70,32 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> _hydrateSession(User user) async {
-    await _repo.ensureProfile(user);
-    final profile = await _repo.loadProfile(user.uid);
+    await user.reload();
+    final fresh = FirebaseAuth.instance.currentUser ?? user;
+    if (!fresh.emailVerified) {
+      awaitingEmailVerification = true;
+      pendingVerificationEmail = fresh.email;
+      isLoggedIn = false;
+      return;
+    }
+
+    awaitingEmailVerification = false;
+    pendingVerificationEmail = null;
+    await _repo.ensureProfile(
+      fresh,
+      name: _pendingName,
+      handle: _pendingHandle,
+    );
+    _pendingName = null;
+    _pendingHandle = null;
+    final profile = await _repo.loadProfile(fresh.uid);
     if (profile != null) {
       currentUser = profile;
     }
-    tabs = await _repo.loadTabs(user.uid);
-    products = await _repo.loadProducts(user.uid);
-    final following = (await _repo.followingIds(user.uid)).toSet();
-    friends = await _repo.loadDirectory(myUid: user.uid, following: following);
+    tabs = await _repo.loadTabs(fresh.uid);
+    products = await _repo.loadProducts(fresh.uid);
+    final following = (await _repo.followingIds(fresh.uid)).toSet();
+    friends = await _repo.loadDirectory(myUid: fresh.uid, following: following);
     friendWishlists = await _repo.loadFriendWishlists(friends);
     _syncFriendCounts();
     currentUser = currentUser.copyWith(
@@ -86,6 +107,10 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _clearSessionLocal() async {
     isLoggedIn = false;
+    awaitingEmailVerification = false;
+    pendingVerificationEmail = null;
+    _pendingName = null;
+    _pendingHandle = null;
     tabs = [];
     products = [];
     basket = [];
@@ -112,16 +137,12 @@ class AppStore extends ChangeNotifier {
     if (password.trim().length < 6) {
       throw Exception('비밀번호는 6자 이상이어야 해요.');
     }
-    final derivedHandle =
-        handle.trim().isEmpty ? email.split('@').first : handle;
-    final cred = await _repo.register(
-      email: email,
-      password: password,
-      name: name,
-      handle: derivedHandle,
-    );
-    await _hydrateSession(cred.user!);
-    await _restoreBasketForUser();
+    _pendingName = name.trim().isEmpty ? null : name.trim();
+    _pendingHandle = handle.trim().isEmpty ? null : handle.trim();
+    await _repo.registerPending(email: email, password: password);
+    awaitingEmailVerification = true;
+    pendingVerificationEmail = email.trim();
+    isLoggedIn = false;
     notifyListeners();
   }
 
@@ -131,8 +152,45 @@ class AppStore extends ChangeNotifier {
       throw Exception('이메일과 비밀번호를 입력해 주세요.');
     }
     final cred = await _repo.login(email: email, password: password);
-    await _hydrateSession(cred.user!);
+    final user = cred.user!;
+    await user.reload();
+    final fresh = FirebaseAuth.instance.currentUser ?? user;
+    if (!fresh.emailVerified) {
+      awaitingEmailVerification = true;
+      pendingVerificationEmail = fresh.email ?? email.trim();
+      isLoggedIn = false;
+      notifyListeners();
+      return;
+    }
+    await _hydrateSession(fresh);
     await _restoreBasketForUser();
+    notifyListeners();
+  }
+
+  Future<void> resendVerificationEmail() async {
+    _ensureFirebase();
+    await _repo.sendVerificationEmail();
+  }
+
+  /// Returns true when the email is verified and the app account is ready.
+  Future<bool> confirmEmailVerified() async {
+    _ensureFirebase();
+    final user = await _repo.reloadUser();
+    if (user == null) {
+      throw Exception('로그인 세션이 없어요. 다시 로그인해 주세요.');
+    }
+    if (!user.emailVerified) return false;
+    await _hydrateSession(user);
+    await _restoreBasketForUser();
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> cancelEmailVerification() async {
+    if (firebaseReady) {
+      await _repo.logout();
+    }
+    await _clearSessionLocal();
     notifyListeners();
   }
 
