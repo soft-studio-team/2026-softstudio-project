@@ -8,6 +8,7 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'data/app_store.dart';
 import 'firebase_options.dart';
+import 'screens/auth/account_recovery_screen.dart';
 import 'screens/auth/email_verification_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/friends/friends_screen.dart';
@@ -108,13 +109,14 @@ GoRouter _buildRouter(AppStore store) {
       final loc = state.matchedLocation;
       final onLogin = loc == '/login';
       final onVerify = loc == '/verify-email';
+      final onRecovery = loc == '/account-recovery';
 
       if (awaiting) {
         if (!onVerify) return '/verify-email';
         return null;
       }
-      if (!loggedIn && !onLogin) return '/login';
-      if (loggedIn && (onLogin || onVerify)) return '/';
+      if (!loggedIn && !onLogin && !onRecovery) return '/login';
+      if (loggedIn && (onLogin || onVerify || onRecovery)) return '/';
       return null;
     },
     routes: [
@@ -122,6 +124,10 @@ GoRouter _buildRouter(AppStore store) {
       GoRoute(
         path: '/verify-email',
         builder: (_, __) => const EmailVerificationScreen(),
+      ),
+      GoRoute(
+        path: '/account-recovery',
+        builder: (_, __) => const AccountRecoveryScreen(),
       ),
       GoRoute(
         path: '/share',

@@ -86,6 +86,52 @@ class AccountRepository {
 
   Future<void> logout() => _auth.signOut();
 
+  Future<void> sendPasswordResetEmail(String email) {
+    return _auth.sendPasswordResetEmail(email: email.trim());
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    final email = user?.email;
+    if (user == null || email == null || email.isEmpty) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    final cred = EmailAuthProvider.credential(
+      email: email,
+      password: currentPassword,
+    );
+    await user.reauthenticateWithCredential(cred);
+    await user.updatePassword(newPassword);
+  }
+
+  /// Looks up a profile by handle and returns a masked email for recovery UI.
+  Future<String?> findMaskedEmailByHandle(String handle) async {
+    final normalized = _normalizeHandle(handle).toLowerCase();
+    final snap = await _db
+        .collection('users')
+        .where('handleLower', isEqualTo: normalized)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+    final email = (snap.docs.first.data()['email'] as String?)?.trim() ?? '';
+    if (email.isEmpty) return null;
+    return _maskEmail(email);
+  }
+
+  String _maskEmail(String email) {
+    final parts = email.split('@');
+    if (parts.length != 2) return '***';
+    final local = parts[0];
+    final domain = parts[1];
+    if (local.isEmpty) return '***@$domain';
+    if (local.length == 1) return '*@$domain';
+    if (local.length == 2) return '${local[0]}*@$domain';
+    return '${local[0]}***${local[local.length - 1]}@$domain';
+  }
+
   Future<AppUser?> loadProfile(String uid) async {
     final snap = await _userDoc(uid).get();
     if (!snap.exists || snap.data() == null) return null;

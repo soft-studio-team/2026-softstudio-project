@@ -202,6 +202,56 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    _ensureFirebase();
+    if (email.trim().isEmpty) {
+      throw Exception('가입한 이메일을 입력해 주세요.');
+    }
+    await _repo.sendPasswordResetEmail(email);
+  }
+
+  Future<String?> findMaskedEmailByHandle(String handle) async {
+    _ensureFirebase();
+    if (handle.trim().isEmpty) {
+      throw Exception('핸들을 입력해 주세요.');
+    }
+    return _repo.findMaskedEmailByHandle(handle);
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    _ensureFirebase();
+    if (currentPassword.isEmpty || newPassword.isEmpty) {
+      throw Exception('현재 비밀번호와 새 비밀번호를 입력해 주세요.');
+    }
+    if (newPassword.trim().length < 6) {
+      throw Exception('새 비밀번호는 6자 이상이어야 해요.');
+    }
+    if (currentPassword == newPassword) {
+      throw Exception('새 비밀번호는 현재 비밀번호와 달라야 해요.');
+    }
+    try {
+      await _repo.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'wrong-password':
+        case 'invalid-credential':
+          throw Exception('현재 비밀번호가 맞지 않아요.');
+        case 'weak-password':
+          throw Exception('새 비밀번호가 너무 짧아요 (6자 이상).');
+        case 'requires-recent-login':
+          throw Exception('보안을 위해 다시 로그인한 뒤 변경해 주세요.');
+        default:
+          throw Exception(e.message ?? '비밀번호 변경에 실패했어요 (${e.code})');
+      }
+    }
+  }
+
   void _ensureFirebase() {
     if (!firebaseReady) {
       throw Exception(

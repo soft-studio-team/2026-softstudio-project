@@ -27,9 +27,7 @@ class MyPageScreen extends StatelessWidget {
                   Text('마이페이지', style: DiaryTheme.display(32)),
                   const Spacer(),
                   IconButton(
-                    onPressed: () async {
-                      await store.logout();
-                    },
+                    onPressed: () => _openAccountSettings(context, store),
                     icon: const Icon(Icons.settings_outlined),
                   ),
                 ],
@@ -193,6 +191,149 @@ class MyPageScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openAccountSettings(BuildContext context, AppStore store) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: DiaryColors.paper,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  '계정 설정',
+                  style: DiaryTheme.body(16, weight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.lock_outline),
+                  title: Text('비밀번호 변경', style: DiaryTheme.body(14)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _openChangePassword(context, store);
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.logout),
+                  title: Text('로그아웃', style: DiaryTheme.body(14)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await store.logout();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openChangePassword(BuildContext context, AppStore store) async {
+    final currentCtrl = TextEditingController();
+    final nextCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    String? error;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return AlertDialog(
+              backgroundColor: DiaryColors.paper,
+              title: Text(
+                '비밀번호 변경',
+                style: DiaryTheme.ui(17, weight: FontWeight.w700),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: currentCtrl,
+                      obscureText: true,
+                      decoration: const InputDecoration(labelText: '현재 비밀번호'),
+                    ),
+                    TextField(
+                      controller: nextCtrl,
+                      obscureText: true,
+                      decoration: const InputDecoration(labelText: '새 비밀번호'),
+                    ),
+                    TextField(
+                      controller: confirmCtrl,
+                      obscureText: true,
+                      decoration: const InputDecoration(labelText: '새 비밀번호 확인'),
+                    ),
+                    if (error != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        error!,
+                        style: DiaryTheme.body(12, color: DiaryColors.pin),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('취소'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (nextCtrl.text != confirmCtrl.text) {
+                      setLocal(() => error = '새 비밀번호가 서로 달라요.');
+                      return;
+                    }
+                    Navigator.pop(ctx, true);
+                  },
+                  child: Text(
+                    '변경',
+                    style: DiaryTheme.ui(
+                      14,
+                      weight: FontWeight.w700,
+                      color: DiaryColors.accent,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (saved != true) return;
+    try {
+      await store.changePassword(
+        currentPassword: currentCtrl.text,
+        newPassword: nextCtrl.text,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('비밀번호를 변경했어요')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _openEditProfile(BuildContext context, AppStore store) async {

@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
@@ -175,6 +176,23 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? () {}
                             : _submit,
                       ),
+                      if (!isRegister) ...[
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: loading
+                                ? null
+                                : () => context.push('/account-recovery'),
+                            child: Text(
+                              '이메일 / 비밀번호 찾기',
+                              style: DiaryTheme.body(
+                                12,
+                                color: DiaryColors.inkMuted,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       TextButton(
                         onPressed: loading
