@@ -26,6 +26,7 @@ class AppStore extends ChangeNotifier {
   String? firebaseError;
   bool isLoggedIn = false;
   bool awaitingEmailVerification = false;
+  bool showSignupWelcome = false;
   String? pendingVerificationEmail;
   String? _pendingName;
   String? _pendingHandle;
@@ -139,6 +140,7 @@ class AppStore extends ChangeNotifier {
   Future<void> _clearSessionLocal() async {
     isLoggedIn = false;
     awaitingEmailVerification = false;
+    showSignupWelcome = false;
     pendingVerificationEmail = null;
     tabs = [];
     products = [];
@@ -216,8 +218,15 @@ class AppStore extends ChangeNotifier {
     if (!user.emailVerified) return false;
     await _hydrateSession(user);
     await _restoreBasketForUser();
+    showSignupWelcome = true;
     notifyListeners();
     return true;
+  }
+
+  void dismissSignupWelcome() {
+    if (!showSignupWelcome) return;
+    showSignupWelcome = false;
+    notifyListeners();
   }
 
   Future<void> cancelEmailVerification() async {
@@ -233,6 +242,29 @@ class AppStore extends ChangeNotifier {
     if (firebaseReady) {
       await _repo.logout();
     }
+    await _clearSessionLocal();
+    notifyListeners();
+  }
+
+  Future<void> deleteAccount({required String password}) async {
+    _ensureFirebase();
+    if (password.isEmpty) {
+      throw Exception('비밀번호를 입력해 주세요.');
+    }
+    try {
+      await _repo.deleteAccount(password: password);
+    } on FirebaseAuthException catch (e) {
+      switch (e.code) {
+        case 'wrong-password':
+        case 'invalid-credential':
+          throw Exception('비밀번호가 맞지 않아요.');
+        case 'requires-recent-login':
+          throw Exception('보안을 위해 다시 로그인한 뒤 탈퇴해 주세요.');
+        default:
+          throw Exception(e.message ?? '탈퇴에 실패했어요 (${e.code})');
+      }
+    }
+    await _clearPendingProfileDraft();
     await _clearSessionLocal();
     notifyListeners();
   }

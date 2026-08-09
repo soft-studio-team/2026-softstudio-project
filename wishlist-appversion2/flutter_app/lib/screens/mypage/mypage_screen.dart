@@ -33,91 +33,46 @@ class MyPageScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              // Price-tag style profile with edit affordance
-              Stack(
-                children: [
-                  CustomPaint(
-                    painter: _TagPainter(color: const Color(0xFFE8B4A8)),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(28, 18, 14, 14),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 28,
-                            backgroundImage: NetworkImage(user.avatarUrl),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  user.name,
-                                  style: DiaryTheme.body(
-                                    16,
-                                    weight: FontWeight.w700,
-                                  ),
-                                ),
-                                Text(
-                                  user.handle,
-                                  style: DiaryTheme.body(
-                                    12,
-                                    color: DiaryColors.inkMuted,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  '${user.followers} 팔로워  |  ${user.following} 팔로잉  |  ${store.products.length} 아이템',
-                                  style: DiaryTheme.body(11),
-                                ),
-                              ],
+              CustomPaint(
+                painter: _TagPainter(color: const Color(0xFFE8B4A8)),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 18, 14, 14),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundImage: NetworkImage(user.avatarUrl),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user.name,
+                              style: DiaryTheme.body(
+                                16,
+                                weight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: DiaryColors.ink,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                            Text(
+                              user.handle,
+                              style: DiaryTheme.body(
+                                12,
+                                color: DiaryColors.inkMuted,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${user.followers} 팔로워  |  ${user.following} 팔로잉  |  ${store.products.length} 아이템',
+                              style: DiaryTheme.body(11),
+                            ),
+                          ],
                         ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      onPressed: () => _openEditProfile(context, store),
-                      child: Text(
-                        '정보 수정하기',
-                        style: DiaryTheme.body(11, weight: FontWeight.w700),
-                      ),
-                    ),
+                    ],
                   ),
-                  Positioned(
-                    bottom: 4,
-                    right: 4,
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: DiaryColors.inkMuted,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      onPressed: () => store.logout(),
-                      child: Text(
-                        '로그아웃',
-                        style: DiaryTheme.body(11, weight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
               const SizedBox(height: 18),
               Text('내 wishlist', style: DiaryTheme.display(26)),
@@ -235,11 +190,41 @@ class MyPageScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.person_outline),
+                  title: Text('프로필 수정하기', style: DiaryTheme.body(14)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _openEditProfile(context, store);
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.lock_outline),
-                  title: Text('비밀번호 변경', style: DiaryTheme.body(14)),
+                  title: Text('비밀번호 수정하기', style: DiaryTheme.body(14)),
                   onTap: () {
                     Navigator.pop(ctx);
                     _openChangePassword(context, store);
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.logout),
+                  title: Text('로그아웃', style: DiaryTheme.body(14)),
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await store.logout();
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.person_off_outlined, color: DiaryColors.pin),
+                  title: Text(
+                    '탈퇴하기',
+                    style: DiaryTheme.body(14, color: DiaryColors.pin),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _openDeleteAccount(context, store);
                   },
                 ),
               ],
@@ -248,6 +233,96 @@ class MyPageScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _openDeleteAccount(BuildContext context, AppStore store) async {
+    final passwordCtrl = TextEditingController();
+    String? error;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            return AlertDialog(
+              backgroundColor: DiaryColors.paper,
+              title: Text(
+                '탈퇴하기',
+                style: DiaryTheme.ui(17, weight: FontWeight.w700),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '탈퇴하면 계정과 위시리스트가 삭제되고 되돌릴 수 없어요.',
+                      style: DiaryTheme.body(13, color: DiaryColors.inkMuted),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: passwordCtrl,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: '비밀번호 확인',
+                      ),
+                    ),
+                    if (error != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        error!,
+                        style: DiaryTheme.body(12, color: DiaryColors.pin),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('취소'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    if (passwordCtrl.text.isEmpty) {
+                      setLocal(() => error = '비밀번호를 입력해 주세요.');
+                      return;
+                    }
+                    Navigator.pop(ctx, true);
+                  },
+                  child: Text(
+                    '탈퇴',
+                    style: DiaryTheme.ui(
+                      14,
+                      weight: FontWeight.w700,
+                      color: DiaryColors.pin,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+    try {
+      await store.deleteAccount(password: passwordCtrl.text);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('탈퇴가 완료되었어요')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _openChangePassword(BuildContext context, AppStore store) async {
@@ -358,7 +433,7 @@ class MyPageScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: DiaryColors.paper,
         title: Text(
-          '정보 수정하기',
+          '프로필 수정하기',
           style: DiaryTheme.ui(17, weight: FontWeight.w700),
         ),
         content: SingleChildScrollView(

@@ -11,6 +11,7 @@ import 'firebase_options.dart';
 import 'screens/auth/account_recovery_screen.dart';
 import 'screens/auth/email_verification_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/signup_welcome_screen.dart';
 import 'screens/friends/friends_screen.dart';
 import 'screens/mypage/mypage_screen.dart';
 import 'screens/product/product_detail_screen.dart';
@@ -100,23 +101,31 @@ class _WishlistAppState extends State<WishlistApp> {
 GoRouter _buildRouter(AppStore store) {
   return GoRouter(
     initialLocation: store.isLoggedIn
-        ? '/'
+        ? (store.showSignupWelcome ? '/welcome' : '/')
         : (store.awaitingEmailVerification ? '/verify-email' : '/login'),
     refreshListenable: store,
     redirect: (context, state) {
       final loggedIn = store.isLoggedIn;
       final awaiting = store.awaitingEmailVerification;
+      final welcoming = store.showSignupWelcome;
       final loc = state.matchedLocation;
       final onLogin = loc == '/login';
       final onVerify = loc == '/verify-email';
       final onRecovery = loc == '/account-recovery';
+      final onWelcome = loc == '/welcome';
 
       if (awaiting) {
         if (!onVerify) return '/verify-email';
         return null;
       }
+      if (loggedIn && welcoming) {
+        if (!onWelcome) return '/welcome';
+        return null;
+      }
       if (!loggedIn && !onLogin && !onRecovery) return '/login';
-      if (loggedIn && (onLogin || onVerify || onRecovery)) return '/';
+      if (loggedIn && (onLogin || onVerify || onRecovery || onWelcome)) {
+        return '/';
+      }
       return null;
     },
     routes: [
@@ -128,6 +137,10 @@ GoRouter _buildRouter(AppStore store) {
       GoRoute(
         path: '/account-recovery',
         builder: (_, __) => const AccountRecoveryScreen(),
+      ),
+      GoRoute(
+        path: '/welcome',
+        builder: (_, __) => const SignupWelcomeScreen(),
       ),
       GoRoute(
         path: '/share',

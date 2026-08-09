@@ -28,7 +28,10 @@ service cloud.firestore {
 
       match /following/{targetId} {
         allow read: if signedIn();
-        allow write: if isOwner(userId);
+        allow create, update: if isOwner(userId);
+        // Target may remove themselves when deleting their account.
+        allow delete: if isOwner(userId)
+          || (signedIn() && request.auth.uid == targetId);
       }
 
       match /followers/{followerId} {

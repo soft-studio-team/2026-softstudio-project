@@ -107,6 +107,69 @@ class AccountRepository {
     await user.updatePassword(newPassword);
   }
 
+  Future<void> deleteAccount({required String password}) async {
+    final user = _auth.currentUser;
+    final email = user?.email;
+    if (user == null || email == null || email.isEmpty) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    final cred = EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
+    await user.reauthenticateWithCredential(cred);
+
+    final uid = user.uid;
+    final profile = await loadProfile(uid);
+    final handle = profile?.handle;
+
+    final followingSnap = await _following(uid).get();
+    for (final doc in followingSnap.docs) {
+      await setFollowing(myUid: uid, targetUid: doc.id, follow: false);
+    }
+
+    final followersSnap = await _followers(uid).get();
+    for (final doc in followersSnap.docs) {
+      final followerUid = doc.id;
+      final batch = _db.batch();
+      batch.delete(_following(followerUid).doc(uid));
+      batch.delete(_followers(uid).doc(followerUid));
+      final followerProfile = await _userDoc(followerUid).get();
+      if (followerProfile.exists) {
+        batch.update(_userDoc(followerUid), {
+          'following': FieldValue.increment(-1),
+        });
+      }
+      await batch.commit();
+    }
+
+    await _deleteCollectionDocs(_tabs(uid));
+    await _deleteCollectionDocs(_products(uid));
+    await _deleteCollectionDocs(_following(uid));
+    await _deleteCollectionDocs(_followers(uid));
+
+    if (handle != null && handle.isNotEmpty) {
+      await _handleDoc(_normalizeHandle(handle).toLowerCase()).delete();
+    }
+    await _userDoc(uid).delete();
+    await user.delete();
+  }
+
+  Future<void> _deleteCollectionDocs(
+    CollectionReference<Map<String, dynamic>> col,
+  ) async {
+    final snap = await col.limit(200).get();
+    if (snap.docs.isEmpty) return;
+    final batch = _db.batch();
+    for (final doc in snap.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+    if (snap.docs.length >= 200) {
+      await _deleteCollectionDocs(col);
+    }
+  }
+
   DocumentReference<Map<String, dynamic>> _handleDoc(String handleLower) =>
       _db.collection('handles').doc(handleLower);
 
