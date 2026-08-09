@@ -171,7 +171,7 @@ class AppStore extends ChangeNotifier {
     if (handle.trim().isEmpty) {
       throw Exception('아이디를 입력해 주세요.');
     }
-    await _repo.assertHandleAvailable(handle);
+    await _repo.assertHandleAvailable(handle, email: email);
     _pendingName = name.trim().isEmpty ? null : name.trim();
     _pendingHandle = handle.trim();
     await _savePendingProfileDraft();

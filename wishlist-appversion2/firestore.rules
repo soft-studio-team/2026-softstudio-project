@@ -9,44 +9,70 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function emailMatchesAuth(data) {
+      return signedIn()
+        && data.keys().hasAll(['email'])
+        && request.auth.token.email != null
+        && data.email.lower() == request.auth.token.email.lower();
+    }
+
+    function userEmailMatchesAuth(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId))
+        && emailMatchesAuth(
+          get(/databases/$(database)/documents/users/$(userId)).data
+        );
+    }
+
     match /users/{userId} {
       // Profiles are public so friend discovery and id-based
       // account recovery (masked email in the app) can work.
       allow read: if true;
       allow create: if isOwner(userId);
-      allow update, delete: if isOwner(userId);
+      allow update: if isOwner(userId);
+      // Same-email delete lets a re-registered Auth user clear Console leftovers.
+      allow delete: if isOwner(userId) || emailMatchesAuth(resource.data);
 
       match /tabs/{tabId} {
         allow read: if signedIn();
-        allow write: if isOwner(userId);
+        allow create, update: if isOwner(userId);
+        allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
 
       match /products/{productId} {
         allow read: if signedIn();
-        allow write: if isOwner(userId);
+        allow create, update: if isOwner(userId);
+        allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
 
       match /following/{targetId} {
         allow read: if signedIn();
         allow create, update: if isOwner(userId);
-        // Target may remove themselves when deleting their account.
         allow delete: if isOwner(userId)
-          || (signedIn() && request.auth.uid == targetId);
+          || (signedIn() && request.auth.uid == targetId)
+          || userEmailMatchesAuth(userId);
       }
 
       match /followers/{followerId} {
         allow read: if signedIn();
-        // A user may add/remove themselves as a follower of someone else.
-        allow write: if signedIn() && request.auth.uid == followerId;
+        allow create, update: if signedIn() && request.auth.uid == followerId;
+        allow delete: if (signedIn() && request.auth.uid == followerId)
+          || isOwner(userId)
+          || userEmailMatchesAuth(userId);
       }
     }
 
     // Unique wishkit ids (@handle). One doc per id, owned by a single uid.
-    // Orphan rows (owner profile missing) can be cleared/reclaimed after
-    // Auth-only deletes in Firebase Console.
+    // Orphan / same-email rows can be reclaimed after Auth-only Console deletes.
     match /handles/{handleId} {
       function handleOwnerAlive() {
         return exists(/databases/$(database)/documents/users/$(resource.data.uid));
+      }
+
+      function handleOwnerEmailMatchesAuth() {
+        return handleOwnerAlive()
+          && emailMatchesAuth(
+            get(/databases/$(database)/documents/users/$(resource.data.uid)).data
+          );
       }
 
       allow read: if true;
@@ -54,9 +80,17 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid;
       allow update: if signedIn()
         && request.resource.data.uid == request.auth.uid
-        && (resource.data.uid == request.auth.uid || !handleOwnerAlive());
+        && (
+          resource.data.uid == request.auth.uid
+          || !handleOwnerAlive()
+          || handleOwnerEmailMatchesAuth()
+        );
       allow delete: if signedIn()
-        && (resource.data.uid == request.auth.uid || !handleOwnerAlive());
+        && (
+          resource.data.uid == request.auth.uid
+          || !handleOwnerAlive()
+          || handleOwnerEmailMatchesAuth()
+        );
     }
   }
 }

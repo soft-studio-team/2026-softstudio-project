@@ -121,26 +121,41 @@ class AccountRepository {
 
     final uid = user.uid;
     final profile = await loadProfile(uid);
-    final handle = profile?.handle;
+    await _deleteFirestoreUserTree(
+      uid,
+      handle: profile?.handle,
+      unlinkSocial: true,
+    );
+    await user.delete();
+  }
 
-    final followingSnap = await _following(uid).get();
-    for (final doc in followingSnap.docs) {
-      await setFollowing(myUid: uid, targetUid: doc.id, follow: false);
-    }
-
-    final followersSnap = await _followers(uid).get();
-    for (final doc in followersSnap.docs) {
-      final followerUid = doc.id;
-      final batch = _db.batch();
-      batch.delete(_following(followerUid).doc(uid));
-      batch.delete(_followers(uid).doc(followerUid));
-      final followerProfile = await _userDoc(followerUid).get();
-      if (followerProfile.exists) {
-        batch.update(_userDoc(followerUid), {
-          'following': FieldValue.increment(-1),
-        });
+  /// Removes Firestore data for [uid]. Used by account deletion and by reclaim
+  /// after Auth-only deletes in Firebase Console.
+  Future<void> _deleteFirestoreUserTree(
+    String uid, {
+    String? handle,
+    bool unlinkSocial = false,
+  }) async {
+    if (unlinkSocial) {
+      final followingSnap = await _following(uid).get();
+      for (final doc in followingSnap.docs) {
+        await setFollowing(myUid: uid, targetUid: doc.id, follow: false);
       }
-      await batch.commit();
+
+      final followersSnap = await _followers(uid).get();
+      for (final doc in followersSnap.docs) {
+        final followerUid = doc.id;
+        final batch = _db.batch();
+        batch.delete(_following(followerUid).doc(uid));
+        batch.delete(_followers(uid).doc(followerUid));
+        final followerProfile = await _userDoc(followerUid).get();
+        if (followerProfile.exists) {
+          batch.update(_userDoc(followerUid), {
+            'following': FieldValue.increment(-1),
+          });
+        }
+        await batch.commit();
+      }
     }
 
     await _deleteCollectionDocs(_tabs(uid));
@@ -149,10 +164,77 @@ class AccountRepository {
     await _deleteCollectionDocs(_followers(uid));
 
     if (handle != null && handle.isNotEmpty) {
-      await _handleDoc(_normalizeHandle(handle).toLowerCase()).delete();
+      final key = _normalizeHandle(handle).toLowerCase();
+      final handleSnap = await _handleDoc(key).get();
+      if (handleSnap.exists && handleSnap.data()?['uid'] == uid) {
+        await _handleDoc(key).delete();
+      }
     }
     await _userDoc(uid).delete();
-    await user.delete();
+  }
+
+  /// Clears leftover profiles/handles for the same email (Console Auth delete).
+  Future<void> reclaimIdentityIfNeeded({
+    required String newUid,
+    required String email,
+    required String handle,
+  }) async {
+    final emailKey = email.trim().toLowerCase();
+    final handleKey = _normalizeHandle(handle).toLowerCase();
+
+    final byHandle = await _db
+        .collection('users')
+        .where('handleLower', isEqualTo: handleKey)
+        .limit(10)
+        .get();
+    for (final doc in byHandle.docs) {
+      if (doc.id == newUid) continue;
+      final ownerEmail =
+          (doc.data()['email'] as String?)?.trim().toLowerCase() ?? '';
+      if (ownerEmail != emailKey) {
+        throw Exception('이미 사용 중인 아이디예요.');
+      }
+      await _deleteFirestoreUserTree(
+        doc.id,
+        handle: doc.data()['handle'] as String? ?? handle,
+      );
+    }
+
+    // Same email, possibly different id — also leftover from Console deletes.
+    for (final candidate in {email.trim(), emailKey}) {
+      final byEmail = await _db
+          .collection('users')
+          .where('email', isEqualTo: candidate)
+          .limit(10)
+          .get();
+      for (final doc in byEmail.docs) {
+        if (doc.id == newUid) continue;
+        await _deleteFirestoreUserTree(
+          doc.id,
+          handle: doc.data()['handle'] as String?,
+        );
+      }
+    }
+
+    final handleSnap = await _handleDoc(handleKey).get();
+    if (handleSnap.exists) {
+      final owner = handleSnap.data()?['uid'] as String?;
+      if (owner != null && owner != newUid) {
+        final ownerProfile = await _userDoc(owner).get();
+        if (!ownerProfile.exists) {
+          await _handleDoc(handleKey).delete();
+        } else {
+          final ownerEmail =
+              (ownerProfile.data()?['email'] as String?)?.trim().toLowerCase();
+          if (ownerEmail == emailKey) {
+            await _deleteFirestoreUserTree(
+              owner,
+              handle: ownerProfile.data()?['handle'] as String? ?? handle,
+            );
+          }
+        }
+      }
+    }
   }
 
   Future<void> _deleteCollectionDocs(
@@ -190,8 +272,10 @@ class AccountRepository {
   Future<void> assertHandleAvailable(
     String handle, {
     String? exceptUid,
+    String? email,
   }) async {
     final key = _normalizeHandle(handle).toLowerCase();
+    final emailKey = email?.trim().toLowerCase();
 
     // Source of truth: a living profile that still uses this id.
     final taken = await _db
@@ -200,7 +284,17 @@ class AccountRepository {
         .limit(1)
         .get();
     if (taken.docs.isNotEmpty && taken.docs.first.id != exceptUid) {
-      throw Exception('이미 사용 중인 아이디예요.');
+      final ownerEmail = (taken.docs.first.data()['email'] as String?)
+              ?.trim()
+              .toLowerCase() ??
+          '';
+      // Same email can reclaim after Auth-only delete in Firebase Console.
+      if (emailKey == null ||
+          emailKey.isEmpty ||
+          ownerEmail.isEmpty ||
+          ownerEmail != emailKey) {
+        throw Exception('이미 사용 중인 아이디예요.');
+      }
     }
 
     final snap = await _handleDoc(key).get();
@@ -208,10 +302,16 @@ class AccountRepository {
     final owner = snap.data()?['uid'] as String?;
     if (owner == null || owner == exceptUid) return;
 
-    // Orphan reservation (e.g. Auth user deleted in Firebase Console).
-    // Treat as free here; claim overwrites it after the user is signed in.
     final ownerProfile = await _userDoc(owner).get();
     if (!ownerProfile.exists) return;
+    final ownerEmail =
+        (ownerProfile.data()?['email'] as String?)?.trim().toLowerCase() ?? '';
+    if (emailKey != null &&
+        emailKey.isNotEmpty &&
+        ownerEmail.isNotEmpty &&
+        ownerEmail == emailKey) {
+      return;
+    }
 
     throw Exception('이미 사용 중인 아이디예요.');
   }
@@ -221,9 +321,11 @@ class AccountRepository {
     required String uid,
     required String handle,
     String? previousHandle,
+    String? email,
   }) async {
     final normalized = _normalizeHandle(handle);
     final key = normalized.toLowerCase();
+    final emailKey = email?.trim().toLowerCase();
     final ref = _handleDoc(key);
     final snap = await tx.get(ref);
     if (snap.exists) {
@@ -232,8 +334,14 @@ class AccountRepository {
         final ownerUser = await tx.get(_userDoc(owner));
         final ownerHandle =
             (ownerUser.data()?['handleLower'] as String?)?.toLowerCase();
-        // Block only when a real profile still owns this id.
-        if (ownerUser.exists && ownerHandle == key) {
+        final ownerEmail =
+            (ownerUser.data()?['email'] as String?)?.trim().toLowerCase() ?? '';
+        final sameEmail = emailKey != null &&
+            emailKey.isNotEmpty &&
+            ownerEmail.isNotEmpty &&
+            ownerEmail == emailKey;
+        // Block only when another living profile still owns this id.
+        if (ownerUser.exists && ownerHandle == key && !sameEmail) {
           throw Exception('이미 사용 중인 아이디예요.');
         }
         // Otherwise overwrite the stale/orphaned reservation.
@@ -309,6 +417,11 @@ class AccountRepository {
       throw Exception('아이디를 입력해 주세요.');
     }
     final resolvedHandle = _normalizeHandle(handle);
+    await reclaimIdentityIfNeeded(
+      newUid: user.uid,
+      email: email,
+      handle: resolvedHandle,
+    );
     final profile = AppUser(
       uid: user.uid,
       email: email,
@@ -321,10 +434,12 @@ class AccountRepository {
         tx: tx,
         uid: user.uid,
         handle: resolvedHandle,
+        email: email,
       );
       tx.set(_userDoc(user.uid), {
         ...profile.toJson(),
         'handleLower': resolvedHandle.toLowerCase(),
+        'emailLower': email.trim().toLowerCase(),
         'emailVerified': true,
         'createdAt': FieldValue.serverTimestamp(),
       });
