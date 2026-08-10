@@ -100,7 +100,21 @@ const String productExtractJs = r'''
 
   // ---- 조립 ----
   var host=location.hostname;
-  var name  = (ld&&ld.name)  || ogTitle || domName();
+  var dn = domName();
+
+  // 무인양품처럼 og:title 이 모든 페이지 공용("MUJI 무인양품 공식 온라인스토어")인 곳이
+  // 있다. og:title 이 화면 h1 과 전혀 안 겹치면 사이트 공용 제목으로 보고 h1 을 쓴다.
+  function overlaps(a,b){
+    if(!a||!b) return false;
+    return a.indexOf(b.slice(0,8))>=0 || b.indexOf(a.slice(0,8))>=0;
+  }
+  var useDomName = !!(dn && ogTitle && !overlaps(ogTitle, dn));
+
+  var name;
+  if(ld && ld.name) name = ld.name;
+  else if(useDomName) name = dn;
+  else name = ogTitle || dn;
+
   var price = (ld&&ld.price)  || ogPrice || domPrice();
   var brand = (ld&&ld.brand) || null;
   var image = (ld&&ld.image) || ogImage || null;
@@ -109,7 +123,7 @@ const String productExtractJs = r'''
   if(/(^|\.)zara\.com$/.test(host) && ld && ld.price){ price = ld.price*100; }
 
   var source={
-    name: (ld&&ld.name)?'json-ld':(ogTitle?'og':(name?'dom':null)),
+    name: (ld&&ld.name)?'json-ld':(useDomName?'dom':(ogTitle?'og':(name?'dom':null))),
     price:(ld&&ld.price)?'json-ld':(ogPrice?'og':(price?'dom':null)),
     image:(ld&&ld.image)?'json-ld':(ogImage?'og':null),
     brand:(ld&&ld.brand)?'json-ld':null
