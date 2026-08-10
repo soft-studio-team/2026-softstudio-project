@@ -90,6 +90,7 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
       missingFields: parsed!.missingFields,
       resolvedTier: parsed!.resolvedTier,
       engineUsed: parsed!.engineUsed,
+      onDeviceExtracted: parsed!.onDeviceExtracted,
     );
 
     final store = context.read<AppStore>();
@@ -189,8 +190,10 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                                   style: DiaryTheme.body(12,
                                       color: DiaryColors.inkMuted)),
                               Text(
-                                'Tier ${parsed!.resolvedTier ?? '-'}'
-                                '${parsed!.engineUsed ? '' : ' · 오프라인 추정'}',
+                                parsed!.onDeviceExtracted
+                                    ? 'Tier 2.5 · 단말에서 추출'
+                                    : 'Tier ${parsed!.resolvedTier ?? '-'}'
+                                        '${parsed!.engineUsed ? '' : ' · 오프라인 추정'}',
                                 style: DiaryTheme.body(11,
                                     color: DiaryColors.accent),
                               ),

@@ -42,11 +42,14 @@ dependencies:
   url_launcher: ^6.3.2
   uuid: ^4.6.0
   intl: ^0.20.2
-  receive_sharing_intent: ^1.8.1
+  # 1.9.0 은 아직 stable 로 나오지 않은 compileSdk 37 을 요구하므로 1.8.1 로 고정한다.
+  receive_sharing_intent: 1.8.1
   path_provider: ^2.1.5
   firebase_core: ^4.13.0
   firebase_auth: ^6.5.7
   cloud_firestore: ^6.8.0
+  # 온디바이스 Tier 2.5: 안 보이는 WebView로 렌더링된 페이지에서 상품정보 추출
+  flutter_inappwebview: ^6.1.5
 
 dev_dependencies:
   flutter_test:
