@@ -94,9 +94,22 @@ const String productExtractJs = r'''
   }
   function domPrice(){
     var body=document.body?document.body.innerText:'';
-    var m=/([0-9]{1,3}(?:,[0-9]{3})+)\s*원|₩\s?([0-9]{1,3}(?:,[0-9]{3})+)/.exec(body);
-    return m ? toPrice(m[1]||m[2]) : null;
+    // 첫 매치만 쓰면 "배송비 3,000원", "3,000원 이상 무료배송" 같은 배너를 상품가로
+    // 오인한다. 매치들을 순회하며 배송/쿠폰/적립 문맥과 1,000원 미만은 건너뛴다.
+    var re=/([0-9]{1,3}(?:,[0-9]{3})+)\s*원|₩\s?([0-9]{1,3}(?:,[0-9]{3})+)/g;
+    var m;
+    while((m=re.exec(body))){
+      var val=toPrice(m[1]||m[2]);
+      if(val==null || val<1000) continue;
+      var ctx=body.slice(Math.max(0,m.index-12), m.index+m[0].length+12);
+      if(/배송|무료|쿠폰|적립|포인트|최소|이상|이하|할인쿠폰/.test(ctx)) continue;
+      return val;
+    }
+    return null;
   }
+  // (주의) 데이터레이어의 "price":NNNNN 를 범용으로 긁는 건 위험하다 — 상품 페이지엔
+  // 추천/관련 상품 가격이 여러 개라 엉뚱한 값을 고르게 된다. 그런 몰(아디다스 등)은
+  // 몰별 전용 규칙이 필요하며, 규칙 전까지는 Tier 3(사용자 입력)으로 안전하게 폴백한다.
 
   // ---- 조립 ----
   var host=location.hostname;
