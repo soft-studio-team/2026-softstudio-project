@@ -10,6 +10,28 @@
 
 ---
 
+## 2026-08-10 — Tier 2.5 실기기 검증 + 통합 테스트 추가
+
+🟢 **쉬운 설명**
+재통합한 WebView Tier 2.5 가 실제 안드로이드 폰에서 잘 도는지 확인했습니다.
+무신사(78,000원)·무인양품(12,900원) 상품 페이지에서 가격을 자동으로 뽑아내는 걸
+실기기에서 검증했고, 이 검증을 언제든 다시 돌릴 수 있게 자동 테스트로 남겼습니다.
+(무신사는 JSON-LD 경로, 무인양품은 화면 긁기 경로 — 두 방식 모두 실기기에서 동작 확인.)
+
+🔧 **기술 설명**
+- `integration_test/webview_scraper_test.dart` 신규: 로그인·엔진서버·UI 없이
+  `WebViewScraper.extract()` 를 직접 호출해 가격 추출을 검증. 실행:
+  `flutter test integration_test/webview_scraper_test.dart -d <device>`.
+- `pubspec.yaml` dev_dependencies 에 `integration_test`(Flutter SDK) 추가.
+- 검증 결과(실기기 Samsung, Android): `isSupported=true`, 무신사 json-ld=78000,
+  무인양품 dom=12900 — 3개 테스트 전부 통과.
+- 함께 확인: 재통합 브랜치의 `flutter build apk --debug` 성공(163MB) —
+  Firebase(google-services) + flutter_inappwebview 가 한 빌드에서 충돌 없이 링크됨.
+- (알려진 개선점: 무인양품은 og:title 이 사이트 공용이라 상품명이 "MUJI 무인양품
+  공식 온라인스토어"로 잡힘 — 가격은 정확. 상품명 정교화는 추후.)
+
+---
+
 ## 2026-08-10 — WebView Tier 2.5 를 최신 main(인증·Firebase·리브랜딩) 위로 재통합
 
 🟢 **쉬운 설명**
