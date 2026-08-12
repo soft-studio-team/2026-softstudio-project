@@ -192,7 +192,18 @@ class _FollowingList extends StatelessWidget {
             isFollowing: f.isFollowing,
             onPressed: () async {
               final willFollow = !f.isFollowing;
-              await onToggleFollow(f);
+              try {
+                await onToggleFollow(f);
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('팔로우 처리에 실패했어요: $e'),
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+                return;
+              }
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
