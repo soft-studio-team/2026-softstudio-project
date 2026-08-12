@@ -29,7 +29,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
-    final items = store.notifications;
+    final items = store.visibleNotifications;
 
     return Scaffold(
       backgroundColor: DiaryColors.canvas,

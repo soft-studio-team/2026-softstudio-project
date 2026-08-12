@@ -196,7 +196,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         searching: q.isNotEmpty,
                         onToggleFollow: (f) => store.toggleFollow(f.id),
                       ),
-                    1 => _FollowersList(followers: followers),
+                    1 => _FollowersList(
+                        followers: followers,
+                        onRemove: (u) => store.removeFollower(u.uid),
+                      ),
                     2 => _FriendWishlistsPane(
                         wishlists: wishlistCards,
                         followingEmpty: store.friends
@@ -300,9 +303,13 @@ class _FollowingList extends StatelessWidget {
 }
 
 class _FollowersList extends StatelessWidget {
-  const _FollowersList({required this.followers});
+  const _FollowersList({
+    required this.followers,
+    required this.onRemove,
+  });
 
   final List<AppUser> followers;
+  final Future<void> Function(AppUser user) onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -322,9 +329,65 @@ class _FollowersList extends StatelessWidget {
           name: u.name,
           handle: u.handle,
           avatarUrl: u.avatarUrl,
+          trailing: OutlinedButton(
+            onPressed: () => _confirmRemove(context, u),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: DiaryColors.ink,
+              side: BorderSide(color: DiaryColors.ink.withValues(alpha: 0.35)),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            child: const Text('삭제'),
+          ),
         );
       },
     );
+  }
+
+  Future<void> _confirmRemove(BuildContext context, AppUser user) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: DiaryColors.paper,
+        title: Text(
+          '팔로워 삭제',
+          style: DiaryTheme.ui(17, weight: FontWeight.w700),
+        ),
+        content: Text(
+          '${user.name} 님을 팔로워에서 삭제할까요?\n삭제하면 이 사람은 더 이상 회원님을 팔로우하지 않아요.',
+          style: DiaryTheme.body(13, color: DiaryColors.inkMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              '삭제',
+              style: DiaryTheme.ui(
+                14,
+                weight: FontWeight.w700,
+                color: DiaryColors.pin,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    try {
+      await onRemove(user);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${user.name} 님을 팔로워에서 삭제했어요')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('삭제 실패: $e')),
+      );
+    }
   }
 }
 

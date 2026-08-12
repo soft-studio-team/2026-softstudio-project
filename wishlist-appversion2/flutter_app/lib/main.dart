@@ -16,6 +16,7 @@ import 'screens/friends/friends_screen.dart';
 import 'screens/friends/notifications_screen.dart';
 import 'screens/mypage/follow_list_screen.dart';
 import 'screens/mypage/mypage_screen.dart';
+import 'screens/mypage/notification_settings_screen.dart';
 import 'screens/product/product_detail_screen.dart';
 import 'screens/salkamalka/salkamalka_screen.dart';
 import 'screens/share/share_intake_screen.dart';
@@ -200,6 +201,10 @@ GoRouter _buildRouter(AppStore store) {
       GoRoute(
         path: '/notifications',
         builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/notification-settings',
+        builder: (context, state) => const NotificationSettingsScreen(),
       ),
       GoRoute(
         path: '/friend-salkamalka/:friendId',

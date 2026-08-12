@@ -15,6 +15,8 @@ class AppStore extends ChangeNotifier {
   static const _sharedKey = 'shared_baskets';
   static const _pendingNameKey = 'pending_register_name';
   static const _pendingHandleKey = 'pending_register_handle';
+  static const _notifyFollowKey = 'notify_follow';
+  static const _notifyBasketKey = 'notify_basket';
 
   AppStore({AccountRepository? repository})
       : _repo = repository ?? AccountRepository();
@@ -30,6 +32,10 @@ class AppStore extends ChangeNotifier {
   String? pendingVerificationEmail;
   String? _pendingName;
   String? _pendingHandle;
+
+  /// In-app notification preferences (MyPage → 알림 설정).
+  bool notifyOnFollow = true;
+  bool notifyOnBasket = true;
 
   List<WishlistTab> tabs = [];
   List<Product> products = [];
@@ -141,6 +147,14 @@ class AppStore extends ChangeNotifier {
     );
     isLoggedIn = true;
     selectedTabId = 'all';
+    await _reloadNotificationPrefs();
+  }
+
+  Future<void> _reloadNotificationPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keySuffix = uid ?? 'guest';
+    notifyOnFollow = prefs.getBool('${_notifyFollowKey}_$keySuffix') ?? true;
+    notifyOnBasket = prefs.getBool('${_notifyBasketKey}_$keySuffix') ?? true;
   }
 
   /// Notifications / received baskets need updated Firestore rules.
@@ -572,7 +586,14 @@ class AppStore extends ChangeNotifier {
   }
 
   int get unreadNotificationCount =>
-      notifications.where((n) => !n.read).length;
+      visibleNotifications.where((n) => !n.read).length;
+
+  /// Inbox rows filtered by MyPage notification preferences.
+  List<AppNotification> get visibleNotifications => notifications.where((n) {
+        if (n.type == AppNotificationType.follow) return notifyOnFollow;
+        if (n.type == AppNotificationType.basket) return notifyOnBasket;
+        return true;
+      }).toList();
 
   List<FriendSalkamalka> get friendSalkamalkaGroups {
     final byFriend = <String, List<SharedBasket>>{};
@@ -689,6 +710,29 @@ class AppStore extends ChangeNotifier {
     );
     friendWishlists = await _repo.loadFriendWishlists(friends);
     _syncFriendCounts();
+    notifyListeners();
+  }
+
+  Future<void> removeFollower(String followerUid) async {
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    await _repo.removeFollower(myUid: userId, followerUid: followerUid);
+    followerUsers = followerUsers.where((u) => u.uid != followerUid).toList();
+    currentUser = currentUser.copyWith(followers: followerUsers.length);
+    notifyListeners();
+  }
+
+  Future<void> setNotifyOnFollow(bool value) async {
+    notifyOnFollow = value;
+    await _persistNotificationPrefs();
+    notifyListeners();
+  }
+
+  Future<void> setNotifyOnBasket(bool value) async {
+    notifyOnBasket = value;
+    await _persistNotificationPrefs();
     notifyListeners();
   }
 
@@ -817,6 +861,8 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _loadLocalExtras() async {
     final prefs = await SharedPreferences.getInstance();
+    notifyOnFollow = prefs.getBool('${_notifyFollowKey}_${uid ?? 'guest'}') ?? true;
+    notifyOnBasket = prefs.getBool('${_notifyBasketKey}_${uid ?? 'guest'}') ?? true;
     final sharedRaw = prefs.getString(_sharedKey);
     if (sharedRaw != null) {
       final list = jsonDecode(sharedRaw) as List;
@@ -826,6 +872,13 @@ class AppStore extends ChangeNotifier {
         sharedBaskets[basket.id] = basket;
       }
     }
+  }
+
+  Future<void> _persistNotificationPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keySuffix = uid ?? 'guest';
+    await prefs.setBool('${_notifyFollowKey}_$keySuffix', notifyOnFollow);
+    await prefs.setBool('${_notifyBasketKey}_$keySuffix', notifyOnBasket);
   }
 
   Product? findCatalogProduct(int id) {

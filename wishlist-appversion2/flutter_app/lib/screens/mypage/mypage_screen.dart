@@ -163,11 +163,7 @@ class MyPageScreen extends StatelessWidget {
               DiaryButton(
                 label: '알림 설정',
                 icon: Icons.notifications_none,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('알림 설정은 준비 중이에요')),
-                  );
-                },
+                onPressed: () => context.push('/notification-settings'),
               ),
               const SizedBox(height: 8),
               DiaryButton(

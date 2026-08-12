@@ -632,6 +632,24 @@ class AccountRepository {
     }
   }
 
+  /// Instagram-style: remove [followerUid] from my followers list.
+  Future<void> removeFollower({
+    required String myUid,
+    required String followerUid,
+  }) async {
+    if (myUid == followerUid) return;
+    final followerEdge = _followers(myUid).doc(followerUid);
+    final existing = await followerEdge.get();
+    if (!existing.exists) return;
+
+    final batch = _db.batch();
+    batch.delete(followerEdge);
+    batch.delete(_following(followerUid).doc(myUid));
+    batch.update(_userDoc(myUid), {'followers': FieldValue.increment(-1)});
+    batch.update(_userDoc(followerUid), {'following': FieldValue.increment(-1)});
+    await batch.commit();
+  }
+
   Future<List<FriendWishlist>> loadFriendWishlists(
     List<Friend> followingFriends,
   ) async {
