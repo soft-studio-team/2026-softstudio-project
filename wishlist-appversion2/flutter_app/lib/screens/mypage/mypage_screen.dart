@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
+import '../../theme/avatar_presets.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 
@@ -163,11 +167,7 @@ class MyPageScreen extends StatelessWidget {
               DiaryButton(
                 label: '알림 설정',
                 icon: Icons.notifications_none,
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('알림 설정은 준비 중이에요')),
-                  );
-                },
+                onPressed: () => context.push('/notification-settings'),
               ),
               const SizedBox(height: 8),
               DiaryButton(
@@ -446,72 +446,192 @@ class MyPageScreen extends StatelessWidget {
   Future<void> _openEditProfile(BuildContext context, AppStore store) async {
     final nameCtrl = TextEditingController(text: store.currentUser.name);
     final handleCtrl = TextEditingController(text: store.currentUser.handle);
-    final avatarCtrl =
-        TextEditingController(text: store.currentUser.avatarUrl);
+    var selectedAvatarUrl = store.currentUser.avatarUrl;
+    File? pendingUpload;
+    var saving = false;
+    String? localError;
 
     final saved = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: DiaryColors.paper,
-        title: Text(
-          '프로필 수정하기',
-          style: DiaryTheme.ui(17, weight: FontWeight.w700),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 36,
-                backgroundImage: NetworkImage(store.currentUser.avatarUrl),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            ImageProvider preview;
+            if (pendingUpload != null) {
+              preview = FileImage(pendingUpload!);
+            } else {
+              preview = NetworkImage(selectedAvatarUrl);
+            }
+
+            return AlertDialog(
+              backgroundColor: DiaryColors.paper,
+              title: Text(
+                '프로필 수정하기',
+                style: DiaryTheme.ui(17, weight: FontWeight.w700),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(labelText: '이름'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: CircleAvatar(
+                        radius: 40,
+                        backgroundImage: preview,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(labelText: '이름'),
+                    ),
+                    TextField(
+                      controller: handleCtrl,
+                      decoration: const InputDecoration(
+                        labelText: '아이디 (@없이 입력 가능)',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      '기본 이미지',
+                      style: DiaryTheme.body(13, weight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        for (final url in AvatarPresets.urls)
+                          GestureDetector(
+                            onTap: () => setLocal(() {
+                              pendingUpload = null;
+                              selectedAvatarUrl = url;
+                              localError = null;
+                            }),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: pendingUpload == null &&
+                                          selectedAvatarUrl == url
+                                      ? DiaryColors.accent
+                                      : Colors.transparent,
+                                  width: 2.5,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 20,
+                                backgroundImage: NetworkImage(url),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      '사진 파일 업로드',
+                      style: DiaryTheme.body(13, weight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              final picker = ImagePicker();
+                              final picked = await picker.pickImage(
+                                source: ImageSource.gallery,
+                                maxWidth: 1024,
+                                maxHeight: 1024,
+                                imageQuality: 85,
+                              );
+                              if (picked == null) return;
+                              setLocal(() {
+                                pendingUpload = File(picked.path);
+                                localError = null;
+                              });
+                            },
+                      icon: const Icon(Icons.photo_library_outlined, size: 18),
+                      label: Text(
+                        pendingUpload == null ? '갤러리에서 선택' : '다른 사진 선택',
+                        style: DiaryTheme.body(13),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: DiaryColors.ink,
+                        side: BorderSide(
+                          color: DiaryColors.ink.withValues(alpha: 0.25),
+                        ),
+                      ),
+                    ),
+                    if (localError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        localError!,
+                        style: DiaryTheme.body(12, color: DiaryColors.pin),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-              TextField(
-                controller: handleCtrl,
-                decoration: const InputDecoration(labelText: '아이디 (@없이 입력 가능)'),
-              ),
-              TextField(
-                controller: avatarCtrl,
-                decoration: const InputDecoration(labelText: '프로필 사진 URL'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              '저장',
-              style: DiaryTheme.ui(
-                14,
-                weight: FontWeight.w700,
-                color: DiaryColors.accent,
-              ),
-            ),
-          ),
-        ],
-      ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.pop(ctx, false),
+                  child: const Text('취소'),
+                ),
+                TextButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          setLocal(() {
+                            saving = true;
+                            localError = null;
+                          });
+                          try {
+                            var avatarUrl = selectedAvatarUrl;
+                            if (pendingUpload != null) {
+                              avatarUrl = await store
+                                  .uploadAvatarFile(pendingUpload!);
+                            }
+                            await store.updateProfile(
+                              name: nameCtrl.text,
+                              handle: handleCtrl.text,
+                              avatarUrl: avatarUrl,
+                            );
+                            if (ctx.mounted) Navigator.pop(ctx, true);
+                          } catch (e) {
+                            setLocal(() {
+                              saving = false;
+                              localError = e
+                                  .toString()
+                                  .replaceFirst('Exception: ', '');
+                            });
+                          }
+                        },
+                  child: saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(
+                          '저장',
+                          style: DiaryTheme.ui(
+                            14,
+                            weight: FontWeight.w700,
+                            color: DiaryColors.accent,
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
 
-    if (saved == true) {
-      await store.updateProfile(
-        name: nameCtrl.text,
-        handle: handleCtrl.text,
-        avatarUrl: avatarCtrl.text,
+    if (saved == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('프로필을 저장했어요')),
       );
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('프로필을 저장했어요')),
-        );
-      }
     }
   }
 }

@@ -13,8 +13,10 @@ import 'screens/auth/email_verification_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_welcome_screen.dart';
 import 'screens/friends/friends_screen.dart';
+import 'screens/friends/notifications_screen.dart';
 import 'screens/mypage/follow_list_screen.dart';
 import 'screens/mypage/mypage_screen.dart';
+import 'screens/mypage/notification_settings_screen.dart';
 import 'screens/product/product_detail_screen.dart';
 import 'screens/salkamalka/salkamalka_screen.dart';
 import 'screens/share/share_intake_screen.dart';
@@ -195,6 +197,40 @@ GoRouter _buildRouter(AppStore store) {
         path: '/following',
         builder: (context, state) =>
             const FollowListScreen(kind: FollowListKind.following),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/notification-settings',
+        builder: (context, state) => const NotificationSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/friend-salkamalka/:friendId',
+        builder: (context, state) {
+          final friendId = state.pathParameters['friendId']!;
+          final store = context.read<AppStore>();
+          final group = store.friendSalkamalkaByFriendId(friendId);
+          if (group == null) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('받은 살까말까를 찾을 수 없어요')),
+            );
+          }
+          return SharedWishlistScreen(
+            title: '${group.friendName}의 살까말까',
+            subtitle: '${group.friendHandle} · 상품 ${group.itemCount}개',
+            products: group.allProducts,
+            accentColor: DiaryColors.folderPeach,
+            emptyMessage: '보낸 상품이 없어요',
+          );
+        },
       ),
       GoRoute(
         path: '/shared/:id',

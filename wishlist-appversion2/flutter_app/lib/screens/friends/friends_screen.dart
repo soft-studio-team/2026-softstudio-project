@@ -15,7 +15,8 @@ class FriendsScreen extends StatefulWidget {
 }
 
 class _FriendsScreenState extends State<FriendsScreen> {
-  int tab = 0; // 0 following, 1 wishlist
+  /// 0 팔로잉 · 1 팔로워 · 2 wishlist · 3 살까말까
+  int tab = 0;
   final searchCtrl = TextEditingController();
   bool refreshing = false;
 
@@ -40,24 +41,41 @@ class _FriendsScreenState extends State<FriendsScreen> {
     super.dispose();
   }
 
+  bool _matchesQuery(String name, String handle, String q) {
+    if (q.isEmpty) return true;
+    return name.toLowerCase().contains(q) || handle.toLowerCase().contains(q);
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
     final q = searchCtrl.text.trim().toLowerCase();
-    final friends = store.friends
+
+    final followingFriends = store.friends
         .where((f) =>
-            q.isEmpty ||
-            f.name.toLowerCase().contains(q) ||
-            f.username.toLowerCase().contains(q))
+            f.isFollowing && _matchesQuery(f.name, f.username, q))
         .toList();
-    final followingFriends =
-        friends.where((f) => f.isFollowing).toList();
+    // Search hits, or everyone not yet followed so 팔로우 is always available.
+    final discoverFriends = store.friends
+        .where((f) =>
+            !f.isFollowing && _matchesQuery(f.name, f.username, q))
+        .take(40)
+        .toList();
+    final followers = store.followerUsers
+        .where((u) => _matchesQuery(u.name, u.handle, q))
+        .toList();
     final wishlistCards = store.friendWishlists
         .where((w) {
           final friend = store.friendById(w.friendId);
-          return friend != null && friend.isFollowing;
+          if (friend == null || !friend.isFollowing) return false;
+          return _matchesQuery(w.friendName, friend.username, q) ||
+              w.listName.toLowerCase().contains(q);
         })
         .toList();
+    final salkamalkaGroups = store.friendSalkamalkaGroups
+        .where((g) => _matchesQuery(g.friendName, g.friendHandle, q))
+        .toList();
+    final unread = store.unreadNotificationCount;
 
     return Scaffold(
       backgroundColor: DiaryColors.canvas,
@@ -65,7 +83,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+              padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -74,10 +92,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       Text('내 친구', style: DiaryTheme.display(34)),
                       const Spacer(),
                       if (refreshing)
-                        const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                        const Padding(
+                          padding: EdgeInsets.only(right: 8),
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         )
                       else
                         IconButton(
@@ -94,6 +115,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           },
                           icon: const Icon(Icons.refresh),
                         ),
+                      IconButton(
+                        tooltip: '알림',
+                        onPressed: () => context.push('/notifications'),
+                        icon: Badge(
+                          isLabelVisible: unread > 0,
+                          label: Text(unread > 99 ? '99+' : '$unread'),
+                          child: const Icon(Icons.notifications_none),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -101,7 +131,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     controller: searchCtrl,
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
-                      hintText: '이름·아이디로 친구 검색',
+                      hintText: '이름·아이디로 검색',
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
                       fillColor: DiaryColors.white,
@@ -122,13 +152,31 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           onTap: () => setState(() => tab = 0),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: _TabChip(
-                          label: '위시리스트',
-                          color: DiaryColors.folderPink,
+                          label: '팔로워',
+                          color: DiaryColors.folderYellow,
                           active: tab == 1,
                           onTap: () => setState(() => tab = 1),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: _TabChip(
+                          label: 'wishlist',
+                          color: DiaryColors.folderPink,
+                          active: tab == 2,
+                          onTap: () => setState(() => tab = 2),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: _TabChip(
+                          label: '살까말까',
+                          color: DiaryColors.folderPeach,
+                          active: tab == 3,
+                          onTap: () => setState(() => tab = 3),
                         ),
                       ),
                     ],
@@ -141,15 +189,25 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 folderColor: DiaryColors.canvas,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
-                  child: tab == 0
-                      ? _FollowingList(
-                          friends: friends,
-                          onToggleFollow: (f) => store.toggleFollow(f.id),
-                        )
-                      : _FriendWishlistsPane(
-                          wishlists: wishlistCards,
-                          followingEmpty: followingFriends.isEmpty,
-                        ),
+                  child: switch (tab) {
+                    0 => _FollowingList(
+                        following: followingFriends,
+                        discover: discoverFriends,
+                        searching: q.isNotEmpty,
+                        onToggleFollow: (f) => store.toggleFollow(f.id),
+                      ),
+                    1 => _FollowersList(
+                        followers: followers,
+                        onRemove: (u) => store.removeFollower(u.uid),
+                      ),
+                    2 => _FriendWishlistsPane(
+                        wishlists: wishlistCards,
+                        followingEmpty: store.friends
+                            .where((f) => f.isFollowing)
+                            .isEmpty,
+                      ),
+                    _ => _FriendSalkamalkaPane(groups: salkamalkaGroups),
+                  },
                 ),
               ),
             ),
@@ -162,64 +220,174 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
 class _FollowingList extends StatelessWidget {
   const _FollowingList({
-    required this.friends,
+    required this.following,
+    required this.discover,
+    required this.searching,
     required this.onToggleFollow,
   });
 
-  final List<Friend> friends;
+  final List<Friend> following;
+  final List<Friend> discover;
+  final bool searching;
   final Future<void> Function(Friend friend) onToggleFollow;
 
   @override
   Widget build(BuildContext context) {
-    if (friends.isEmpty) {
+    if (following.isEmpty && discover.isEmpty) {
       return Center(
         child: Text(
-          '검색 결과가 없어요',
+          searching ? '검색 결과가 없어요' : '아직 팔로잉한 친구가 없어요',
+          style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
+        ),
+      );
+    }
+    return ListView(
+      children: [
+        for (final f in following)
+          PersonRow(
+            name: f.name,
+            handle: f.username,
+            avatarUrl: f.avatar,
+            subtitle: '위시리스트 ${f.wishlistCount}  ·  아이템 ${f.itemCount}',
+            trailing: _FollowButton(
+              isFollowing: true,
+              onPressed: () => _toggle(context, f),
+            ),
+          ),
+        if (discover.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+            child: Text(
+              searching ? '검색 결과' : '친구 찾아보기',
+              style: DiaryTheme.body(13, weight: FontWeight.w700),
+            ),
+          ),
+          for (final f in discover)
+            PersonRow(
+              name: f.name,
+              handle: f.username,
+              avatarUrl: f.avatar,
+              subtitle: '위시리스트 ${f.wishlistCount}  ·  아이템 ${f.itemCount}',
+              trailing: _FollowButton(
+                isFollowing: false,
+                onPressed: () => _toggle(context, f),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _toggle(BuildContext context, Friend f) async {
+    final willFollow = !f.isFollowing;
+    try {
+      await onToggleFollow(f);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            willFollow
+                ? '${f.name} 님을 팔로우했어요'
+                : '${f.name} 님 팔로우를 취소했어요',
+          ),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('팔로우 실패: $e')),
+      );
+    }
+  }
+}
+
+class _FollowersList extends StatelessWidget {
+  const _FollowersList({
+    required this.followers,
+    required this.onRemove,
+  });
+
+  final List<AppUser> followers;
+  final Future<void> Function(AppUser user) onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    if (followers.isEmpty) {
+      return Center(
+        child: Text(
+          '아직 팔로워가 없어요',
           style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
         ),
       );
     }
     return ListView.builder(
-      itemCount: friends.length,
+      itemCount: followers.length,
       itemBuilder: (context, i) {
-        final f = friends[i];
+        final u = followers[i];
         return PersonRow(
-          name: f.name,
-          handle: f.username,
-          avatarUrl: f.avatar,
-          subtitle: '위시리스트 ${f.wishlistCount}  ·  아이템 ${f.itemCount}',
-          trailing: _FollowButton(
-            isFollowing: f.isFollowing,
-            onPressed: () async {
-              final willFollow = !f.isFollowing;
-              try {
-                await onToggleFollow(f);
-              } catch (e) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('팔로우 처리에 실패했어요: $e'),
-                    duration: const Duration(seconds: 3),
-                  ),
-                );
-                return;
-              }
-              if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    willFollow
-                        ? '${f.name} 님을 팔로우했어요'
-                        : '${f.name} 님 팔로우를 취소했어요',
-                  ),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
-            },
+          name: u.name,
+          handle: u.handle,
+          avatarUrl: u.avatarUrl,
+          trailing: OutlinedButton(
+            onPressed: () => _confirmRemove(context, u),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: DiaryColors.ink,
+              side: BorderSide(color: DiaryColors.ink.withValues(alpha: 0.35)),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            child: const Text('삭제'),
           ),
         );
       },
     );
+  }
+
+  Future<void> _confirmRemove(BuildContext context, AppUser user) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: DiaryColors.paper,
+        title: Text(
+          '팔로워 삭제',
+          style: DiaryTheme.ui(17, weight: FontWeight.w700),
+        ),
+        content: Text(
+          '${user.name} 님을 팔로워에서 삭제할까요?\n삭제하면 이 사람은 더 이상 회원님을 팔로우하지 않아요.',
+          style: DiaryTheme.body(13, color: DiaryColors.inkMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              '삭제',
+              style: DiaryTheme.ui(
+                14,
+                weight: FontWeight.w700,
+                color: DiaryColors.pin,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    try {
+      await onRemove(user);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${user.name} 님을 팔로워에서 삭제했어요')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('삭제 실패: $e')),
+      );
+    }
   }
 }
 
@@ -272,7 +440,7 @@ class _FriendWishlistsPane extends StatelessWidget {
     if (followingEmpty) {
       return Center(
         child: Text(
-          '내 친구의 wishkit',
+          '팔로잉한 친구의 wishlist가 여기에 보여요',
           textAlign: TextAlign.center,
           style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
         ),
@@ -362,6 +530,38 @@ class _FriendWishlistsPane extends StatelessWidget {
   }
 }
 
+class _FriendSalkamalkaPane extends StatelessWidget {
+  const _FriendSalkamalkaPane({required this.groups});
+
+  final List<FriendSalkamalka> groups;
+
+  @override
+  Widget build(BuildContext context) {
+    if (groups.isEmpty) {
+      return Center(
+        child: Text(
+          '친구가 보낸 살까말까가 없어요',
+          textAlign: TextAlign.center,
+          style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
+        ),
+      );
+    }
+    return ListView.builder(
+      itemCount: groups.length,
+      itemBuilder: (context, i) {
+        final g = groups[i];
+        return PersonRow(
+          name: '${g.friendName}의 살까말까',
+          handle: g.friendHandle,
+          avatarUrl: g.friendAvatar,
+          subtitle: '상품 ${g.itemCount}개',
+          onTap: () => context.push('/friend-salkamalka/${g.friendId}'),
+        );
+      },
+    );
+  }
+}
+
 class _TabChip extends StatelessWidget {
   const _TabChip({
     required this.label,
@@ -380,7 +580,7 @@ class _TabChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(10),
@@ -391,12 +591,16 @@ class _TabChip extends StatelessWidget {
             ),
           ),
         ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: DiaryTheme.body(
-            13,
-            weight: active ? FontWeight.w700 : FontWeight.w500,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            style: DiaryTheme.body(
+              11,
+              weight: active ? FontWeight.w700 : FontWeight.w500,
+            ),
           ),
         ),
       ),

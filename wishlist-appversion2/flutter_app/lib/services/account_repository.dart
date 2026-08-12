@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../models/models.dart';
+import '../theme/avatar_presets.dart';
 
 /// Firestore layout:
 ///   users/{uid}                         profile + counts
@@ -9,18 +13,25 @@ import '../models/models.dart';
 ///   users/{uid}/products/{productId}
 ///   users/{uid}/following/{otherUid}
 ///   users/{uid}/followers/{otherUid}
+///   users/{uid}/notifications/{notifId}
+///   users/{uid}/receivedBaskets/{basketId}
 class AccountRepository {
   AccountRepository({
     FirebaseAuth? auth,
     FirebaseFirestore? db,
+    FirebaseStorage? storage,
   })  : _authOverride = auth,
-        _dbOverride = db;
+        _dbOverride = db,
+        _storageOverride = storage;
 
   final FirebaseAuth? _authOverride;
   final FirebaseFirestore? _dbOverride;
+  final FirebaseStorage? _storageOverride;
 
   FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
   FirebaseFirestore get _db => _dbOverride ?? FirebaseFirestore.instance;
+  FirebaseStorage get _storage =>
+      _storageOverride ?? FirebaseStorage.instance;
 
   User? get firebaseUser {
     try {
@@ -44,6 +55,12 @@ class AccountRepository {
 
   CollectionReference<Map<String, dynamic>> _followers(String uid) =>
       _userDoc(uid).collection('followers');
+
+  CollectionReference<Map<String, dynamic>> _notifications(String uid) =>
+      _userDoc(uid).collection('notifications');
+
+  CollectionReference<Map<String, dynamic>> _receivedBaskets(String uid) =>
+      _userDoc(uid).collection('receivedBaskets');
 
   /// Creates Auth credentials and sends a verification email only.
   /// Firestore profile is created later via [ensureProfile] after verification.
@@ -162,6 +179,8 @@ class AccountRepository {
     await _deleteCollectionDocs(_products(uid));
     await _deleteCollectionDocs(_following(uid));
     await _deleteCollectionDocs(_followers(uid));
+    await _deleteCollectionDocs(_notifications(uid));
+    await _deleteCollectionDocs(_receivedBaskets(uid));
 
     if (handle != null && handle.isNotEmpty) {
       final key = _normalizeHandle(handle).toLowerCase();
@@ -471,6 +490,25 @@ class AccountRepository {
     });
   }
 
+  /// Uploads a local image as the user's avatar and returns its download URL.
+  Future<String> uploadAvatarFile(String uid, File file) async {
+    final ext = file.path.split('.').last.toLowerCase();
+    final safeExt = (ext == 'png' || ext == 'webp' || ext == 'jpg' || ext == 'jpeg')
+        ? (ext == 'jpeg' ? 'jpg' : ext)
+        : 'jpg';
+    final contentType = switch (safeExt) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+    final ref = _storage.ref('avatars/$uid/avatar.$safeExt');
+    await ref.putFile(
+      file,
+      SettableMetadata(contentType: contentType),
+    );
+    return ref.getDownloadURL();
+  }
+
   Future<List<WishlistTab>> loadTabs(String uid) async {
     final snap = await _tabs(uid).get();
     if (snap.docs.isEmpty) {
@@ -575,6 +613,7 @@ class AccountRepository {
     required String myUid,
     required String targetUid,
     required bool follow,
+    AppUser? actor,
   }) async {
     if (myUid == targetUid) return;
     final batch = _db.batch();
@@ -598,6 +637,44 @@ class AccountRepository {
       batch.update(meRef, {'following': FieldValue.increment(-1)});
       batch.update(themRef, {'followers': FieldValue.increment(-1)});
     }
+    await batch.commit();
+
+    // Best-effort inbox notification (does not block follow).
+    if (follow && actor != null) {
+      try {
+        final notifRef = _notifications(targetUid).doc();
+        await notifRef.set({
+          'id': notifRef.id,
+          'type': 'follow',
+          'fromUid': myUid,
+          'fromName': actor.name,
+          'fromHandle': actor.handle,
+          'fromAvatar': actor.avatarUrl,
+          'message': '${actor.name} 님이 회원님을 팔로우하기 시작했어요',
+          'relatedId': null,
+          'read': false,
+          'createdAt': DateTime.now().toIso8601String(),
+          'createdAtServer': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
+    }
+  }
+
+  /// Instagram-style: remove [followerUid] from my followers list.
+  Future<void> removeFollower({
+    required String myUid,
+    required String followerUid,
+  }) async {
+    if (myUid == followerUid) return;
+    final followerEdge = _followers(myUid).doc(followerUid);
+    final existing = await followerEdge.get();
+    if (!existing.exists) return;
+
+    final batch = _db.batch();
+    batch.delete(followerEdge);
+    batch.delete(_following(followerUid).doc(myUid));
+    batch.update(_userDoc(myUid), {'followers': FieldValue.increment(-1)});
+    batch.update(_userDoc(followerUid), {'following': FieldValue.increment(-1)});
     await batch.commit();
   }
 
@@ -631,6 +708,81 @@ class AccountRepository {
     return result;
   }
 
+  Future<List<AppNotification>> loadNotifications(String uid) async {
+    final snap = await _notifications(uid).limit(100).get();
+    final list = snap.docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = data['id'] ?? d.id;
+      return AppNotification.fromJson(data);
+    }).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<void> markNotificationsRead(String uid, List<String> ids) async {
+    if (ids.isEmpty) return;
+    final batch = _db.batch();
+    for (final id in ids) {
+      batch.update(_notifications(uid).doc(id), {'read': true});
+    }
+    await batch.commit();
+  }
+
+  Future<List<SharedBasket>> loadReceivedBaskets(String uid) async {
+    final snap = await _receivedBaskets(uid).limit(100).get();
+    final list = snap.docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = data['id'] ?? d.id;
+      return SharedBasket.fromJson(data);
+    }).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<void> sendBasketToFriends({
+    required AppUser from,
+    required List<String> recipientUids,
+    required List<Product> items,
+  }) async {
+    if (recipientUids.isEmpty || items.isEmpty) return;
+    final now = DateTime.now();
+    final batch = _db.batch();
+    for (final recipientUid in recipientUids) {
+      if (recipientUid == from.uid) continue;
+      final basketRef = _receivedBaskets(recipientUid).doc();
+      final basketId = basketRef.id;
+      final basket = SharedBasket(
+        id: basketId,
+        title: '${from.name}의 살까말까',
+        ownerName: from.name,
+        fromUid: from.uid,
+        fromHandle: from.handle,
+        fromAvatar: from.avatarUrl,
+        items: items,
+        createdAt: now,
+      );
+      batch.set(basketRef, {
+        ...basket.toJson(),
+        'createdAtServer': FieldValue.serverTimestamp(),
+      });
+      final notifRef = _notifications(recipientUid).doc();
+      batch.set(notifRef, {
+        'id': notifRef.id,
+        'type': 'basket',
+        'fromUid': from.uid,
+        'fromName': from.name,
+        'fromHandle': from.handle,
+        'fromAvatar': from.avatarUrl,
+        'message': '${from.name} 님이 살까말까 장바구니를 보냈어요',
+        'relatedId': basketId,
+        'read': false,
+        'createdAt': now.toIso8601String(),
+        'createdAtServer': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
+
   /// New accounts start with only the fixed '전체' tab — no demo categories.
   Future<void> _seedDefaultTabs(String uid) async {
     final allTab = WishlistTab(id: 'all', name: '전체', isPublic: true);
@@ -645,7 +797,8 @@ class AccountRepository {
   }
 
   String _defaultAvatar(String handle) {
-    final seed = Uri.encodeComponent(handle.replaceFirst('@', ''));
-    return 'https://api.dicebear.com/7.x/thumbs/png?seed=$seed';
+    final seed = handle.replaceFirst('@', '');
+    if (seed.isEmpty) return AvatarPresets.urls.first;
+    return AvatarPresets.urlForSeed(seed);
   }
 }

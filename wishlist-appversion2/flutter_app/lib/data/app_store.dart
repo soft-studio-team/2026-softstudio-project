@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,6 +16,8 @@ class AppStore extends ChangeNotifier {
   static const _sharedKey = 'shared_baskets';
   static const _pendingNameKey = 'pending_register_name';
   static const _pendingHandleKey = 'pending_register_handle';
+  static const _notifyFollowKey = 'notify_follow';
+  static const _notifyBasketKey = 'notify_basket';
 
   AppStore({AccountRepository? repository})
       : _repo = repository ?? AccountRepository();
@@ -31,11 +34,18 @@ class AppStore extends ChangeNotifier {
   String? _pendingName;
   String? _pendingHandle;
 
+  /// In-app notification preferences (MyPage → 알림 설정).
+  bool notifyOnFollow = true;
+  bool notifyOnBasket = true;
+
   List<WishlistTab> tabs = [];
   List<Product> products = [];
   List<BasketItem> basket = [];
   List<Friend> friends = [];
   List<FriendWishlist> friendWishlists = [];
+  List<AppUser> followerUsers = [];
+  List<AppNotification> notifications = [];
+  List<SharedBasket> receivedBaskets = [];
   final Map<String, SharedBasket> sharedBaskets = {};
 
   String selectedTabId = 'all';
@@ -129,12 +139,38 @@ class AppStore extends ChangeNotifier {
     final following = (await _repo.followingIds(fresh.uid)).toSet();
     friends = await _repo.loadDirectory(myUid: fresh.uid, following: following);
     friendWishlists = await _repo.loadFriendWishlists(friends);
+    followerUsers = await _repo.loadUsers(await _repo.followerIds(fresh.uid));
+    await _loadInboxSafely(fresh.uid);
     _syncFriendCounts();
     currentUser = currentUser.copyWith(
       following: following.length,
+      followers: followerUsers.length,
     );
     isLoggedIn = true;
     selectedTabId = 'all';
+    await _reloadNotificationPrefs();
+  }
+
+  Future<void> _reloadNotificationPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keySuffix = uid ?? 'guest';
+    notifyOnFollow = prefs.getBool('${_notifyFollowKey}_$keySuffix') ?? true;
+    notifyOnBasket = prefs.getBool('${_notifyBasketKey}_$keySuffix') ?? true;
+  }
+
+  /// Notifications / received baskets need updated Firestore rules.
+  /// Never block login if those collections are still denied.
+  Future<void> _loadInboxSafely(String userId) async {
+    try {
+      notifications = await _repo.loadNotifications(userId);
+    } catch (_) {
+      notifications = [];
+    }
+    try {
+      receivedBaskets = await _repo.loadReceivedBaskets(userId);
+    } catch (_) {
+      receivedBaskets = [];
+    }
   }
 
   Future<void> _clearSessionLocal() async {
@@ -147,6 +183,9 @@ class AppStore extends ChangeNotifier {
     basket = [];
     friends = [];
     friendWishlists = [];
+    followerUsers = [];
+    notifications = [];
+    receivedBaskets = [];
     currentUser = AppUser(
       name: '게스트',
       handle: '@guest',
@@ -541,13 +580,57 @@ class AppStore extends ChangeNotifier {
   FriendWishlist? friendWishlistById(String id) =>
       friendWishlists.where((w) => w.id == id).firstOrNull;
 
-  SharedBasket? sharedBasketById(String id) => sharedBaskets[id];
+  SharedBasket? sharedBasketById(String id) {
+    final local = sharedBaskets[id];
+    if (local != null) return local;
+    return receivedBaskets.where((b) => b.id == id).firstOrNull;
+  }
+
+  int get unreadNotificationCount =>
+      visibleNotifications.where((n) => !n.read).length;
+
+  /// Inbox rows filtered by MyPage notification preferences.
+  List<AppNotification> get visibleNotifications => notifications.where((n) {
+        if (n.type == AppNotificationType.follow) return notifyOnFollow;
+        if (n.type == AppNotificationType.basket) return notifyOnBasket;
+        return true;
+      }).toList();
+
+  List<FriendSalkamalka> get friendSalkamalkaGroups {
+    final byFriend = <String, List<SharedBasket>>{};
+    for (final b in receivedBaskets) {
+      final key = b.fromUid.isNotEmpty ? b.fromUid : b.ownerName;
+      byFriend.putIfAbsent(key, () => []).add(b);
+    }
+    final groups = byFriend.entries.map((e) {
+      final baskets = List<SharedBasket>.from(e.value)
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final first = baskets.first;
+      return FriendSalkamalka(
+        friendId: first.fromUid,
+        friendName: first.ownerName,
+        friendHandle: first.fromHandle,
+        friendAvatar: first.fromAvatar.isNotEmpty
+            ? first.fromAvatar
+            : 'https://api.dicebear.com/7.x/thumbs/png?seed=${Uri.encodeComponent(first.ownerName)}',
+        baskets: baskets,
+      );
+    }).toList();
+    groups.sort((a, b) =>
+        b.baskets.first.createdAt.compareTo(a.baskets.first.createdAt));
+    return groups;
+  }
+
+  FriendSalkamalka? friendSalkamalkaByFriendId(String friendId) =>
+      friendSalkamalkaGroups.where((g) => g.friendId == friendId).firstOrNull;
 
   Future<List<AppUser>> loadFollowers() async {
     final id = uid;
     if (id == null) return [];
     final ids = await _repo.followerIds(id);
-    return _repo.loadUsers(ids);
+    followerUsers = await _repo.loadUsers(ids);
+    notifyListeners();
+    return followerUsers;
   }
 
   Future<List<AppUser>> loadFollowingUsers() async {
@@ -563,10 +646,44 @@ class AppStore extends ChangeNotifier {
     final following = (await _repo.followingIds(userId)).toSet();
     friends = await _repo.loadDirectory(myUid: userId, following: following);
     friendWishlists = await _repo.loadFriendWishlists(friends);
+    followerUsers = await _repo.loadUsers(await _repo.followerIds(userId));
+    await _loadInboxSafely(userId);
     _syncFriendCounts();
     final profile = await _repo.loadProfile(userId);
-    if (profile != null) currentUser = profile;
+    if (profile != null) {
+      currentUser = profile;
+    } else {
+      currentUser = currentUser.copyWith(
+        following: following.length,
+        followers: followerUsers.length,
+      );
+    }
     notifyListeners();
+  }
+
+  Future<void> refreshNotifications() async {
+    final userId = uid;
+    if (userId == null) return;
+    try {
+      notifications = await _repo.loadNotifications(userId);
+    } catch (_) {
+      notifications = [];
+    }
+    notifyListeners();
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    final userId = uid;
+    if (userId == null) return;
+    final unread = notifications.where((n) => !n.read).map((n) => n.id).toList();
+    if (unread.isEmpty) return;
+    try {
+      await _repo.markNotificationsRead(userId, unread);
+      notifications = [
+        for (final n in notifications) n.copyWith(read: true),
+      ];
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> toggleFollow(String friendId) async {
@@ -580,6 +697,7 @@ class AppStore extends ChangeNotifier {
       myUid: userId,
       targetUid: friendId,
       follow: next,
+      actor: next ? currentUser.copyWith(uid: userId) : null,
     );
     friends = [
       for (var i = 0; i < friends.length; i++)
@@ -593,6 +711,29 @@ class AppStore extends ChangeNotifier {
     );
     friendWishlists = await _repo.loadFriendWishlists(friends);
     _syncFriendCounts();
+    notifyListeners();
+  }
+
+  Future<void> removeFollower(String followerUid) async {
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    await _repo.removeFollower(myUid: userId, followerUid: followerUid);
+    followerUsers = followerUsers.where((u) => u.uid != followerUid).toList();
+    currentUser = currentUser.copyWith(followers: followerUsers.length);
+    notifyListeners();
+  }
+
+  Future<void> setNotifyOnFollow(bool value) async {
+    notifyOnFollow = value;
+    await _persistNotificationPrefs();
+    notifyListeners();
+  }
+
+  Future<void> setNotifyOnBasket(bool value) async {
+    notifyOnBasket = value;
+    await _persistNotificationPrefs();
     notifyListeners();
   }
 
@@ -636,6 +777,16 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Uploads [file] to Storage and returns the public download URL.
+  Future<String> uploadAvatarFile(File file) async {
+    _ensureFirebase();
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    return _repo.uploadAvatarFile(userId, file);
+  }
+
   Future<SharedBasket> createSharedBasketFromSelection() async {
     final selected =
         basket.where((b) => b.isSelected).map((b) => b.product).toList();
@@ -647,6 +798,9 @@ class AppStore extends ChangeNotifier {
       id: id,
       title: '살까말까 공유',
       ownerName: currentUser.name,
+      fromUid: currentUser.uid,
+      fromHandle: currentUser.handle,
+      fromAvatar: currentUser.avatarUrl,
       items: selected,
       createdAt: DateTime.now(),
     );
@@ -656,6 +810,28 @@ class AppStore extends ChangeNotifier {
     return shared;
   }
 
+  Future<void> sendBasketToFriends(List<String> friendIds) async {
+    final selected =
+        basket.where((b) => b.isSelected).map((b) => b.product).toList();
+    if (selected.isEmpty) {
+      throw Exception('공유할 상품을 선택해 주세요.');
+    }
+    if (friendIds.isEmpty) {
+      throw Exception('보낼 친구를 선택해 주세요.');
+    }
+    _ensureFirebase();
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    await _repo.sendBasketToFriends(
+      from: currentUser.copyWith(uid: userId),
+      recipientUids: friendIds,
+      items: selected,
+    );
+    await createSharedBasketFromSelection();
+  }
+
   String shareUrlFor(SharedBasket basket) =>
       'https://wishlist.app/shared/${basket.id}';
 
@@ -663,15 +839,7 @@ class AppStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _sharedKey,
-      jsonEncode(sharedBaskets.values
-          .map((s) => {
-                'id': s.id,
-                'title': s.title,
-                'ownerName': s.ownerName,
-                'createdAt': s.createdAt.toIso8601String(),
-                'items': s.items.map((p) => p.toJson()).toList(),
-              })
-          .toList()),
+      jsonEncode(sharedBaskets.values.map((s) => s.toJson()).toList()),
     );
   }
 
@@ -704,24 +872,24 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _loadLocalExtras() async {
     final prefs = await SharedPreferences.getInstance();
+    notifyOnFollow = prefs.getBool('${_notifyFollowKey}_${uid ?? 'guest'}') ?? true;
+    notifyOnBasket = prefs.getBool('${_notifyBasketKey}_${uid ?? 'guest'}') ?? true;
     final sharedRaw = prefs.getString(_sharedKey);
     if (sharedRaw != null) {
       final list = jsonDecode(sharedRaw) as List;
       for (final e in list) {
-        final map = e as Map<String, dynamic>;
-        final id = map['id'] as String;
-        sharedBaskets[id] = SharedBasket(
-          id: id,
-          title: map['title'] as String? ?? '공유 바구니',
-          ownerName: map['ownerName'] as String? ?? currentUser.name,
-          items: (map['items'] as List? ?? [])
-              .map((p) => Product.fromJson(p as Map<String, dynamic>))
-              .toList(),
-          createdAt: DateTime.tryParse(map['createdAt'] as String? ?? '') ??
-              DateTime.now(),
-        );
+        final map = Map<String, dynamic>.from(e as Map);
+        final basket = SharedBasket.fromJson(map);
+        sharedBaskets[basket.id] = basket;
       }
     }
+  }
+
+  Future<void> _persistNotificationPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keySuffix = uid ?? 'guest';
+    await prefs.setBool('${_notifyFollowKey}_$keySuffix', notifyOnFollow);
+    await prefs.setBool('${_notifyBasketKey}_$keySuffix', notifyOnBasket);
   }
 
   Product? findCatalogProduct(int id) {
@@ -732,6 +900,10 @@ class AppStore extends ChangeNotifier {
       if (hit != null) return hit;
     }
     for (final s in sharedBaskets.values) {
+      final hit = s.items.where((p) => p.id == id).firstOrNull;
+      if (hit != null) return hit;
+    }
+    for (final s in receivedBaskets) {
       final hit = s.items.where((p) => p.id == id).firstOrNull;
       if (hit != null) return hit;
     }

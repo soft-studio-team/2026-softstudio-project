@@ -237,7 +237,7 @@ class FriendWishlist {
   final List<Product> items;
 }
 
-/// Snapshot of a basket shared via URL (prototype, local).
+/// Snapshot of a basket shared via URL or sent to a friend in-app.
 class SharedBasket {
   SharedBasket({
     required this.id,
@@ -245,6 +245,9 @@ class SharedBasket {
     required this.ownerName,
     required this.items,
     required this.createdAt,
+    this.fromUid = '',
+    this.fromHandle = '',
+    this.fromAvatar = '',
   });
 
   final String id;
@@ -252,6 +255,137 @@ class SharedBasket {
   final String ownerName;
   final List<Product> items;
   final DateTime createdAt;
+  final String fromUid;
+  final String fromHandle;
+  final String fromAvatar;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'ownerName': ownerName,
+        'fromUid': fromUid,
+        'fromHandle': fromHandle,
+        'fromAvatar': fromAvatar,
+        'createdAt': createdAt.toIso8601String(),
+        'items': items.map((p) => p.toJson()).toList(),
+      };
+
+  factory SharedBasket.fromJson(Map<String, dynamic> json) => SharedBasket(
+        id: json['id'] as String? ?? '',
+        title: json['title'] as String? ?? '살까말까 공유',
+        ownerName: json['ownerName'] as String? ?? '',
+        fromUid: json['fromUid'] as String? ?? '',
+        fromHandle: json['fromHandle'] as String? ?? '',
+        fromAvatar: json['fromAvatar'] as String? ?? '',
+        items: (json['items'] as List? ?? [])
+            .map((p) => Product.fromJson(Map<String, dynamic>.from(p as Map)))
+            .toList(),
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+            DateTime.now(),
+      );
+}
+
+enum AppNotificationType { follow, basket }
+
+class AppNotification {
+  AppNotification({
+    required this.id,
+    required this.type,
+    required this.fromUid,
+    required this.fromName,
+    required this.fromHandle,
+    required this.fromAvatar,
+    required this.message,
+    required this.createdAt,
+    this.relatedId,
+    this.read = false,
+  });
+
+  final String id;
+  final AppNotificationType type;
+  final String fromUid;
+  final String fromName;
+  final String fromHandle;
+  final String fromAvatar;
+  final String message;
+  final String? relatedId;
+  final bool read;
+  final DateTime createdAt;
+
+  AppNotification copyWith({bool? read}) => AppNotification(
+        id: id,
+        type: type,
+        fromUid: fromUid,
+        fromName: fromName,
+        fromHandle: fromHandle,
+        fromAvatar: fromAvatar,
+        message: message,
+        relatedId: relatedId,
+        createdAt: createdAt,
+        read: read ?? this.read,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'type': type.name,
+        'fromUid': fromUid,
+        'fromName': fromName,
+        'fromHandle': fromHandle,
+        'fromAvatar': fromAvatar,
+        'message': message,
+        'relatedId': relatedId,
+        'read': read,
+        'createdAt': createdAt.toIso8601String(),
+      };
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    final typeRaw = json['type'] as String? ?? 'follow';
+    return AppNotification(
+      id: json['id'] as String? ?? '',
+      type: typeRaw == 'basket'
+          ? AppNotificationType.basket
+          : AppNotificationType.follow,
+      fromUid: json['fromUid'] as String? ?? '',
+      fromName: json['fromName'] as String? ?? '',
+      fromHandle: json['fromHandle'] as String? ?? '',
+      fromAvatar: json['fromAvatar'] as String? ?? '',
+      message: json['message'] as String? ?? '',
+      relatedId: json['relatedId'] as String?,
+      read: json['read'] as bool? ?? false,
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+          DateTime.now(),
+    );
+  }
+}
+
+/// Friend who sent one or more 살까말까 baskets (for the friends tab).
+class FriendSalkamalka {
+  FriendSalkamalka({
+    required this.friendId,
+    required this.friendName,
+    required this.friendHandle,
+    required this.friendAvatar,
+    required this.baskets,
+  });
+
+  final String friendId;
+  final String friendName;
+  final String friendHandle;
+  final String friendAvatar;
+  final List<SharedBasket> baskets;
+
+  List<Product> get allProducts {
+    final seen = <int>{};
+    final out = <Product>[];
+    for (final b in baskets) {
+      for (final p in b.items) {
+        if (seen.add(p.id)) out.add(p);
+      }
+    }
+    return out;
+  }
+
+  int get itemCount => allProducts.length;
 }
 
 class BasketItem {
