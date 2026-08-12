@@ -9,6 +9,8 @@ import '../models/models.dart';
 ///   users/{uid}/products/{productId}
 ///   users/{uid}/following/{otherUid}
 ///   users/{uid}/followers/{otherUid}
+///   users/{uid}/notifications/{notifId}
+///   users/{uid}/receivedBaskets/{basketId}
 class AccountRepository {
   AccountRepository({
     FirebaseAuth? auth,
@@ -44,6 +46,12 @@ class AccountRepository {
 
   CollectionReference<Map<String, dynamic>> _followers(String uid) =>
       _userDoc(uid).collection('followers');
+
+  CollectionReference<Map<String, dynamic>> _notifications(String uid) =>
+      _userDoc(uid).collection('notifications');
+
+  CollectionReference<Map<String, dynamic>> _receivedBaskets(String uid) =>
+      _userDoc(uid).collection('receivedBaskets');
 
   /// Creates Auth credentials and sends a verification email only.
   /// Firestore profile is created later via [ensureProfile] after verification.
@@ -162,6 +170,8 @@ class AccountRepository {
     await _deleteCollectionDocs(_products(uid));
     await _deleteCollectionDocs(_following(uid));
     await _deleteCollectionDocs(_followers(uid));
+    await _deleteCollectionDocs(_notifications(uid));
+    await _deleteCollectionDocs(_receivedBaskets(uid));
 
     if (handle != null && handle.isNotEmpty) {
       final key = _normalizeHandle(handle).toLowerCase();
@@ -575,6 +585,7 @@ class AccountRepository {
     required String myUid,
     required String targetUid,
     required bool follow,
+    AppUser? actor,
   }) async {
     if (myUid == targetUid) return;
     final batch = _db.batch();
@@ -599,6 +610,26 @@ class AccountRepository {
       batch.update(themRef, {'followers': FieldValue.increment(-1)});
     }
     await batch.commit();
+
+    // Best-effort inbox notification (does not block follow).
+    if (follow && actor != null) {
+      try {
+        final notifRef = _notifications(targetUid).doc();
+        await notifRef.set({
+          'id': notifRef.id,
+          'type': 'follow',
+          'fromUid': myUid,
+          'fromName': actor.name,
+          'fromHandle': actor.handle,
+          'fromAvatar': actor.avatarUrl,
+          'message': '${actor.name} 님이 회원님을 팔로우하기 시작했어요',
+          'relatedId': null,
+          'read': false,
+          'createdAt': DateTime.now().toIso8601String(),
+          'createdAtServer': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
+    }
   }
 
   Future<List<FriendWishlist>> loadFriendWishlists(
@@ -629,6 +660,81 @@ class AccountRepository {
       }
     }
     return result;
+  }
+
+  Future<List<AppNotification>> loadNotifications(String uid) async {
+    final snap = await _notifications(uid).limit(100).get();
+    final list = snap.docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = data['id'] ?? d.id;
+      return AppNotification.fromJson(data);
+    }).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<void> markNotificationsRead(String uid, List<String> ids) async {
+    if (ids.isEmpty) return;
+    final batch = _db.batch();
+    for (final id in ids) {
+      batch.update(_notifications(uid).doc(id), {'read': true});
+    }
+    await batch.commit();
+  }
+
+  Future<List<SharedBasket>> loadReceivedBaskets(String uid) async {
+    final snap = await _receivedBaskets(uid).limit(100).get();
+    final list = snap.docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = data['id'] ?? d.id;
+      return SharedBasket.fromJson(data);
+    }).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<void> sendBasketToFriends({
+    required AppUser from,
+    required List<String> recipientUids,
+    required List<Product> items,
+  }) async {
+    if (recipientUids.isEmpty || items.isEmpty) return;
+    final now = DateTime.now();
+    final batch = _db.batch();
+    for (final recipientUid in recipientUids) {
+      if (recipientUid == from.uid) continue;
+      final basketRef = _receivedBaskets(recipientUid).doc();
+      final basketId = basketRef.id;
+      final basket = SharedBasket(
+        id: basketId,
+        title: '${from.name}의 살까말까',
+        ownerName: from.name,
+        fromUid: from.uid,
+        fromHandle: from.handle,
+        fromAvatar: from.avatarUrl,
+        items: items,
+        createdAt: now,
+      );
+      batch.set(basketRef, {
+        ...basket.toJson(),
+        'createdAtServer': FieldValue.serverTimestamp(),
+      });
+      final notifRef = _notifications(recipientUid).doc();
+      batch.set(notifRef, {
+        'id': notifRef.id,
+        'type': 'basket',
+        'fromUid': from.uid,
+        'fromName': from.name,
+        'fromHandle': from.handle,
+        'fromAvatar': from.avatarUrl,
+        'message': '${from.name} 님이 살까말까 장바구니를 보냈어요',
+        'relatedId': basketId,
+        'read': false,
+        'createdAt': now.toIso8601String(),
+        'createdAtServer': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
   }
 
   /// New accounts start with only the fixed '전체' tab — no demo categories.

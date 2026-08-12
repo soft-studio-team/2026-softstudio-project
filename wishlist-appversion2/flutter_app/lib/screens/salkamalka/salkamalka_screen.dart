@@ -186,14 +186,7 @@ class SalkamalkaScreen extends StatelessWidget {
                 title: const Text('앱 친구에게 보내기'),
                 onTap: () async {
                   Navigator.pop(sheetCtx);
-                  final shared = await store.createSharedBasketFromSelection();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('${shared.items.length}개 상품을 친구에게 공유했어요'),
-                    ),
-                  );
-                  context.push('/shared/${shared.id}');
+                  await _openFriendPicker(context, store);
                 },
               ),
               ListTile(
@@ -232,6 +225,113 @@ class SalkamalkaScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _openFriendPicker(BuildContext context, AppStore store) async {
+    final following = store.friends.where((f) => f.isFollowing).toList();
+    if (following.isEmpty) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('팔로잉한 친구가 없어요. 먼저 친구를 추가해 주세요.')),
+      );
+      return;
+    }
+
+    final selected = <String>{};
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                ),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.55,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        '보낼 친구 선택',
+                        style: DiaryTheme.body(16, weight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '팔로잉 중인 친구에게 살까말까를 보내요',
+                        style: DiaryTheme.body(
+                          12,
+                          color: DiaryColors.inkMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: following.length,
+                          itemBuilder: (context, i) {
+                            final f = following[i];
+                            final checked = selected.contains(f.id);
+                            return CheckboxListTile(
+                              value: checked,
+                              onChanged: (v) {
+                                setModalState(() {
+                                  if (v == true) {
+                                    selected.add(f.id);
+                                  } else {
+                                    selected.remove(f.id);
+                                  }
+                                });
+                              },
+                              secondary: CircleAvatar(
+                                backgroundImage: NetworkImage(f.avatar),
+                              ),
+                              title: Text(f.name),
+                              subtitle: Text(f.username),
+                            );
+                          },
+                        ),
+                      ),
+                      FilledButton(
+                        onPressed: selected.isEmpty
+                            ? null
+                            : () => Navigator.pop(sheetCtx, true),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: DiaryColors.ink,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: Text('보내기 (${selected.length})'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed != true || selected.isEmpty) return;
+    try {
+      await store.sendBasketToFriends(selected.toList());
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${selected.length}명의 친구에게 살까말까를 보냈어요'),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e')),
+      );
+    }
   }
 }
 
