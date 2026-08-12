@@ -23,12 +23,23 @@ service cloud.firestore {
         );
     }
 
+    // A signed-in user may bump someone else's follower count by exactly one
+    // when they follow/unfollow them — nothing else on the doc may change.
+    function isFollowerCountStep() {
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followers'])
+        && (
+          request.resource.data.followers == resource.data.followers + 1
+          || request.resource.data.followers == resource.data.followers - 1
+        );
+    }
+
     match /users/{userId} {
       // Profiles are public so friend discovery and id-based
       // account recovery (masked email in the app) can work.
       allow read: if true;
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      allow update: if isOwner(userId) || isFollowerCountStep();
       // Same-email delete lets a re-registered Auth user clear Console leftovers.
       allow delete: if isOwner(userId) || emailMatchesAuth(resource.data);
 
