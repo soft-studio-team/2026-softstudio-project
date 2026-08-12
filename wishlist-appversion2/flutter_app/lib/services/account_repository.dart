@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../models/models.dart';
+import '../theme/avatar_presets.dart';
 
 /// Firestore layout:
 ///   users/{uid}                         profile + counts
@@ -15,14 +19,19 @@ class AccountRepository {
   AccountRepository({
     FirebaseAuth? auth,
     FirebaseFirestore? db,
+    FirebaseStorage? storage,
   })  : _authOverride = auth,
-        _dbOverride = db;
+        _dbOverride = db,
+        _storageOverride = storage;
 
   final FirebaseAuth? _authOverride;
   final FirebaseFirestore? _dbOverride;
+  final FirebaseStorage? _storageOverride;
 
   FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
   FirebaseFirestore get _db => _dbOverride ?? FirebaseFirestore.instance;
+  FirebaseStorage get _storage =>
+      _storageOverride ?? FirebaseStorage.instance;
 
   User? get firebaseUser {
     try {
@@ -481,6 +490,25 @@ class AccountRepository {
     });
   }
 
+  /// Uploads a local image as the user's avatar and returns its download URL.
+  Future<String> uploadAvatarFile(String uid, File file) async {
+    final ext = file.path.split('.').last.toLowerCase();
+    final safeExt = (ext == 'png' || ext == 'webp' || ext == 'jpg' || ext == 'jpeg')
+        ? (ext == 'jpeg' ? 'jpg' : ext)
+        : 'jpg';
+    final contentType = switch (safeExt) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+    final ref = _storage.ref('avatars/$uid/avatar.$safeExt');
+    await ref.putFile(
+      file,
+      SettableMetadata(contentType: contentType),
+    );
+    return ref.getDownloadURL();
+  }
+
   Future<List<WishlistTab>> loadTabs(String uid) async {
     final snap = await _tabs(uid).get();
     if (snap.docs.isEmpty) {
@@ -769,7 +797,8 @@ class AccountRepository {
   }
 
   String _defaultAvatar(String handle) {
-    final seed = Uri.encodeComponent(handle.replaceFirst('@', ''));
-    return 'https://api.dicebear.com/7.x/thumbs/png?seed=$seed';
+    final seed = handle.replaceFirst('@', '');
+    if (seed.isEmpty) return AvatarPresets.urls.first;
+    return AvatarPresets.urlForSeed(seed);
   }
 }

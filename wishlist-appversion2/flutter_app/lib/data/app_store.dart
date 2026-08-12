@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -774,6 +775,16 @@ class AppStore extends ChangeNotifier {
     );
     currentUser = nextUser;
     notifyListeners();
+  }
+
+  /// Uploads [file] to Storage and returns the public download URL.
+  Future<String> uploadAvatarFile(File file) async {
+    _ensureFirebase();
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    return _repo.uploadAvatarFile(userId, file);
   }
 
   Future<SharedBasket> createSharedBasketFromSelection() async {
