@@ -284,6 +284,7 @@ class ParsedProductInfo {
     this.missingFields = const [],
     this.resolvedTier,
     this.engineUsed = true,
+    this.onDeviceExtracted = false,
   });
 
   final String name;
@@ -296,6 +297,56 @@ class ParsedProductInfo {
   final List<String> missingFields;
   final int? resolvedTier;
   final bool engineUsed;
+
+  /// 단말 WebView(Tier 2.5)로 정보를 보완했는지. UI 배지 표시용.
+  final bool onDeviceExtracted;
+
+  /// 서버가 못 채운 칸을 단말 WebView 추출 결과로 메운다.
+  /// 이미 값이 있는 칸은 서버 값을 존중하고, 비어 있던 칸만 채운다.
+  ParsedProductInfo mergeOnDevice({
+    String? name,
+    int? price,
+    String? image,
+    String? platform,
+  }) {
+    final filledPrice =
+        (this.price <= 0 && price != null && price > 0) ? price : this.price;
+    final filledName = (this.name.isEmpty || this.name == '공유된 상품') &&
+            name != null &&
+            name.isNotEmpty
+        ? name
+        : this.name;
+    final filledImage = this.image.isEmpty && image != null && image.isNotEmpty
+        ? image
+        : this.image;
+    final filledPlatform =
+        (this.platform.isEmpty || this.platform == '쇼핑몰') &&
+                platform != null &&
+                platform.isNotEmpty
+            ? platform
+            : this.platform;
+
+    final remaining = missingFields.where((f) {
+      if (f == 'price') return filledPrice <= 0;
+      if (f == 'title') return filledName.isEmpty;
+      if (f == 'image_url') return filledImage.isEmpty;
+      return true;
+    }).toList();
+
+    return ParsedProductInfo(
+      name: filledName,
+      price: filledPrice,
+      platform: filledPlatform,
+      image: filledImage,
+      productUrl: productUrl,
+      originalPrice: originalPrice,
+      discount: discount,
+      missingFields: remaining,
+      resolvedTier: resolvedTier,
+      engineUsed: engineUsed,
+      onDeviceExtracted: true,
+    );
+  }
 
   /// Engine POST /parse response: { product, resolved_tier, missing_fields, ... }
   factory ParsedProductInfo.fromEngineResponse(Map<String, dynamic> json) {
