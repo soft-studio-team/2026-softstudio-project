@@ -8,8 +8,8 @@ class DiaryColors {
   static const paper = Color(0xFFF7F4EE);
   static const grid = Color(0xFFD9D2C6);
   static const white = Color(0xFFFFFFFF);
-  /// Very light beige for "my" feed cards (readable, just warmer than white).
-  static const mineCard = Color(0xFFFAF6EE);
+  /// Light greige for "my" feed cards — a wash of the app taupe, still readable.
+  static const mineCard = Color(0xFFEFEBE4);
   static const ink = Color(0xFF2F2A26);
   static const inkMuted = Color(0xFF8B7E74);
   static const inkSoft = Color(0xFFB0A69C);
