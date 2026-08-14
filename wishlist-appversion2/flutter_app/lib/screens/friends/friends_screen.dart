@@ -6,6 +6,7 @@ import '../../data/app_store.dart';
 import '../../models/models.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
+import '../reviews/review_widgets.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -15,7 +16,7 @@ class FriendsScreen extends StatefulWidget {
 }
 
 class _FriendsScreenState extends State<FriendsScreen> {
-  /// 0 팔로잉 · 1 팔로워 · 2 wishlist · 3 살까말까
+  /// 0 팔로잉 · 1 팔로워 · 2 wishlist · 3 살까말까 · 4 리뷰
   int tab = 0;
   final searchCtrl = TextEditingController();
   bool refreshing = false;
@@ -116,6 +117,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           icon: const Icon(Icons.refresh),
                         ),
                       IconButton(
+                        tooltip: '리뷰 쓰기',
+                        onPressed: () => context.push('/reviews/write'),
+                        icon: const Icon(Icons.edit_outlined),
+                      ),
+                      IconButton(
                         tooltip: '알림',
                         onPressed: () => context.push('/notifications'),
                         icon: Badge(
@@ -142,44 +148,47 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _TabChip(
+                  SizedBox(
+                    height: 40,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _TabChip(
                           label: '팔로잉',
                           color: DiaryColors.folderBlue,
                           active: tab == 0,
                           onTap: () => setState(() => tab = 0),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: _TabChip(
+                        const SizedBox(width: 6),
+                        _TabChip(
                           label: '팔로워',
                           color: DiaryColors.folderYellow,
                           active: tab == 1,
                           onTap: () => setState(() => tab = 1),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: _TabChip(
+                        const SizedBox(width: 6),
+                        _TabChip(
                           label: 'wishlist',
                           color: DiaryColors.folderPink,
                           active: tab == 2,
                           onTap: () => setState(() => tab = 2),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: _TabChip(
+                        const SizedBox(width: 6),
+                        _TabChip(
                           label: '살까말까',
                           color: DiaryColors.folderPeach,
                           active: tab == 3,
                           onTap: () => setState(() => tab = 3),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        _TabChip(
+                          label: '리뷰',
+                          color: DiaryColors.folderLilac,
+                          active: tab == 4,
+                          onTap: () => setState(() => tab = 4),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -206,7 +215,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             .where((f) => f.isFollowing)
                             .isEmpty,
                       ),
-                    _ => _FriendSalkamalkaPane(groups: salkamalkaGroups),
+                    3 => _FriendSalkamalkaPane(groups: salkamalkaGroups),
+                    _ => _FriendReviewsPane(reviews: store.reviewFeed),
                   },
                 ),
               ),
@@ -562,6 +572,33 @@ class _FriendSalkamalkaPane extends StatelessWidget {
   }
 }
 
+class _FriendReviewsPane extends StatelessWidget {
+  const _FriendReviewsPane({required this.reviews});
+
+  final List<ProductReview> reviews;
+
+  @override
+  Widget build(BuildContext context) {
+    if (reviews.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Text(
+            '아직 올라온 리뷰가 없어요.\n오른쪽 위 연필로 첫 글을 써보세요',
+            textAlign: TextAlign.center,
+            style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
+          ),
+        ),
+      );
+    }
+    return ListView(
+      children: [
+        for (final r in reviews) ReviewPostCard(review: r),
+      ],
+    );
+  }
+}
+
 class _TabChip extends StatelessWidget {
   const _TabChip({
     required this.label,
@@ -580,7 +617,7 @@ class _TabChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(10),
@@ -591,16 +628,13 @@ class _TabChip extends StatelessWidget {
             ),
           ),
         ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            style: DiaryTheme.body(
-              11,
-              weight: active ? FontWeight.w700 : FontWeight.w500,
-            ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          style: DiaryTheme.body(
+            12,
+            weight: active ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ),

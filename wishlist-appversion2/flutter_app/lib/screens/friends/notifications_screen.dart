@@ -92,9 +92,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                       ),
                       Icon(
-                        n.type == AppNotificationType.basket
-                            ? Icons.shopping_bag_outlined
-                            : Icons.person_add_alt_1_outlined,
+                        switch (n.type) {
+                          AppNotificationType.basket =>
+                            Icons.shopping_bag_outlined,
+                          AppNotificationType.review =>
+                            Icons.menu_book_outlined,
+                          AppNotificationType.follow =>
+                            Icons.person_add_alt_1_outlined,
+                        },
                         size: 18,
                         color: DiaryColors.inkMuted,
                       ),
@@ -107,6 +112,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _open(BuildContext context, AppStore store, AppNotification n) {
+    if (n.type == AppNotificationType.review) {
+      if (n.relatedId != null) {
+        context.push('/reviews/${n.relatedId}');
+      } else {
+        context.go('/friends');
+      }
+      return;
+    }
     if (n.type == AppNotificationType.basket) {
       if (n.fromUid.isNotEmpty) {
         context.push('/friend-salkamalka/${n.fromUid}');

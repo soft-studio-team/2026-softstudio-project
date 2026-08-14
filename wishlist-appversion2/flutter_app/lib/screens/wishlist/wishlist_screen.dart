@@ -112,6 +112,21 @@ class _WishlistScreenState extends State<WishlistScreen> {
                                             context.push('/product/${p.id}'),
                                         onDelete: () =>
                                             store.removeProduct(p.id),
+                                        hasReview: store.myReviewForProduct(p.id) !=
+                                            null,
+                                        onReview: () {
+                                          final existing =
+                                              store.myReviewForProduct(p.id);
+                                          if (existing != null) {
+                                            context.push(
+                                              '/reviews/${existing.id}',
+                                            );
+                                          } else {
+                                            context.push(
+                                              '/reviews/write?productId=${p.id}',
+                                            );
+                                          }
+                                        },
                                       );
                                     },
                                   ),
@@ -634,11 +649,15 @@ class WishlistProductCard extends StatelessWidget {
     required this.product,
     required this.onOpen,
     this.onDelete,
+    this.onReview,
+    this.hasReview = false,
   });
 
   final Product product;
   final VoidCallback onOpen;
   final VoidCallback? onDelete;
+  final VoidCallback? onReview;
+  final bool hasReview;
 
   @override
   Widget build(BuildContext context) {
@@ -709,6 +728,20 @@ class WishlistProductCard extends StatelessWidget {
                             weight: FontWeight.w700,
                           ),
                         ),
+                        if (onReview != null) ...[
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: onReview,
+                            child: Text(
+                              hasReview ? '내 리뷰' : '리뷰',
+                              style: DiaryTheme.body(
+                                12,
+                                weight: FontWeight.w700,
+                                color: DiaryColors.accent,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],

@@ -18,6 +18,8 @@ class AppStore extends ChangeNotifier {
   static const _pendingHandleKey = 'pending_register_handle';
   static const _notifyFollowKey = 'notify_follow';
   static const _notifyBasketKey = 'notify_basket';
+  static const _notifyReviewKey = 'notify_review';
+  static const _reviewsKey = 'my_reviews';
 
   AppStore({AccountRepository? repository})
       : _repo = repository ?? AccountRepository();
@@ -37,6 +39,7 @@ class AppStore extends ChangeNotifier {
   /// In-app notification preferences (MyPage → 알림 설정).
   bool notifyOnFollow = true;
   bool notifyOnBasket = true;
+  bool notifyOnReview = true;
 
   List<WishlistTab> tabs = [];
   List<Product> products = [];
@@ -46,6 +49,8 @@ class AppStore extends ChangeNotifier {
   List<AppUser> followerUsers = [];
   List<AppNotification> notifications = [];
   List<SharedBasket> receivedBaskets = [];
+  List<ProductReview> myReviews = [];
+  List<ProductReview> friendReviews = [];
   final Map<String, SharedBasket> sharedBaskets = {};
 
   String selectedTabId = 'all';
@@ -141,6 +146,7 @@ class AppStore extends ChangeNotifier {
     friendWishlists = await _repo.loadFriendWishlists(friends);
     followerUsers = await _repo.loadUsers(await _repo.followerIds(fresh.uid));
     await _loadInboxSafely(fresh.uid);
+    await _loadReviewsSafely(fresh.uid);
     _syncFriendCounts();
     currentUser = currentUser.copyWith(
       following: following.length,
@@ -156,6 +162,7 @@ class AppStore extends ChangeNotifier {
     final keySuffix = uid ?? 'guest';
     notifyOnFollow = prefs.getBool('${_notifyFollowKey}_$keySuffix') ?? true;
     notifyOnBasket = prefs.getBool('${_notifyBasketKey}_$keySuffix') ?? true;
+    notifyOnReview = prefs.getBool('${_notifyReviewKey}_$keySuffix') ?? true;
   }
 
   /// Notifications / received baskets need updated Firestore rules.
@@ -173,6 +180,22 @@ class AppStore extends ChangeNotifier {
     }
   }
 
+  Future<void> _loadReviewsSafely(String userId) async {
+    try {
+      myReviews = await _repo.loadReviews(userId);
+    } catch (_) {
+      await _restoreLocalReviews();
+    }
+    if (myReviews.isEmpty) {
+      await _restoreLocalReviews();
+    }
+    try {
+      friendReviews = await _repo.loadFriendReviews(friends);
+    } catch (_) {
+      friendReviews = [];
+    }
+  }
+
   Future<void> _clearSessionLocal() async {
     isLoggedIn = false;
     awaitingEmailVerification = false;
@@ -186,6 +209,8 @@ class AppStore extends ChangeNotifier {
     followerUsers = [];
     notifications = [];
     receivedBaskets = [];
+    myReviews = [];
+    friendReviews = [];
     currentUser = AppUser(
       name: '게스트',
       handle: '@guest',
@@ -593,6 +618,7 @@ class AppStore extends ChangeNotifier {
   List<AppNotification> get visibleNotifications => notifications.where((n) {
         if (n.type == AppNotificationType.follow) return notifyOnFollow;
         if (n.type == AppNotificationType.basket) return notifyOnBasket;
+        if (n.type == AppNotificationType.review) return notifyOnReview;
         return true;
       }).toList();
 
@@ -648,6 +674,7 @@ class AppStore extends ChangeNotifier {
     friendWishlists = await _repo.loadFriendWishlists(friends);
     followerUsers = await _repo.loadUsers(await _repo.followerIds(userId));
     await _loadInboxSafely(userId);
+    await _loadReviewsSafely(userId);
     _syncFriendCounts();
     final profile = await _repo.loadProfile(userId);
     if (profile != null) {
@@ -710,6 +737,9 @@ class AppStore extends ChangeNotifier {
       following: friends.where((f) => f.isFollowing).length,
     );
     friendWishlists = await _repo.loadFriendWishlists(friends);
+    try {
+      friendReviews = await _repo.loadFriendReviews(friends);
+    } catch (_) {}
     _syncFriendCounts();
     notifyListeners();
   }
@@ -733,6 +763,12 @@ class AppStore extends ChangeNotifier {
 
   Future<void> setNotifyOnBasket(bool value) async {
     notifyOnBasket = value;
+    await _persistNotificationPrefs();
+    notifyListeners();
+  }
+
+  Future<void> setNotifyOnReview(bool value) async {
+    notifyOnReview = value;
     await _persistNotificationPrefs();
     notifyListeners();
   }
@@ -874,6 +910,7 @@ class AppStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     notifyOnFollow = prefs.getBool('${_notifyFollowKey}_${uid ?? 'guest'}') ?? true;
     notifyOnBasket = prefs.getBool('${_notifyBasketKey}_${uid ?? 'guest'}') ?? true;
+    notifyOnReview = prefs.getBool('${_notifyReviewKey}_${uid ?? 'guest'}') ?? true;
     final sharedRaw = prefs.getString(_sharedKey);
     if (sharedRaw != null) {
       final list = jsonDecode(sharedRaw) as List;
@@ -890,6 +927,7 @@ class AppStore extends ChangeNotifier {
     final keySuffix = uid ?? 'guest';
     await prefs.setBool('${_notifyFollowKey}_$keySuffix', notifyOnFollow);
     await prefs.setBool('${_notifyBasketKey}_$keySuffix', notifyOnBasket);
+    await prefs.setBool('${_notifyReviewKey}_$keySuffix', notifyOnReview);
   }
 
   Product? findCatalogProduct(int id) {
@@ -908,5 +946,130 @@ class AppStore extends ChangeNotifier {
       if (hit != null) return hit;
     }
     return null;
+  }
+
+  List<ProductReview> get reviewFeed {
+    final byId = <String, ProductReview>{};
+    for (final r in [...friendReviews, ...myReviews]) {
+      byId[r.id] = r;
+    }
+    final list = byId.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  ProductReview? reviewById(String id) {
+    return reviewFeed.where((r) => r.id == id).firstOrNull;
+  }
+
+  ProductReview? myReviewForProduct(int productId) {
+    return myReviews.where((r) => r.productId == productId).firstOrNull;
+  }
+
+  Future<void> _restoreLocalReviews() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('${_reviewsKey}_${uid ?? 'guest'}');
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final list = jsonDecode(raw) as List;
+      final restored = list
+          .map((e) => ProductReview.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+      if (myReviews.isEmpty) {
+        myReviews = restored;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _persistLocalReviews() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      '${_reviewsKey}_${uid ?? 'guest'}',
+      jsonEncode(myReviews.map((r) => r.toJson()).toList()),
+    );
+  }
+
+  Future<ProductReview> publishReview({
+    required Product product,
+    required String title,
+    required String body,
+    String? existingId,
+  }) async {
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    final trimmedTitle = title.trim();
+    final trimmedBody = body.trim();
+    if (trimmedTitle.isEmpty) {
+      throw Exception('제목을 입력해 주세요.');
+    }
+    if (trimmedBody.isEmpty) {
+      throw Exception('본문을 입력해 주세요.');
+    }
+
+    final now = DateTime.now();
+    final existing = existingId != null
+        ? myReviews.where((r) => r.id == existingId).firstOrNull
+        : myReviewForProduct(product.id);
+    final review = existing == null
+        ? ProductReview(
+            id: 'rv-${now.millisecondsSinceEpoch}',
+            authorUid: userId,
+            authorName: currentUser.name,
+            authorHandle: currentUser.handle,
+            authorAvatar: currentUser.avatarUrl,
+            productId: product.id,
+            productName: product.name,
+            productImage: product.image,
+            productPlatform: product.platform,
+            productPrice: product.price,
+            productUrl: product.productUrl,
+            title: trimmedTitle,
+            body: trimmedBody,
+            createdAt: now,
+            updatedAt: now,
+          )
+        : existing.copyWith(
+            title: trimmedTitle,
+            body: trimmedBody,
+            updatedAt: now,
+            authorName: currentUser.name,
+            authorHandle: currentUser.handle,
+            authorAvatar: currentUser.avatarUrl,
+          );
+
+    myReviews = [
+      review,
+      ...myReviews.where((r) => r.id != review.id),
+    ];
+    await _persistLocalReviews();
+    try {
+      await _repo.upsertReview(userId, review);
+      if (existing == null) {
+        final followerIds = await _repo.followerIds(userId);
+        await _repo.notifyFollowersOfReview(
+          from: currentUser.copyWith(uid: userId),
+          review: review,
+          followerUids: followerIds,
+        );
+      }
+    } catch (_) {
+      // Local review still works if Firestore rules are not deployed yet.
+    }
+    notifyListeners();
+    return review;
+  }
+
+  Future<void> deleteReview(String reviewId) async {
+    final userId = uid;
+    myReviews = myReviews.where((r) => r.id != reviewId).toList();
+    await _persistLocalReviews();
+    if (userId != null) {
+      try {
+        await _repo.deleteReview(userId, reviewId);
+      } catch (_) {}
+    }
+    notifyListeners();
   }
 }

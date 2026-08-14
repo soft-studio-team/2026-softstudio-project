@@ -90,6 +90,14 @@ class MyPageScreen extends StatelessWidget {
                                   '${store.products.length} 아이템',
                                   style: DiaryTheme.body(11),
                                 ),
+                                Text('  |  ', style: DiaryTheme.body(11)),
+                                GestureDetector(
+                                  onTap: () => context.push('/my-reviews'),
+                                  child: Text(
+                                    '${store.myReviews.length} 리뷰',
+                                    style: DiaryTheme.body(11),
+                                  ),
+                                ),
                               ],
                             ),
                           ],
@@ -164,6 +172,12 @@ class MyPageScreen extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 18),
+              DiaryButton(
+                label: '내 리뷰',
+                icon: Icons.menu_book_outlined,
+                onPressed: () => context.push('/my-reviews'),
+              ),
+              const SizedBox(height: 8),
               DiaryButton(
                 label: '알림 설정',
                 icon: Icons.notifications_none,

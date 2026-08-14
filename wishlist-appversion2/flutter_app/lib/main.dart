@@ -18,6 +18,9 @@ import 'screens/mypage/follow_list_screen.dart';
 import 'screens/mypage/mypage_screen.dart';
 import 'screens/mypage/notification_settings_screen.dart';
 import 'screens/product/product_detail_screen.dart';
+import 'screens/reviews/my_reviews_screen.dart';
+import 'screens/reviews/review_compose_screen.dart';
+import 'screens/reviews/review_detail_screen.dart';
 import 'screens/salkamalka/salkamalka_screen.dart';
 import 'screens/share/share_intake_screen.dart';
 import 'screens/shared/shared_wishlist_screen.dart';
@@ -197,6 +200,29 @@ GoRouter _buildRouter(AppStore store) {
         path: '/following',
         builder: (context, state) =>
             const FollowListScreen(kind: FollowListKind.following),
+      ),
+      GoRoute(
+        path: '/reviews/write',
+        builder: (context, state) {
+          final productId = int.tryParse(
+            state.uri.queryParameters['productId'] ?? '',
+          );
+          final reviewId = state.uri.queryParameters['reviewId'];
+          return ReviewComposeScreen(
+            productId: productId,
+            reviewId: reviewId,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/reviews/:id',
+        builder: (context, state) => ReviewDetailScreen(
+          reviewId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: '/my-reviews',
+        builder: (context, state) => const MyReviewsScreen(),
       ),
       GoRoute(
         path: '/notifications',

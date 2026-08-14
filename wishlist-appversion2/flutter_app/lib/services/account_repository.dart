@@ -15,6 +15,7 @@ import '../theme/avatar_presets.dart';
 ///   users/{uid}/followers/{otherUid}
 ///   users/{uid}/notifications/{notifId}
 ///   users/{uid}/receivedBaskets/{basketId}
+///   users/{uid}/reviews/{reviewId}
 class AccountRepository {
   AccountRepository({
     FirebaseAuth? auth,
@@ -61,6 +62,9 @@ class AccountRepository {
 
   CollectionReference<Map<String, dynamic>> _receivedBaskets(String uid) =>
       _userDoc(uid).collection('receivedBaskets');
+
+  CollectionReference<Map<String, dynamic>> _reviews(String uid) =>
+      _userDoc(uid).collection('reviews');
 
   /// Creates Auth credentials and sends a verification email only.
   /// Firestore profile is created later via [ensureProfile] after verification.
@@ -181,6 +185,7 @@ class AccountRepository {
     await _deleteCollectionDocs(_followers(uid));
     await _deleteCollectionDocs(_notifications(uid));
     await _deleteCollectionDocs(_receivedBaskets(uid));
+    await _deleteCollectionDocs(_reviews(uid));
 
     if (handle != null && handle.isNotEmpty) {
       final key = _normalizeHandle(handle).toLowerCase();
@@ -726,6 +731,73 @@ class AccountRepository {
       batch.update(_notifications(uid).doc(id), {'read': true});
     }
     await batch.commit();
+  }
+
+  Future<List<ProductReview>> loadReviews(String uid) async {
+    final snap = await _reviews(uid).get();
+    final list = snap.docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = data['id'] ?? d.id;
+      return ProductReview.fromJson(data);
+    }).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<void> upsertReview(String uid, ProductReview review) async {
+    await _reviews(uid).doc(review.id).set(review.toJson());
+  }
+
+  Future<void> deleteReview(String uid, String reviewId) async {
+    await _reviews(uid).doc(reviewId).delete();
+  }
+
+  Future<List<ProductReview>> loadFriendReviews(
+    List<Friend> followingFriends,
+  ) async {
+    final out = <ProductReview>[];
+    for (final friend in followingFriends.where((f) => f.isFollowing)) {
+      try {
+        out.addAll(await loadReviews(friend.id));
+      } catch (_) {}
+    }
+    out.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return out;
+  }
+
+  Future<void> notifyFollowersOfReview({
+    required AppUser from,
+    required ProductReview review,
+    required List<String> followerUids,
+  }) async {
+    if (followerUids.isEmpty) return;
+    final now = DateTime.now();
+    const chunk = 200;
+    for (var i = 0; i < followerUids.length; i += chunk) {
+      final slice = followerUids.sublist(
+        i,
+        i + chunk > followerUids.length ? followerUids.length : i + chunk,
+      );
+      final batch = _db.batch();
+      for (final recipientUid in slice) {
+        if (recipientUid == from.uid) continue;
+        final notifRef = _notifications(recipientUid).doc();
+        batch.set(notifRef, {
+          'id': notifRef.id,
+          'type': 'review',
+          'fromUid': from.uid,
+          'fromName': from.name,
+          'fromHandle': from.handle,
+          'fromAvatar': from.avatarUrl,
+          'message': '${from.name} 님이 상품 리뷰를 올렸어요',
+          'relatedId': review.id,
+          'read': false,
+          'createdAt': now.toIso8601String(),
+          'createdAtServer': FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+    }
   }
 
   Future<List<SharedBasket>> loadReceivedBaskets(String uid) async {
