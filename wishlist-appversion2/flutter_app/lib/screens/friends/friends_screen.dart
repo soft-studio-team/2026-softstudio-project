@@ -92,7 +92,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -151,47 +151,53 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  SizedBox(
-                    height: 42,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        _TabChip(
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _TabChip(
                           label: '팔로잉',
                           color: DiaryColors.folderBlue,
                           active: tab == 0,
                           onTap: () => store.selectFriendsTab(0),
                         ),
-                        const SizedBox(width: 8),
-                        _TabChip(
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: _TabChip(
                           label: '팔로워',
                           color: DiaryColors.folderYellow,
                           active: tab == 1,
                           onTap: () => store.selectFriendsTab(1),
                         ),
-                        const SizedBox(width: 8),
-                        _TabChip(
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: _TabChip(
                           label: 'wishlist',
                           color: DiaryColors.folderPink,
                           active: tab == 2,
                           onTap: () => store.selectFriendsTab(2),
                         ),
-                        const SizedBox(width: 8),
-                        _TabChip(
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: _TabChip(
                           label: '살까말까',
                           color: DiaryColors.folderPeach,
                           active: tab == 3,
                           onTap: () => store.selectFriendsTab(3),
                         ),
-                        const SizedBox(width: 8),
-                        _TabChip(
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: _TabChip(
                           label: '리뷰',
                           color: DiaryColors.folderLilac,
                           active: tab == 4,
                           onTap: () => store.selectFriendsTab(4),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -728,7 +734,8 @@ class _TabChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(12),
@@ -739,13 +746,16 @@ class _TabChip extends StatelessWidget {
             ),
           ),
         ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          style: DiaryTheme.body(
-            13,
-            weight: active ? FontWeight.w700 : FontWeight.w500,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            style: DiaryTheme.body(
+              13,
+              weight: active ? FontWeight.w700 : FontWeight.w500,
+            ),
           ),
         ),
       ),
