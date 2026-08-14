@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
+import '../../services/kakao_share_service.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 
@@ -147,6 +148,19 @@ Future<void> showSentBasketShareSheet(
                 onTap: () async {
                   Navigator.pop(sheetCtx);
                   await _resendToFriends(context, store, basket);
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.chat_bubble_outline),
+                title: Text('카카오톡', style: DiaryTheme.body(14)),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  await shareBasketToKakaoTalk(
+                    context,
+                    basket: basket,
+                    url: store.shareUrlFor(basket),
+                  );
                 },
               ),
               ListTile(

@@ -18,4 +18,18 @@ class AppConfig {
     }
     return 'http://127.0.0.1:8000';
   }
+
+  /// Kakao Developers 네이티브 앱 키.
+  /// https://developers.kakao.com 에서 앱을 만든 뒤
+  /// iOS 번들 ID / Android 패키지명 `com.softstudio.wishlist` 를 등록하고 키를 넣는다.
+  ///
+  ///     flutter run --dart-define=KAKAO_NATIVE_APP_KEY=여기에키
+  ///
+  /// 키가 있으면 카톡이 바로 열린다. 없으면 시스템 공유 시트에서 카톡을 고르면 된다.
+  static const String kakaoNativeAppKey = String.fromEnvironment(
+    'KAKAO_NATIVE_APP_KEY',
+    defaultValue: '',
+  );
+
+  static bool get hasKakaoNativeAppKey => kakaoNativeAppKey.isNotEmpty;
 }

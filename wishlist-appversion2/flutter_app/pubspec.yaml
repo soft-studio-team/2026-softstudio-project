@@ -40,6 +40,10 @@ dependencies:
   google_fonts: ^6.3.2
   http: ^1.6.0
   url_launcher: ^6.3.2
+  share_plus: ^11.0.0
+  # 2.0은 Dart 3.9를 요구해서 1.10으로 고정한다.
+  kakao_flutter_sdk_common: 1.10.0
+  kakao_flutter_sdk_share: 1.10.0
   uuid: ^4.6.0
   intl: ^0.20.2
   # 1.9.0 은 아직 stable 로 나오지 않은 compileSdk 37 을 요구하므로 1.8.1 로 고정한다.

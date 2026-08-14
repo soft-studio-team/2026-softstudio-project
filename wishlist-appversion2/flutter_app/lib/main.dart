@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kakao_flutter_sdk_common/kakao_flutter_sdk_common.dart';
 import 'package:provider/provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
+import 'config.dart';
 import 'data/app_store.dart';
 import 'firebase_options.dart';
 import 'screens/auth/account_recovery_screen.dart';
@@ -30,6 +32,9 @@ import 'theme/diary_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (AppConfig.hasKakaoNativeAppKey) {
+    KakaoSdk.init(nativeAppKey: AppConfig.kakaoNativeAppKey);
+  }
   if (isFirebaseConfigured) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,

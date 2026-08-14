@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:figmadesign/data/app_store.dart';
 import 'package:figmadesign/models/models.dart';
+import 'package:figmadesign/services/kakao_share_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -70,5 +71,42 @@ void main() {
     expect(store.reviewFeed.first.id, review.id);
     expect(review.mood, 5);
     expect(review.imageUrls, isEmpty);
+  });
+
+  test('Kakao share copy includes owner, items, and URL', () {
+    final basket = SharedBasket(
+      id: 'sb-1',
+      title: '살까말까 공유',
+      ownerName: '지은',
+      items: [
+        Product(
+          id: 1,
+          listId: 'all',
+          name: '니트',
+          price: 32000,
+          image: 'https://example.com/knit.png',
+          platform: '테스트몰',
+        ),
+        Product(
+          id: 2,
+          listId: 'all',
+          name: '슬랙스',
+          price: 48000,
+          image: 'https://example.com/slacks.png',
+          platform: '테스트몰',
+        ),
+      ],
+      createdAt: DateTime(2026, 8, 14),
+    );
+
+    expect(KakaoSharePayload.title(basket), '지은 님의 살까말까');
+    expect(KakaoSharePayload.description(basket), '니트, 슬랙스');
+    expect(
+      KakaoSharePayload.text(
+        basket: basket,
+        url: 'https://wishlist.app/shared/sb-1',
+      ),
+      contains('https://wishlist.app/shared/sb-1'),
+    );
   });
 }

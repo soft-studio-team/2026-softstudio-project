@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
+import '../../services/kakao_share_service.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 
@@ -192,11 +193,23 @@ class SalkamalkaScreen extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.chat_bubble_outline),
                 title: const Text('카카오톡'),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(sheetCtx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('카카오 공유는 추후 연동 예정')),
-                  );
+                  try {
+                    final shared =
+                        await store.createSharedBasketFromSelection();
+                    if (!context.mounted) return;
+                    await shareBasketToKakaoTalk(
+                      context,
+                      basket: shared,
+                      url: store.shareUrlFor(shared),
+                    );
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('$e')),
+                    );
+                  }
                 },
               ),
               ListTile(
