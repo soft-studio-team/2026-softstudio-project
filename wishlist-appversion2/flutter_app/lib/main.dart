@@ -17,7 +17,11 @@ import 'screens/friends/notifications_screen.dart';
 import 'screens/mypage/follow_list_screen.dart';
 import 'screens/mypage/mypage_screen.dart';
 import 'screens/mypage/notification_settings_screen.dart';
+import 'screens/mypage/sent_baskets_screen.dart';
 import 'screens/product/product_detail_screen.dart';
+import 'screens/reviews/my_reviews_screen.dart';
+import 'screens/reviews/review_compose_screen.dart';
+import 'screens/reviews/review_detail_screen.dart';
 import 'screens/salkamalka/salkamalka_screen.dart';
 import 'screens/share/share_intake_screen.dart';
 import 'screens/shared/shared_wishlist_screen.dart';
@@ -199,6 +203,33 @@ GoRouter _buildRouter(AppStore store) {
             const FollowListScreen(kind: FollowListKind.following),
       ),
       GoRoute(
+        path: '/reviews/write',
+        builder: (context, state) {
+          final productId = int.tryParse(
+            state.uri.queryParameters['productId'] ?? '',
+          );
+          final reviewId = state.uri.queryParameters['reviewId'];
+          return ReviewComposeScreen(
+            productId: productId,
+            reviewId: reviewId,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/reviews/:id',
+        builder: (context, state) => ReviewDetailScreen(
+          reviewId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: '/my-reviews',
+        builder: (context, state) => const MyReviewsScreen(),
+      ),
+      GoRoute(
+        path: '/sent-baskets',
+        builder: (context, state) => const SentBasketsScreen(),
+      ),
+      GoRoute(
         path: '/notifications',
         builder: (context, state) => const NotificationsScreen(),
       ),
@@ -254,6 +285,9 @@ GoRouter _buildRouter(AppStore store) {
             subtitle: '${shared.ownerName} 님이 공유한 살까말까 바구니',
             products: shared.items,
             accentColor: DiaryColors.folderPeach,
+            onShare: store.sharedBaskets.containsKey(id)
+                ? () => showSentBasketShareSheet(context, store, shared)
+                : null,
           );
         },
       ),
@@ -291,6 +325,11 @@ class HomeShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final store = context.watch<AppStore>();
+    final showWishlistFab = navigationShell.currentIndex == 0;
+    final showReviewFab =
+        navigationShell.currentIndex == 1 && store.friendsTab == 4;
+
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Container(
@@ -338,7 +377,7 @@ class HomeShell extends StatelessWidget {
           ),
         ),
       ),
-      floatingActionButton: navigationShell.currentIndex == 0
+      floatingActionButton: showWishlistFab
           ? FloatingActionButton.extended(
               backgroundColor: DiaryColors.folderYellow,
               foregroundColor: DiaryColors.ink,
@@ -346,7 +385,15 @@ class HomeShell extends StatelessWidget {
               label: const Text('공유 담기'),
               icon: const Icon(Icons.add_link),
             )
-          : null,
+          : showReviewFab
+              ? FloatingActionButton.extended(
+                  backgroundColor: DiaryColors.folderYellow,
+                  foregroundColor: DiaryColors.ink,
+                  onPressed: () => context.push('/reviews/write'),
+                  label: const Text('리뷰 쓰기'),
+                  icon: const Icon(Icons.edit_outlined),
+                )
+              : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
     );
   }

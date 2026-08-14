@@ -96,6 +96,17 @@ service cloud.firestore {
           && request.resource.data.fromUid == request.auth.uid;
         allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
+
+      match /sentBaskets/{basketId} {
+        allow read, create, update: if isOwner(userId);
+        allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
+      }
+
+      match /reviews/{reviewId} {
+        allow read: if signedIn();
+        allow create, update: if isOwner(userId);
+        allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
+      }
     }
 
     // Unique wishkit ids (@handle). One doc per id, owned by a single uid.

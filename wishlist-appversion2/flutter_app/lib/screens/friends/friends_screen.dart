@@ -6,6 +6,7 @@ import '../../data/app_store.dart';
 import '../../models/models.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
+import '../reviews/review_widgets.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -15,8 +16,6 @@ class FriendsScreen extends StatefulWidget {
 }
 
 class _FriendsScreenState extends State<FriendsScreen> {
-  /// 0 팔로잉 · 1 팔로워 · 2 wishlist · 3 살까말까
-  int tab = 0;
   final searchCtrl = TextEditingController();
   bool refreshing = false;
 
@@ -72,10 +71,20 @@ class _FriendsScreenState extends State<FriendsScreen> {
               w.listName.toLowerCase().contains(q);
         })
         .toList();
-    final salkamalkaGroups = store.friendSalkamalkaGroups
-        .where((g) => _matchesQuery(g.friendName, g.friendHandle, q))
-        .toList();
+    final salkamalkaFeed = store.salkamalkaFeed.where((e) {
+      if (q.isEmpty) return true;
+      final b = e.basket;
+      return _matchesQuery(b.ownerName, b.fromHandle, q) ||
+          b.recipientNames.any((n) => n.toLowerCase().contains(q));
+    }).toList();
+    final reviews = store.reviewFeed.where((r) {
+      if (q.isEmpty) return true;
+      return _matchesQuery(r.authorName, r.authorHandle, q) ||
+          r.title.toLowerCase().contains(q) ||
+          r.productName.toLowerCase().contains(q);
+    }).toList();
     final unread = store.unreadNotificationCount;
+    final tab = store.friendsTab;
 
     return Scaffold(
       backgroundColor: DiaryColors.canvas,
@@ -83,7 +92,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -149,7 +158,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           label: '팔로잉',
                           color: DiaryColors.folderBlue,
                           active: tab == 0,
-                          onTap: () => setState(() => tab = 0),
+                          onTap: () => store.selectFriendsTab(0),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -158,7 +167,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           label: '팔로워',
                           color: DiaryColors.folderYellow,
                           active: tab == 1,
-                          onTap: () => setState(() => tab = 1),
+                          onTap: () => store.selectFriendsTab(1),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -167,7 +176,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           label: 'wishlist',
                           color: DiaryColors.folderPink,
                           active: tab == 2,
-                          onTap: () => setState(() => tab = 2),
+                          onTap: () => store.selectFriendsTab(2),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -176,7 +185,16 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           label: '살까말까',
                           color: DiaryColors.folderPeach,
                           active: tab == 3,
-                          onTap: () => setState(() => tab = 3),
+                          onTap: () => store.selectFriendsTab(3),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: _TabChip(
+                          label: '리뷰',
+                          color: DiaryColors.folderLilac,
+                          active: tab == 4,
+                          onTap: () => store.selectFriendsTab(4),
                         ),
                       ),
                     ],
@@ -206,7 +224,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             .where((f) => f.isFollowing)
                             .isEmpty,
                       ),
-                    _ => _FriendSalkamalkaPane(groups: salkamalkaGroups),
+                    3 => _SalkamalkaFeedPane(entries: salkamalkaFeed),
+                    _ => _FriendReviewsPane(
+                        reviews: reviews,
+                        myUid: store.uid ?? '',
+                      ),
                   },
                 ),
               ),
@@ -530,34 +552,166 @@ class _FriendWishlistsPane extends StatelessWidget {
   }
 }
 
-class _FriendSalkamalkaPane extends StatelessWidget {
-  const _FriendSalkamalkaPane({required this.groups});
+class _SalkamalkaFeedPane extends StatelessWidget {
+  const _SalkamalkaFeedPane({required this.entries});
 
-  final List<FriendSalkamalka> groups;
+  final List<SalkamalkaFeedEntry> entries;
 
   @override
   Widget build(BuildContext context) {
-    if (groups.isEmpty) {
+    if (entries.isEmpty) {
       return Center(
         child: Text(
-          '친구가 보낸 살까말까가 없어요',
+          '아직 살까말까가 없어요',
           textAlign: TextAlign.center,
           style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
         ),
       );
     }
     return ListView.builder(
-      itemCount: groups.length,
+      itemCount: entries.length,
       itemBuilder: (context, i) {
-        final g = groups[i];
-        return PersonRow(
-          name: '${g.friendName}의 살까말까',
-          handle: g.friendHandle,
-          avatarUrl: g.friendAvatar,
-          subtitle: '상품 ${g.itemCount}개',
-          onTap: () => context.push('/friend-salkamalka/${g.friendId}'),
+        final e = entries[i];
+        final b = e.basket;
+        return WhiteProductCard(
+          backgroundColor:
+              e.isMine ? DiaryColors.mineCard : DiaryColors.white,
+          onTap: () => context.push('/shared/${b.id}'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundImage: NetworkImage(
+                      e.isMine
+                          ? (b.fromAvatar.isNotEmpty
+                              ? b.fromAvatar
+                              : 'https://api.dicebear.com/7.x/thumbs/png?seed=me')
+                          : (b.fromAvatar.isNotEmpty
+                              ? b.fromAvatar
+                              : 'https://api.dicebear.com/7.x/thumbs/png?seed=${Uri.encodeComponent(b.ownerName)}'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                e.isMine ? '내가 보낸 살까말까' : '${b.ownerName}의 살까말까',
+                                style: DiaryTheme.body(
+                                  14,
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            if (e.isMine) ...[
+                              const SizedBox(width: 6),
+                              const MineBadge(),
+                            ],
+                          ],
+                        ),
+                        Text(
+                          _salkamalkaSubtitle(e),
+                          style: DiaryTheme.body(
+                            11,
+                            color: DiaryColors.inkMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (b.items.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 56,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      for (final p in b.items.take(8))
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              p.image,
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 56,
+                                height: 56,
+                                color: DiaryColors.paper,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
         );
       },
+    );
+  }
+
+  String _salkamalkaSubtitle(SalkamalkaFeedEntry e) {
+    final b = e.basket;
+    if (e.isMine) {
+      if (b.recipientNames.isNotEmpty) {
+        final names = b.recipientNames.take(2).join(', ');
+        final extra = b.recipientNames.length > 2
+            ? ' 외 ${b.recipientNames.length - 2}명'
+            : '';
+        return '$names$extra에게 보냄  ·  상품 ${b.items.length}개';
+      }
+      return '링크 공유  ·  상품 ${b.items.length}개';
+    }
+    return '${b.ownerName}에게 받음  ·  상품 ${b.items.length}개';
+  }
+}
+
+class _FriendReviewsPane extends StatelessWidget {
+  const _FriendReviewsPane({
+    required this.reviews,
+    required this.myUid,
+  });
+
+  final List<ProductReview> reviews;
+  final String myUid;
+
+  @override
+  Widget build(BuildContext context) {
+    if (reviews.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Text(
+            '아직 올라온 리뷰가 없어요.\n오른쪽 아래 리뷰 쓰기로 첫 글을 남겨보세요',
+            textAlign: TextAlign.center,
+            style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
+          ),
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 88),
+      children: [
+        for (final r in reviews)
+          ReviewPostCard(
+            review: r,
+            isMine: r.authorUid == myUid && myUid.isNotEmpty,
+          ),
+      ],
     );
   }
 }
@@ -580,10 +734,11 @@ class _TabChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           border: Border(
             bottom: BorderSide(
               color: active ? DiaryColors.accent : Colors.transparent,
@@ -598,7 +753,7 @@ class _TabChip extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 1,
             style: DiaryTheme.body(
-              11,
+              13,
               weight: active ? FontWeight.w700 : FontWeight.w500,
             ),
           ),

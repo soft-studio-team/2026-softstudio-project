@@ -106,6 +106,25 @@ class _SpiralPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+class MineBadge extends StatelessWidget {
+  const MineBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: DiaryColors.ink,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '나',
+        style: DiaryTheme.body(10, weight: FontWeight.w700, color: Colors.white),
+      ),
+    );
+  }
+}
+
 class WhiteProductCard extends StatelessWidget {
   const WhiteProductCard({
     super.key,
@@ -113,12 +132,14 @@ class WhiteProductCard extends StatelessWidget {
     this.indexColor,
     this.onTap,
     this.margin = const EdgeInsets.only(bottom: 10),
+    this.backgroundColor = DiaryColors.white,
   });
 
   final Widget child;
   final Color? indexColor;
   final VoidCallback? onTap;
   final EdgeInsets margin;
+  final Color backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +164,7 @@ class WhiteProductCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: DiaryColors.white,
+                  color: backgroundColor,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: DiaryColors.ink.withValues(alpha: 0.08)),
                 ),

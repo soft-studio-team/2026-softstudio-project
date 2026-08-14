@@ -69,6 +69,23 @@ class NotificationSettingsScreen extends StatelessWidget {
               onChanged: (v) => store.setNotifyOnBasket(v),
             ),
           ),
+          const SizedBox(height: 10),
+          _PrefCard(
+            child: SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                '친구 리뷰',
+                style: DiaryTheme.body(15, weight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                '친구가 상품 리뷰를 올리면 알림함에 표시해요',
+                style: DiaryTheme.body(12, color: DiaryColors.inkMuted),
+              ),
+              value: store.notifyOnReview,
+              activeThumbColor: DiaryColors.accent,
+              onChanged: (v) => store.setNotifyOnReview(v),
+            ),
+          ),
           const SizedBox(height: 20),
           OutlinedButton.icon(
             onPressed: () => context.push('/notifications'),
