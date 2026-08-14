@@ -15,6 +15,7 @@ import '../theme/avatar_presets.dart';
 ///   users/{uid}/followers/{otherUid}
 ///   users/{uid}/notifications/{notifId}
 ///   users/{uid}/receivedBaskets/{basketId}
+///   users/{uid}/sentBaskets/{basketId}
 ///   users/{uid}/reviews/{reviewId}
 class AccountRepository {
   AccountRepository({
@@ -62,6 +63,9 @@ class AccountRepository {
 
   CollectionReference<Map<String, dynamic>> _receivedBaskets(String uid) =>
       _userDoc(uid).collection('receivedBaskets');
+
+  CollectionReference<Map<String, dynamic>> _sentBaskets(String uid) =>
+      _userDoc(uid).collection('sentBaskets');
 
   CollectionReference<Map<String, dynamic>> _reviews(String uid) =>
       _userDoc(uid).collection('reviews');
@@ -185,6 +189,7 @@ class AccountRepository {
     await _deleteCollectionDocs(_followers(uid));
     await _deleteCollectionDocs(_notifications(uid));
     await _deleteCollectionDocs(_receivedBaskets(uid));
+    await _deleteCollectionDocs(_sentBaskets(uid));
     await _deleteCollectionDocs(_reviews(uid));
 
     if (handle != null && handle.isNotEmpty) {
@@ -821,6 +826,24 @@ class AccountRepository {
       }
       await batch.commit();
     }
+  }
+
+  Future<List<SharedBasket>> loadSentBaskets(String uid) async {
+    final snap = await _sentBaskets(uid).limit(100).get();
+    final list = snap.docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = data['id'] ?? d.id;
+      return SharedBasket.fromJson(data);
+    }).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<void> upsertSentBasket(String uid, SharedBasket basket) async {
+    await _sentBaskets(uid).doc(basket.id).set({
+      ...basket.toJson(),
+      'createdAtServer': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<List<SharedBasket>> loadReceivedBaskets(String uid) async {

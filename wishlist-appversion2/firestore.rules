@@ -97,6 +97,11 @@ service cloud.firestore {
         allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
 
+      match /sentBaskets/{basketId} {
+        allow read, create, update: if isOwner(userId);
+        allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
+      }
+
       match /reviews/{reviewId} {
         allow read: if signedIn();
         allow create, update: if isOwner(userId);

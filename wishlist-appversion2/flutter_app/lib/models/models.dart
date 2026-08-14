@@ -248,6 +248,8 @@ class SharedBasket {
     this.fromUid = '',
     this.fromHandle = '',
     this.fromAvatar = '',
+    this.recipientUids = const [],
+    this.recipientNames = const [],
   });
 
   final String id;
@@ -258,6 +260,26 @@ class SharedBasket {
   final String fromUid;
   final String fromHandle;
   final String fromAvatar;
+  final List<String> recipientUids;
+  final List<String> recipientNames;
+
+  SharedBasket copyWith({
+    List<String>? recipientUids,
+    List<String>? recipientNames,
+  }) {
+    return SharedBasket(
+      id: id,
+      title: title,
+      ownerName: ownerName,
+      items: items,
+      createdAt: createdAt,
+      fromUid: fromUid,
+      fromHandle: fromHandle,
+      fromAvatar: fromAvatar,
+      recipientUids: recipientUids ?? this.recipientUids,
+      recipientNames: recipientNames ?? this.recipientNames,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -268,6 +290,8 @@ class SharedBasket {
         'fromAvatar': fromAvatar,
         'createdAt': createdAt.toIso8601String(),
         'items': items.map((p) => p.toJson()).toList(),
+        'recipientUids': recipientUids,
+        'recipientNames': recipientNames,
       };
 
   factory SharedBasket.fromJson(Map<String, dynamic> json) => SharedBasket(
@@ -282,6 +306,12 @@ class SharedBasket {
             .toList(),
         createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
             DateTime.now(),
+        recipientUids: (json['recipientUids'] as List? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        recipientNames: (json['recipientNames'] as List? ?? [])
+            .map((e) => e.toString())
+            .toList(),
       );
 }
 

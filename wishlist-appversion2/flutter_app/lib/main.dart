@@ -17,6 +17,7 @@ import 'screens/friends/notifications_screen.dart';
 import 'screens/mypage/follow_list_screen.dart';
 import 'screens/mypage/mypage_screen.dart';
 import 'screens/mypage/notification_settings_screen.dart';
+import 'screens/mypage/sent_baskets_screen.dart';
 import 'screens/product/product_detail_screen.dart';
 import 'screens/reviews/my_reviews_screen.dart';
 import 'screens/reviews/review_compose_screen.dart';
@@ -225,6 +226,10 @@ GoRouter _buildRouter(AppStore store) {
         builder: (context, state) => const MyReviewsScreen(),
       ),
       GoRoute(
+        path: '/sent-baskets',
+        builder: (context, state) => const SentBasketsScreen(),
+      ),
+      GoRoute(
         path: '/notifications',
         builder: (context, state) => const NotificationsScreen(),
       ),
@@ -280,6 +285,9 @@ GoRouter _buildRouter(AppStore store) {
             subtitle: '${shared.ownerName} 님이 공유한 살까말까 바구니',
             products: shared.items,
             accentColor: DiaryColors.folderPeach,
+            onShare: store.sharedBaskets.containsKey(id)
+                ? () => showSentBasketShareSheet(context, store, shared)
+                : null,
           );
         },
       ),

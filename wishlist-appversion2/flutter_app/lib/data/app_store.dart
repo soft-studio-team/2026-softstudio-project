@@ -180,6 +180,13 @@ class AppStore extends ChangeNotifier {
     } catch (_) {
       receivedBaskets = [];
     }
+    try {
+      final sent = await _repo.loadSentBaskets(userId);
+      for (final b in sent) {
+        sharedBaskets[b.id] = b;
+      }
+      await _persistShared();
+    } catch (_) {}
   }
 
   Future<void> _loadReviewsSafely(String userId) async {
@@ -838,19 +845,56 @@ class AppStore extends ChangeNotifier {
     if (selected.isEmpty) {
       throw Exception('공유할 상품을 선택해 주세요.');
     }
-    final id = 'sb-${DateTime.now().millisecondsSinceEpoch}';
+    return rememberSentBasket(
+      items: selected,
+      title: '살까말까 공유',
+    );
+  }
+
+  List<SharedBasket> get sentBaskets {
+    final list = sharedBaskets.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<SharedBasket> rememberSentBasket({
+    required List<Product> items,
+    String title = '살까말까 공유',
+    List<String> recipientUids = const [],
+    List<String> recipientNames = const [],
+    String? existingId,
+  }) async {
+    final now = DateTime.now();
+    final id = existingId ?? 'sb-${now.millisecondsSinceEpoch}';
+    final existing = sharedBaskets[id];
+    final mergedUids = {
+      ...?existing?.recipientUids,
+      ...recipientUids,
+    }.toList();
+    final mergedNames = {
+      ...?existing?.recipientNames,
+      ...recipientNames,
+    }.where((n) => n.isNotEmpty).toList();
     final shared = SharedBasket(
       id: id,
-      title: '살까말까 공유',
+      title: title,
       ownerName: currentUser.name,
-      fromUid: currentUser.uid,
+      fromUid: uid ?? currentUser.uid,
       fromHandle: currentUser.handle,
       fromAvatar: currentUser.avatarUrl,
-      items: selected,
-      createdAt: DateTime.now(),
+      items: items,
+      createdAt: existing?.createdAt ?? now,
+      recipientUids: mergedUids,
+      recipientNames: mergedNames,
     );
     sharedBaskets[id] = shared;
     await _persistShared();
+    final userId = uid;
+    if (userId != null) {
+      try {
+        await _repo.upsertSentBasket(userId, shared);
+      } catch (_) {}
+    }
     notifyListeners();
     return shared;
   }
@@ -859,6 +903,20 @@ class AppStore extends ChangeNotifier {
     final selected =
         basket.where((b) => b.isSelected).map((b) => b.product).toList();
     if (selected.isEmpty) {
+      throw Exception('공유할 상품을 선택해 주세요.');
+    }
+    await resendBasketToFriends(
+      items: selected,
+      friendIds: friendIds,
+    );
+  }
+
+  Future<void> resendBasketToFriends({
+    required List<Product> items,
+    required List<String> friendIds,
+    String? existingId,
+  }) async {
+    if (items.isEmpty) {
       throw Exception('공유할 상품을 선택해 주세요.');
     }
     if (friendIds.isEmpty) {
@@ -872,9 +930,18 @@ class AppStore extends ChangeNotifier {
     await _repo.sendBasketToFriends(
       from: currentUser.copyWith(uid: userId),
       recipientUids: friendIds,
-      items: selected,
+      items: items,
     );
-    await createSharedBasketFromSelection();
+    final names = [
+      for (final id in friendIds) friendById(id)?.name ?? '',
+    ].where((n) => n.isNotEmpty).toList();
+    await rememberSentBasket(
+      items: items,
+      title: '${currentUser.name}의 살까말까',
+      recipientUids: friendIds,
+      recipientNames: names,
+      existingId: existingId,
+    );
   }
 
   String shareUrlFor(SharedBasket basket) =>

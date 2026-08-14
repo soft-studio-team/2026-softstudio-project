@@ -179,6 +179,12 @@ class MyPageScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               DiaryButton(
+                label: '내가 보낸 살까말까',
+                icon: Icons.outbox_outlined,
+                onPressed: () => context.push('/sent-baskets'),
+              ),
+              const SizedBox(height: 8),
+              DiaryButton(
                 label: '알림 설정',
                 icon: Icons.notifications_none,
                 onPressed: () => context.push('/notification-settings'),
