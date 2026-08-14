@@ -317,6 +317,11 @@ class HomeShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final store = context.watch<AppStore>();
+    final showWishlistFab = navigationShell.currentIndex == 0;
+    final showReviewFab =
+        navigationShell.currentIndex == 1 && store.friendsTab == 4;
+
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Container(
@@ -364,7 +369,7 @@ class HomeShell extends StatelessWidget {
           ),
         ),
       ),
-      floatingActionButton: navigationShell.currentIndex == 0
+      floatingActionButton: showWishlistFab
           ? FloatingActionButton.extended(
               backgroundColor: DiaryColors.folderYellow,
               foregroundColor: DiaryColors.ink,
@@ -372,7 +377,15 @@ class HomeShell extends StatelessWidget {
               label: const Text('공유 담기'),
               icon: const Icon(Icons.add_link),
             )
-          : null,
+          : showReviewFab
+              ? FloatingActionButton.extended(
+                  backgroundColor: DiaryColors.folderYellow,
+                  foregroundColor: DiaryColors.ink,
+                  onPressed: () => context.push('/reviews/write'),
+                  label: const Text('리뷰 쓰기'),
+                  icon: const Icon(Icons.edit_outlined),
+                )
+              : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
     );
   }

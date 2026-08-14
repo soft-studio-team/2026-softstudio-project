@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
+import '../../theme/avatar_presets.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 import 'review_widgets.dart';
@@ -84,7 +85,14 @@ class ReviewDetailScreen extends StatelessWidget {
                   ],
                 ),
               ),
+              MoodFace(mood: ReviewMood.byLevel(review.mood), size: 44),
             ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            ReviewMood.byLevel(review.mood).label,
+            textAlign: TextAlign.right,
+            style: DiaryTheme.body(12, color: DiaryColors.inkMuted),
           ),
           const SizedBox(height: 16),
           WhiteProductCard(
@@ -138,6 +146,26 @@ class ReviewDetailScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
+          if (review.imageUrls.isNotEmpty) ...[
+            SizedBox(
+              height: 180,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: review.imageUrls.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: ReviewPhoto(src: review.imageUrls[i]),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           Text(
             review.title,
             style: DiaryTheme.display(28),

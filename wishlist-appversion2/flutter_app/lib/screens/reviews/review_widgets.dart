@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/models.dart';
+import '../../theme/avatar_presets.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 
@@ -17,6 +20,11 @@ class ReviewPostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final mood = ReviewMood.byLevel(review.mood);
+    final hero = review.imageUrls.isNotEmpty
+        ? review.imageUrls.first
+        : review.productImage;
+
     return WhiteProductCard(
       onTap: () => context.push('/reviews/${review.id}'),
       child: Column(
@@ -48,23 +56,17 @@ class ReviewPostCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                MoodFace(mood: mood, size: 36),
               ],
             ),
             const SizedBox(height: 10),
           ],
-          if (review.productImage.isNotEmpty)
+          if (hero.isNotEmpty)
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: AspectRatio(
                 aspectRatio: 16 / 10,
-                child: Image.network(
-                  review.productImage,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: DiaryColors.paper,
-                    child: const Icon(Icons.image_outlined),
-                  ),
-                ),
+                child: ReviewPhoto(src: hero, fit: BoxFit.cover),
               ),
             ),
           const SizedBox(height: 10),
@@ -92,12 +94,77 @@ class ReviewPostCard extends StatelessWidget {
           ),
           if (!showAuthor) ...[
             const SizedBox(height: 8),
-            Text(
-              relativeTime(review.createdAt),
-              style: DiaryTheme.body(11, color: DiaryColors.inkMuted),
+            Row(
+              children: [
+                MoodFace(mood: mood, size: 28),
+                const SizedBox(width: 6),
+                Text(
+                  '${mood.label}  ·  ${relativeTime(review.createdAt)}',
+                  style: DiaryTheme.body(11, color: DiaryColors.inkMuted),
+                ),
+              ],
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class MoodFace extends StatelessWidget {
+  const MoodFace({super.key, required this.mood, this.size = 40});
+
+  final ReviewMood mood;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipOval(
+      child: Image.network(
+        mood.url,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => SizedBox(
+          width: size,
+          height: size,
+          child: Icon(Icons.sentiment_satisfied_alt, size: size * 0.7),
+        ),
+      ),
+    );
+  }
+}
+
+class ReviewPhoto extends StatelessWidget {
+  const ReviewPhoto({
+    super.key,
+    required this.src,
+    this.fit = BoxFit.cover,
+  });
+
+  final String src;
+  final BoxFit fit;
+
+  @override
+  Widget build(BuildContext context) {
+    final isFile = src.startsWith('/') || src.startsWith('file:');
+    if (isFile) {
+      final path = src.startsWith('file:') ? Uri.parse(src).toFilePath() : src;
+      return Image.file(
+        File(path),
+        fit: fit,
+        errorBuilder: (_, __, ___) => Container(
+          color: DiaryColors.paper,
+          child: const Icon(Icons.image_outlined),
+        ),
+      );
+    }
+    return Image.network(
+      src,
+      fit: fit,
+      errorBuilder: (_, __, ___) => Container(
+        color: DiaryColors.paper,
+        child: const Icon(Icons.image_outlined),
       ),
     );
   }

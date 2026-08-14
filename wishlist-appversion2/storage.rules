@@ -17,5 +17,13 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
       allow delete: if isOwner(userId);
     }
+
+    match /reviews/{userId}/{reviewId}/{fileName} {
+      allow read: if signedIn();
+      allow write: if isOwner(userId)
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isOwner(userId);
+    }
   }
 }

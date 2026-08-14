@@ -514,6 +514,29 @@ class AccountRepository {
     return ref.getDownloadURL();
   }
 
+  Future<String> uploadReviewPhoto({
+    required String uid,
+    required String reviewId,
+    required File file,
+    required int index,
+  }) async {
+    final ext = file.path.split('.').last.toLowerCase();
+    final safeExt = (ext == 'png' || ext == 'webp' || ext == 'jpg' || ext == 'jpeg')
+        ? (ext == 'jpeg' ? 'jpg' : ext)
+        : 'jpg';
+    final contentType = switch (safeExt) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+    final ref = _storage.ref('reviews/$uid/$reviewId/$index.$safeExt');
+    await ref.putFile(
+      file,
+      SettableMetadata(contentType: contentType),
+    );
+    return ref.getDownloadURL();
+  }
+
   Future<List<WishlistTab>> loadTabs(String uid) async {
     final snap = await _tabs(uid).get();
     if (snap.docs.isEmpty) {

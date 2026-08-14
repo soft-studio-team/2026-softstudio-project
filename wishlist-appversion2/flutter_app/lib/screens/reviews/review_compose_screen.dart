@@ -1,11 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
+import '../../theme/avatar_presets.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
+import 'review_widgets.dart';
 
 class ReviewComposeScreen extends StatefulWidget {
   const ReviewComposeScreen({
@@ -22,9 +27,14 @@ class ReviewComposeScreen extends StatefulWidget {
 }
 
 class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
+  static const _maxPhotos = 6;
+
   Product? selected;
   late final TextEditingController titleCtrl;
   late final TextEditingController bodyCtrl;
+  int mood = 3;
+  List<String> existingPhotos = [];
+  final List<File> newPhotos = [];
   bool saving = false;
 
   @override
@@ -52,6 +62,8 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
           );
       titleCtrl = TextEditingController(text: existing.title);
       bodyCtrl = TextEditingController(text: existing.body);
+      mood = existing.mood;
+      existingPhotos = [...existing.imageUrls];
     } else {
       selected = widget.productId != null
           ? store.findCatalogProduct(widget.productId!)
@@ -66,6 +78,68 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
     titleCtrl.dispose();
     bodyCtrl.dispose();
     super.dispose();
+  }
+
+  int get _photoCount => existingPhotos.length + newPhotos.length;
+
+  Future<void> _pickPhotos() async {
+    if (_photoCount >= _maxPhotos) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('사진은 최대 $_maxPhotos장까지 넣을 수 있어요')),
+      );
+      return;
+    }
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: DiaryColors.paper,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: Text('갤러리에서 선택', style: DiaryTheme.body(14)),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: Text('카메라로 촬영', style: DiaryTheme.body(14)),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final picker = ImagePicker();
+    if (source == ImageSource.gallery) {
+      final remaining = _maxPhotos - _photoCount;
+      final picked = await picker.pickMultiImage(
+        maxWidth: 1600,
+        imageQuality: 85,
+      );
+      if (picked.isEmpty) return;
+      setState(() {
+        newPhotos.addAll(
+          picked.take(remaining).map((x) => File(x.path)),
+        );
+      });
+    } else {
+      final shot = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1600,
+        imageQuality: 85,
+      );
+      if (shot == null) return;
+      setState(() => newPhotos.add(File(shot.path)));
+    }
   }
 
   Future<void> _publish() async {
@@ -84,6 +158,9 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
         product: product,
         title: titleCtrl.text,
         body: bodyCtrl.text,
+        mood: mood,
+        imageUrls: existingPhotos,
+        newPhotos: newPhotos,
         existingId: existing?.id,
       );
       if (!mounted) return;
@@ -197,6 +274,114 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 18),
+            Text(
+              '이 상품, 어땠어요?',
+              style: DiaryTheme.body(15, weight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                for (final m in ReviewMood.all) ...[
+                  if (m.level > 1) const SizedBox(width: 6),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => mood = m.level),
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 150),
+                        opacity: mood == m.level ? 1 : 0.45,
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: mood == m.level
+                                      ? DiaryColors.accent
+                                      : Colors.transparent,
+                                  width: 2.5,
+                                ),
+                              ),
+                              child: MoodFace(mood: m, size: 44),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              m.label,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: DiaryTheme.body(
+                                10,
+                                weight: mood == m.level
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: mood == m.level
+                                    ? DiaryColors.ink
+                                    : DiaryColors.inkMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 18),
+            Text(
+              '사진 첨부',
+              style: DiaryTheme.body(15, weight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 88,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (var i = 0; i < existingPhotos.length; i++)
+                    _PhotoThumb(
+                      child: ReviewPhoto(src: existingPhotos[i]),
+                      onRemove: () => setState(() => existingPhotos.removeAt(i)),
+                    ),
+                  for (var i = 0; i < newPhotos.length; i++)
+                    _PhotoThumb(
+                      child: Image.file(newPhotos[i], fit: BoxFit.cover),
+                      onRemove: () => setState(() => newPhotos.removeAt(i)),
+                    ),
+                  if (_photoCount < _maxPhotos)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: _pickPhotos,
+                        child: Container(
+                          width: 88,
+                          height: 88,
+                          decoration: BoxDecoration(
+                            color: DiaryColors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: DiaryColors.ink.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.add_photo_alternate_outlined),
+                              const SizedBox(height: 4),
+                              Text(
+                                '추가',
+                                style: DiaryTheme.body(11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: titleCtrl,
@@ -210,7 +395,7 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
             const Divider(height: 1),
             TextField(
               controller: bodyCtrl,
-              minLines: 10,
+              minLines: 8,
               maxLines: null,
               style: DiaryTheme.product(15),
               decoration: InputDecoration(
@@ -220,6 +405,43 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PhotoThumb extends StatelessWidget {
+  const _PhotoThumb({required this.child, required this.onRemove});
+
+  final Widget child;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(width: 88, height: 88, child: child),
+          ),
+          Positioned(
+            top: 2,
+            right: 2,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                padding: const EdgeInsets.all(2),
+                child: const Icon(Icons.close, size: 14, color: Colors.white),
+              ),
+            ),
+          ),
         ],
       ),
     );

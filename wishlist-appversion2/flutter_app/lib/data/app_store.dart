@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../firebase_options.dart';
@@ -54,6 +55,7 @@ class AppStore extends ChangeNotifier {
   final Map<String, SharedBasket> sharedBaskets = {};
 
   String selectedTabId = 'all';
+  int friendsTab = 0;
   String? pendingShareUrl;
 
   AppUser currentUser = AppUser(
@@ -217,6 +219,7 @@ class AppStore extends ChangeNotifier {
       avatarUrl: 'https://api.dicebear.com/7.x/thumbs/png?seed=guest',
     );
     selectedTabId = 'all';
+    friendsTab = 0;
   }
 
   Future<void> register({
@@ -452,6 +455,12 @@ class AppStore extends ChangeNotifier {
 
   void selectTab(String id) {
     selectedTabId = id;
+    notifyListeners();
+  }
+
+  void selectFriendsTab(int index) {
+    if (friendsTab == index) return;
+    friendsTab = index;
     notifyListeners();
   }
 
@@ -993,6 +1002,9 @@ class AppStore extends ChangeNotifier {
     required Product product,
     required String title,
     required String body,
+    int mood = 3,
+    List<String> imageUrls = const [],
+    List<File> newPhotos = const [],
     String? existingId,
   }) async {
     final userId = uid;
@@ -1012,9 +1024,22 @@ class AppStore extends ChangeNotifier {
     final existing = existingId != null
         ? myReviews.where((r) => r.id == existingId).firstOrNull
         : myReviewForProduct(product.id);
+    final reviewId = existing?.id ?? 'rv-${now.millisecondsSinceEpoch}';
+    final uploaded = [...imageUrls];
+    for (var i = 0; i < newPhotos.length; i++) {
+      uploaded.add(
+        await _storeReviewPhoto(
+          userId: userId,
+          reviewId: reviewId,
+          file: newPhotos[i],
+          index: uploaded.length,
+        ),
+      );
+    }
+
     final review = existing == null
         ? ProductReview(
-            id: 'rv-${now.millisecondsSinceEpoch}',
+            id: reviewId,
             authorUid: userId,
             authorName: currentUser.name,
             authorHandle: currentUser.handle,
@@ -1029,6 +1054,8 @@ class AppStore extends ChangeNotifier {
             body: trimmedBody,
             createdAt: now,
             updatedAt: now,
+            mood: mood,
+            imageUrls: uploaded,
           )
         : existing.copyWith(
             title: trimmedTitle,
@@ -1037,6 +1064,8 @@ class AppStore extends ChangeNotifier {
             authorName: currentUser.name,
             authorHandle: currentUser.handle,
             authorAvatar: currentUser.avatarUrl,
+            mood: mood,
+            imageUrls: uploaded,
           );
 
     myReviews = [
@@ -1059,6 +1088,36 @@ class AppStore extends ChangeNotifier {
     }
     notifyListeners();
     return review;
+  }
+
+  Future<String> _storeReviewPhoto({
+    required String userId,
+    required String reviewId,
+    required File file,
+    required int index,
+  }) async {
+    try {
+      return await _repo.uploadReviewPhoto(
+        uid: userId,
+        reviewId: reviewId,
+        file: file,
+        index: index,
+      );
+    } catch (_) {
+      final dir = await getApplicationDocumentsDirectory();
+      final folder = Directory('${dir.path}/reviews/$reviewId');
+      if (!await folder.exists()) {
+        await folder.create(recursive: true);
+      }
+      final ext = file.path.split('.').last.toLowerCase();
+      final safeExt =
+          (ext == 'png' || ext == 'webp' || ext == 'jpg' || ext == 'jpeg')
+              ? ext
+              : 'jpg';
+      final dest = File('${folder.path}/$index.$safeExt');
+      await file.copy(dest.path);
+      return dest.path;
+    }
   }
 
   Future<void> deleteReview(String reviewId) async {

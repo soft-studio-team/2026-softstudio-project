@@ -408,6 +408,8 @@ class ProductReview {
     required this.createdAt,
     required this.updatedAt,
     this.productUrl,
+    this.mood = 3,
+    this.imageUrls = const [],
   });
 
   final String id;
@@ -425,6 +427,8 @@ class ProductReview {
   final String body;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int mood;
+  final List<String> imageUrls;
 
   ProductReview copyWith({
     String? title,
@@ -433,6 +437,8 @@ class ProductReview {
     String? authorName,
     String? authorHandle,
     String? authorAvatar,
+    int? mood,
+    List<String>? imageUrls,
   }) {
     return ProductReview(
       id: id,
@@ -450,6 +456,8 @@ class ProductReview {
       body: body ?? this.body,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      mood: mood ?? this.mood,
+      imageUrls: imageUrls ?? this.imageUrls,
     );
   }
 
@@ -469,6 +477,8 @@ class ProductReview {
         'body': body,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
+        'mood': mood,
+        'imageUrls': imageUrls,
       };
 
   factory ProductReview.fromJson(Map<String, dynamic> json) => ProductReview(
@@ -489,6 +499,10 @@ class ProductReview {
             DateTime.now(),
         updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
             DateTime.now(),
+        mood: (json['mood'] as num?)?.toInt() ?? 3,
+        imageUrls: (json['imageUrls'] as List? ?? [])
+            .map((e) => e.toString())
+            .toList(),
       );
 }
 

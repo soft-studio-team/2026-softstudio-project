@@ -61,11 +61,14 @@ void main() {
       product: store.products.first,
       title: '보풀은 나지만 따뜻해요',
       body: '일주일 입어본 솔직 후기입니다.',
+      mood: 5,
     );
 
     expect(review.title, '보풀은 나지만 따뜻해요');
     expect(store.myReviews, hasLength(1));
     expect(store.myReviewForProduct(7)?.body, contains('솔직 후기'));
     expect(store.reviewFeed.first.id, review.id);
+    expect(review.mood, 5);
+    expect(review.imageUrls, isEmpty);
   });
 }

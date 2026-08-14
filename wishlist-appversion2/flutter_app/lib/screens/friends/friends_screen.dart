@@ -16,8 +16,6 @@ class FriendsScreen extends StatefulWidget {
 }
 
 class _FriendsScreenState extends State<FriendsScreen> {
-  /// 0 팔로잉 · 1 팔로워 · 2 wishlist · 3 살까말까 · 4 리뷰
-  int tab = 0;
   final searchCtrl = TextEditingController();
   bool refreshing = false;
 
@@ -77,6 +75,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         .where((g) => _matchesQuery(g.friendName, g.friendHandle, q))
         .toList();
     final unread = store.unreadNotificationCount;
+    final tab = store.friendsTab;
 
     return Scaffold(
       backgroundColor: DiaryColors.canvas,
@@ -117,11 +116,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           icon: const Icon(Icons.refresh),
                         ),
                       IconButton(
-                        tooltip: '리뷰 쓰기',
-                        onPressed: () => context.push('/reviews/write'),
-                        icon: const Icon(Icons.edit_outlined),
-                      ),
-                      IconButton(
                         tooltip: '알림',
                         onPressed: () => context.push('/notifications'),
                         icon: Badge(
@@ -149,7 +143,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
-                    height: 40,
+                    height: 58,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
@@ -157,35 +151,35 @@ class _FriendsScreenState extends State<FriendsScreen> {
                           label: '팔로잉',
                           color: DiaryColors.folderBlue,
                           active: tab == 0,
-                          onTap: () => setState(() => tab = 0),
+                          onTap: () => store.selectFriendsTab(0),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         _TabChip(
                           label: '팔로워',
                           color: DiaryColors.folderYellow,
                           active: tab == 1,
-                          onTap: () => setState(() => tab = 1),
+                          onTap: () => store.selectFriendsTab(1),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         _TabChip(
-                          label: 'wishlist',
+                          label: '친구들의 wishlist',
                           color: DiaryColors.folderPink,
                           active: tab == 2,
-                          onTap: () => setState(() => tab = 2),
+                          onTap: () => store.selectFriendsTab(2),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         _TabChip(
-                          label: '살까말까',
+                          label: '친구가 보낸 살까말까',
                           color: DiaryColors.folderPeach,
                           active: tab == 3,
-                          onTap: () => setState(() => tab = 3),
+                          onTap: () => store.selectFriendsTab(3),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         _TabChip(
-                          label: '리뷰',
+                          label: '친구들의 리뷰',
                           color: DiaryColors.folderLilac,
                           active: tab == 4,
-                          onTap: () => setState(() => tab = 4),
+                          onTap: () => store.selectFriendsTab(4),
                         ),
                       ],
                     ),
@@ -584,7 +578,7 @@ class _FriendReviewsPane extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Text(
-            '아직 올라온 리뷰가 없어요.\n오른쪽 위 연필로 첫 글을 써보세요',
+            '아직 올라온 리뷰가 없어요.\n오른쪽 아래 리뷰 쓰기로 첫 글을 남겨보세요',
             textAlign: TextAlign.center,
             style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
           ),
@@ -592,6 +586,7 @@ class _FriendReviewsPane extends StatelessWidget {
       );
     }
     return ListView(
+      padding: const EdgeInsets.only(bottom: 88),
       children: [
         for (final r in reviews) ReviewPostCard(review: r),
       ],
@@ -617,14 +612,14 @@ class _TabChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           border: Border(
             bottom: BorderSide(
               color: active ? DiaryColors.accent : Colors.transparent,
-              width: 2.5,
+              width: 3,
             ),
           ),
         ),
@@ -633,7 +628,7 @@ class _TabChip extends StatelessWidget {
           textAlign: TextAlign.center,
           maxLines: 1,
           style: DiaryTheme.body(
-            12,
+            15,
             weight: active ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
