@@ -489,16 +489,27 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Optimistically moves [id] into [listId], persists to Firestore, and
+  /// reverts the in-memory state (rethrowing) if the write fails — callers
+  /// are expected to surface the error rather than let it fail silently.
   Future<void> moveProduct(int id, String listId) async {
-    products = products
-        .map((p) => p.id == id ? p.copyWith(listId: listId) : p)
-        .toList();
-    final userId = uid;
+    final previous = products;
     final product = productById(id);
-    if (userId != null && product != null) {
-      await _repo.upsertProduct(userId, product);
-    }
+    if (product == null || product.listId == listId) return;
+    final updated = product.copyWith(listId: listId);
+    products = [
+      for (final p in products) p.id == id ? updated : p,
+    ];
     notifyListeners();
+    final userId = uid;
+    if (userId == null) return;
+    try {
+      await _repo.upsertProduct(userId, updated);
+    } catch (_) {
+      products = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> updateMemo(int id, String memo) async {
