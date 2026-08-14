@@ -29,7 +29,7 @@ class ReviewPostCard extends StatelessWidget {
 
     return WhiteProductCard(
       onTap: () => context.push('/reviews/${review.id}'),
-      backgroundColor: isMine ? DiaryColors.folderYellow : DiaryColors.white,
+      backgroundColor: isMine ? DiaryColors.mineCard : DiaryColors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
