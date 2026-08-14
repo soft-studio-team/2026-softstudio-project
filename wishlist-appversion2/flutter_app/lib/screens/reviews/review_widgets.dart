@@ -13,10 +13,12 @@ class ReviewPostCard extends StatelessWidget {
     super.key,
     required this.review,
     this.showAuthor = true,
+    this.isMine = false,
   });
 
   final ProductReview review;
   final bool showAuthor;
+  final bool isMine;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +29,7 @@ class ReviewPostCard extends StatelessWidget {
 
     return WhiteProductCard(
       onTap: () => context.push('/reviews/${review.id}'),
+      backgroundColor: isMine ? DiaryColors.folderYellow : DiaryColors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -42,9 +45,19 @@ class ReviewPostCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        review.authorName,
-                        style: DiaryTheme.body(13, weight: FontWeight.w700),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              review.authorName,
+                              style: DiaryTheme.body(13, weight: FontWeight.w700),
+                            ),
+                          ),
+                          if (isMine) ...[
+                            const SizedBox(width: 6),
+                            const MineBadge(),
+                          ],
+                        ],
                       ),
                       Text(
                         '${review.authorHandle}  ·  ${relativeTime(review.createdAt)}',

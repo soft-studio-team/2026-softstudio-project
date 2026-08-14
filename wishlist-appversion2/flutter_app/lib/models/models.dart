@@ -420,6 +420,13 @@ class FriendSalkamalka {
   int get itemCount => allProducts.length;
 }
 
+class SalkamalkaFeedEntry {
+  SalkamalkaFeedEntry({required this.basket, required this.isMine});
+
+  final SharedBasket basket;
+  final bool isMine;
+}
+
 /// Blog-style product review shared with followers.
 class ProductReview {
   ProductReview({

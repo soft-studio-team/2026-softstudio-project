@@ -666,6 +666,23 @@ class AppStore extends ChangeNotifier {
   FriendSalkamalka? friendSalkamalkaByFriendId(String friendId) =>
       friendSalkamalkaGroups.where((g) => g.friendId == friendId).firstOrNull;
 
+  List<SalkamalkaFeedEntry> get salkamalkaFeed {
+    final mineIds = sentBaskets.map((b) => b.id).toSet();
+    final out = <SalkamalkaFeedEntry>[
+      for (final b in receivedBaskets)
+        SalkamalkaFeedEntry(basket: b, isMine: false),
+      for (final b in sentBaskets) SalkamalkaFeedEntry(basket: b, isMine: true),
+    ];
+    // Prefer the sent copy when the same id somehow appears in both.
+    final byId = <String, SalkamalkaFeedEntry>{};
+    for (final e in out) {
+      if (mineIds.contains(e.basket.id) && !e.isMine) continue;
+      byId[e.basket.id] = e;
+    }
+    return byId.values.toList()
+      ..sort((a, b) => b.basket.createdAt.compareTo(a.basket.createdAt));
+  }
+
   Future<List<AppUser>> loadFollowers() async {
     final id = uid;
     if (id == null) return [];
