@@ -143,7 +143,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
-                    height: 58,
+                    height: 42,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
@@ -162,21 +162,24 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         ),
                         const SizedBox(width: 8),
                         _TabChip(
-                          label: '친구들의 wishlist',
+                          label: 'wishlist',
+                          fullLabel: '친구들의 wishlist',
                           color: DiaryColors.folderPink,
                           active: tab == 2,
                           onTap: () => store.selectFriendsTab(2),
                         ),
                         const SizedBox(width: 8),
                         _TabChip(
-                          label: '친구가 보낸 살까말까',
+                          label: '살까말까',
+                          fullLabel: '친구가 보낸 살까말까',
                           color: DiaryColors.folderPeach,
                           active: tab == 3,
                           onTap: () => store.selectFriendsTab(3),
                         ),
                         const SizedBox(width: 8),
                         _TabChip(
-                          label: '친구들의 리뷰',
+                          label: '리뷰',
+                          fullLabel: '친구들의 리뷰',
                           color: DiaryColors.folderLilac,
                           active: tab == 4,
                           onTap: () => store.selectFriendsTab(4),
@@ -600,36 +603,44 @@ class _TabChip extends StatelessWidget {
     required this.color,
     required this.active,
     required this.onTap,
+    this.fullLabel,
   });
 
   final String label;
+  final String? fullLabel;
   final Color color;
   final bool active;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final text = active && fullLabel != null ? fullLabel! : label;
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(14),
-          border: Border(
-            bottom: BorderSide(
-              color: active ? DiaryColors.accent : Colors.transparent,
-              width: 3,
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        alignment: Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(12),
+            border: Border(
+              bottom: BorderSide(
+                color: active ? DiaryColors.accent : Colors.transparent,
+                width: 2.5,
+              ),
             ),
           ),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          style: DiaryTheme.body(
-            15,
-            weight: active ? FontWeight.w700 : FontWeight.w500,
+          child: Text(
+            text,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            style: DiaryTheme.body(
+              13,
+              weight: active ? FontWeight.w700 : FontWeight.w500,
+            ),
           ),
         ),
       ),
