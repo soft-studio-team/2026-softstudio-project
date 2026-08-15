@@ -271,6 +271,15 @@ PLATFORMS: tuple[PlatformRule, ...] = (
         domains=("oliveyoung.co.kr",),
         id_query_keys=("goodsNo",),
     ),
+    PlatformRule(platform="queenit", label="퀸잇", domains=("queenit.kr",), id_patterns=(r"/product/([a-f0-9]{32})",)),
+    PlatformRule(platform="brandi", label="브랜디", domains=("brandi.co.kr",), id_patterns=(r"/products/(\d+)",)),
+    PlatformRule(platform="nugu", label="NUGU", domains=("nugu.jp",), id_patterns=(r"/product/([A-Za-z0-9]+)",)),
+    PlatformRule(platform="cjonstyle", label="CJ온스타일", domains=("cjonstyle.com",), id_patterns=(r"/p/item/(\d+)",)),
+    PlatformRule(platform="4910", label="4910", domains=("4910.kr",), id_patterns=(r"/(?:desktop/)?goods/(\d+)",)),
+    PlatformRule(platform="ssfshop", label="SSF샵", domains=("ssfshop.com",), id_patterns=(r"/[^/]+/([A-Za-z0-9]+)/good",)),
+    PlatformRule(platform="zara", label="ZARA", domains=("zara.com",), id_patterns=(r"-p(\d+)\.html",)),
+    PlatformRule(platform="shein", label="SHEIN", domains=("shein.com",), id_patterns=(r"-p-(\d+)\.html",)),
+    PlatformRule(platform="elandmall", label="이랜드몰", domains=("elandmall.co.kr",), id_query_keys=("itemNo",)),
 )
 
 

@@ -2166,6 +2166,243 @@ def _extract_oliveyoung_pricing(html: str) -> SitePricing | None:
     )
 
 
+def _walk_dicts(value):
+    if isinstance(value, dict):
+        yield value
+        for child in value.values():
+            yield from _walk_dicts(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _walk_dicts(child)
+
+
+def _script_json(soup: BeautifulSoup, *, script_id: str | None = None) -> list:
+    selector = f"script#{script_id}" if script_id else 'script[type="application/ld+json"]'
+    values = []
+    for script in soup.select(selector):
+        try:
+            values.append(json.loads(script.string or script.get_text() or ""))
+        except (TypeError, json.JSONDecodeError):
+            continue
+    return values
+
+
+def _confirmed(adapter: str, purchase: int, purchase_field: str,
+               regular: int | None = None, regular_field: str | None = None,
+               *, option_dependent: bool = False,
+               option_min: int | None = None,
+               option_max: int | None = None) -> SitePricing:
+    return SitePricing(
+        regular_price=regular if regular and regular > purchase else None,
+        purchase_price=purchase,
+        purchase_price_status=(PurchasePriceStatus.OPTION_DEPENDENT
+                               if option_dependent else PurchasePriceStatus.CONFIRMED),
+        confidence=PriceConfidence.MEDIUM,
+        adapter=adapter,
+        purchase_field=purchase_field,
+        regular_field=regular_field if regular and regular > purchase else None,
+        option_dependent=option_dependent,
+        option_price_min=option_min if option_dependent else None,
+        option_price_max=option_max if option_dependent else None,
+    )
+
+
+def _extract_queenit_pricing(html: str) -> SitePricing | None:
+    soup = BeautifulSoup(html, "lxml")
+    candidates = set()
+    for root in _script_json(soup, script_id="__NEXT_DATA__"):
+        for item in _walk_dicts(root):
+            if not {"productId", "name", "originalPrice", "finalPrice", "salesStatus"} <= item.keys():
+                continue
+            try:
+                original, final = int(item["originalPrice"]), int(item["finalPrice"])
+            except (TypeError, ValueError):
+                continue
+            if (item.get("display") is True and original >= final > 0
+                    and str(item["salesStatus"]).upper() not in {"ARCHIVED", "SOLD_OUT", "STOPPED"}):
+                candidates.add((str(item["productId"]), str(item["name"]), original, final))
+    if len(candidates) != 1 or "구매하기" not in soup.get_text(" ", strip=True):
+        return None
+    _, name, original, final = candidates.pop()
+    text = soup.get_text(" ", strip=True)
+    if name not in text or f"{final:,}" not in text:
+        return None
+    return _confirmed("queenit", final, "product.finalPrice", original, "product.originalPrice")
+
+
+def _extract_brandi_pricing(html: str) -> SitePricing | None:
+    soup = BeautifulSoup(html, "lxml")
+    candidates = set()
+    for root in _script_json(soup, script_id="prefetch-data"):
+        item = root.get("data") if isinstance(root, dict) else None
+        if not isinstance(item, dict) or not str(item.get("id", "")).isdigit():
+            continue
+        try:
+            regular, sale = int(item["price"]), int(item["sale_price"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        price_info = item.get("original_price_info") or {}
+        consistent = (int(item.get("original_sale_price", sale)) == sale
+                      and int(price_info.get("sale_price", sale)) == sale)
+        if (item.get("is_sell") is True and item.get("is_sold_out") is False
+                and item.get("is_temporary_sold_out") is False
+                and regular >= sale > 0 and consistent):
+            candidates.add((str(item["id"]), str(item.get("name", "")), regular, sale))
+    if len(candidates) != 1:
+        return None
+    _, _, regular, sale = candidates.pop()
+    return _confirmed("brandi", sale, "prefetch-data.data.sale_price",
+                      regular, "prefetch-data.data.price")
+
+
+def _extract_4910_pricing(html: str) -> SitePricing | None:
+    soup = BeautifulSoup(html, "lxml")
+    candidates = set()
+    for root in _script_json(soup, script_id="__NEXT_DATA__"):
+        for node in _walk_dicts(root):
+            goods = node.get("goods")
+            if not isinstance(goods, dict) or "first_page_rendering" not in goods:
+                continue
+            first = goods.get("first_page_rendering") or {}
+            linked = goods.get("linked_option") or {}
+            try:
+                price = int(goods["price"])
+                first_price = int(first["price"])
+                linked_price = int(linked.get("price", price))
+                original = int(first.get("original_price", price))
+            except (KeyError, TypeError, ValueError):
+                continue
+            if (goods.get("is_soldout") is False and linked.get("is_soldout") is not True
+                    and price == first_price == linked_price > 0 and original >= price):
+                candidates.add((str(first.get("goods_name", "")), original, price))
+    if len(candidates) != 1:
+        return None
+    name, original, price = candidates.pop()
+    text = soup.get_text(" ", strip=True)
+    if name and name not in text or "구매하기" not in text or f"{price:,}" not in text:
+        return None
+    return _confirmed("4910", price, "goods.price", original, "goods.first_page_rendering.original_price")
+
+
+def _single_product_ld(soup: BeautifulSoup) -> dict | None:
+    products = []
+    for root in _script_json(soup):
+        for item in _walk_dicts(root):
+            if item.get("@type") == "Product" and isinstance(item.get("offers"), dict):
+                products.append(item)
+    unique = {(str(item.get("sku") or item.get("productID") or item.get("name")),
+               json.dumps(item, sort_keys=True, ensure_ascii=False)): item for item in products}
+    return next(iter(unique.values())) if len(unique) == 1 else None
+
+
+def _extract_ssfshop_pricing(html: str) -> SitePricing | None:
+    soup = BeautifulSoup(html, "lxml")
+    product = _single_product_ld(soup)
+    hidden = soup.select_one("#lastSalePrc")
+    if product is None or hidden is None:
+        return None
+    offer = product["offers"]
+    try:
+        purchase, hidden_price = int(float(offer["price"])), int(hidden.get("value", "0"))
+    except (KeyError, TypeError, ValueError):
+        return None
+    text = soup.get_text(" ", strip=True)
+    if (offer.get("priceCurrency") != "KRW" or not str(offer.get("availability", "")).endswith("InStock")
+            or purchase <= 0 or purchase != hidden_price or "바로구매" not in text
+            or "장바구니" not in text or f"{purchase:,}" not in text):
+        return None
+    regular = None
+    cost = soup.select_one(".price-info .cost del, .price-info del")
+    if cost:
+        digits = re.sub(r"\D", "", cost.get_text())
+        regular = int(digits) if digits else None
+        if regular is not None and regular < purchase:
+            return None
+    return _confirmed("ssfshop", purchase, "Product.offers.price + #lastSalePrc",
+                      regular, ".price-info .cost del")
+
+
+def _extract_cjonstyle_pricing(html: str) -> SitePricing | None:
+    soup = BeautifulSoup(html, "lxml")
+    product = _single_product_ld(soup)
+    if product is None:
+        return None
+    offer = product["offers"]
+    try:
+        purchase = int(float(offer["price"]))
+    except (KeyError, TypeError, ValueError):
+        return None
+    text = soup.get_text(" ", strip=True)
+    code = str(product.get("sku") or product.get("productID") or "")
+    if (offer.get("priceCurrency") != "KRW" or not str(offer.get("availability", "")).endswith("InStock")
+            or purchase <= 0 or f"{purchase:,}" not in text or "판매가격" not in text
+            or "장바구니" not in text or "바로구매" not in text
+            or (code and code not in text)):
+        return None
+    return _confirmed("cjonstyle", purchase, "Product.offers.price")
+
+
+def _extract_elandmall_pricing(html: str) -> SitePricing | None:
+    def js_value(name: str) -> str | None:
+        match = re.search(rf"(?:var\s+)?{re.escape(name)}\s*=\s*[\"']([^\"']+)", html)
+        return match.group(1) if match else None
+    item_no, name = js_value("s_item_no"), js_value("s_item_name")
+    try:
+        purchase = int(js_value("final_price") or "0")
+        page_price = int(js_value("s_price") or "0")
+        regular = int(js_value("regular_price") or "0")
+        stock = int(js_value("item_stock_qty") or "0")
+    except ValueError:
+        return None
+    text = BeautifulSoup(html, "lxml").get_text(" ", strip=True)
+    if (not item_no or not name or purchase <= 0 or purchase != page_price
+            or regular < purchase or stock <= 0 or js_value("soldout_yn") != "N"
+            or name not in text or f"{purchase:,}" not in text
+            or not any(label in text for label in ("바로구매", "구매하기"))):
+        return None
+    return _confirmed("elandmall", purchase, "final_price + s_price",
+                      regular, "regular_price")
+
+
+def _extract_zara_pricing(html: str) -> SitePricing | None:
+    soup = BeautifulSoup(html, "lxml")
+    analytics = []
+    for match in re.finditer(r"zara\.analyticsData\s*=\s*(\{.*?\});", html, re.DOTALL):
+        try:
+            analytics.append(json.loads(match.group(1)))
+        except json.JSONDecodeError:
+            pass
+    groups = []
+    for root in _script_json(soup):
+        for item in _walk_dicts(root):
+            if item.get("@type") == "ProductGroup" and item.get("productGroupID"):
+                groups.append(item)
+    if len(analytics) != 1 or len(groups) != 1:
+        return None
+    state, group = analytics[0], groups[0]
+    if state.get("pageType") != "PRODUCT_DETAILS" or state.get("page", {}).get("currency") != "KRW":
+        return None
+    try:
+        purchase = int(state["mainPrice"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    live_prices = set()
+    for variant in group.get("hasVariant", []):
+        offer = variant.get("offers", {}) if isinstance(variant, dict) else {}
+        if offer.get("priceCurrency") == "KRW" and str(offer.get("availability", "")).endswith("InStock"):
+            try:
+                live_prices.add(int(float(offer["price"])) * 100)
+            except (KeyError, TypeError, ValueError):
+                return None
+    text = soup.get_text(" ", strip=True)
+    ref = str(state.get("productRef", "")).split("-")[0]
+    if (purchase <= 0 or live_prices != {purchase} or ref != str(group["productGroupID"])
+            or str(group.get("name", "")) not in text or f"{purchase:,}" not in text
+            or "장바구니에 담기" not in text):
+        return None
+    return _confirmed("zara", purchase, "zara.analyticsData.mainPrice (ProductGroup offer ×100 cross-check)")
+
+
 def extract_site_pricing(platform: str, html: str | None) -> SitePricing | None:
     if not html:
         return None
@@ -2279,4 +2516,22 @@ def extract_site_pricing(platform: str, html: str | None) -> SitePricing | None:
         return _extract_nike_pricing(html)
     if platform == "oliveyoung":
         return _extract_oliveyoung_pricing(html)
+    if platform == "queenit":
+        return _extract_queenit_pricing(html)
+    if platform == "brandi":
+        return _extract_brandi_pricing(html)
+    if platform == "4910":
+        return _extract_4910_pricing(html)
+    if platform == "ssfshop":
+        return _extract_ssfshop_pricing(html)
+    if platform == "cjonstyle":
+        return _extract_cjonstyle_pricing(html)
+    if platform == "elandmall":
+        return _extract_elandmall_pricing(html)
+    if platform == "zara":
+        return _extract_zara_pricing(html)
+    # NUGU는 JPY 전용이고 SHEIN은 세션별 쿠폰/앱 가격 충돌을 해소하지 못했다.
+    # 통화 인식 및 조건 판별이 확장되기 전에는 일반 메타 가격을 confirmed로 올리지 않는다.
+    if platform in {"nugu", "shein"}:
+        return None
     return None

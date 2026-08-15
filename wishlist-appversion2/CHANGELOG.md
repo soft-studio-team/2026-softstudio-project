@@ -1,5 +1,19 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-16 - 패션 플랫폼 선택 확장 9곳
+
+🌟 **쉬운 설명**
+- 퀸잇, 브랜디, 4910, CJ온스타일, SSF샵, 이랜드몰, ZARA, NUGU, SHEIN을 URL 인식과 가격 안전 관리 대상에 추가했습니다.
+- 조건 없는 가격을 확인한 7곳은 전용 규칙을 추가했고, 일본 엔화 전용 NUGU와 세션 혜택이 복잡한 SHEIN은 잘못된 원화 가격을 만들지 않도록 차단했습니다.
+
+🔧 **기술 설명**
+- Python과 Flutter WebView에 Queenit Next state, Brandi `prefetch-data`, 4910 goods state, CJ/SSF Product offer, Eland 가격·재고 변수, ZARA `analyticsData.mainPrice` 교차 검증을 동기화했습니다.
+- ZARA JSON-LD의 1/100 KRW 값은 현재 상품 `mainPrice`, ProductGroup ID, live variant가 모두 일치할 때만 ×100 합니다.
+- 쿠폰·첫구매·카드·멤버십·최대혜택 가격, 품절·종료·목록/모코드·추천상품·내부 필드 충돌을 거부하는 회귀 테스트를 추가했습니다.
+- 관리 HTML 쇼핑몰은 61개(confirmed 57, guard-only 4), 전체 URL 레지스트리는 64개가 되었습니다. 로그인·결제·장바구니 변경은 하지 않았습니다.
+
+---
+
 ## 2026-08-16 - 전체 서버 회귀·실네트워크 및 Android 실기기 검증
 
 🌟 **쉬운 설명**

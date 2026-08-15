@@ -1277,3 +1277,93 @@ def test_oliveyoung_rejects_sold_out_conflict_multiple_products_and_unsafe_coupo
     assert extract_site_pricing(
         "oliveyoung", _oliveyoung_html(goods_no="A1", options=differing_coupon)
     ) is None
+
+
+def test_queenit_uses_final_price_and_excludes_first_purchase_coupon():
+    product = {"productId": "421b849e05731238976b9f01d96c7e31", "name": "반팔 데님 원피스",
+               "originalPrice": 99000, "finalPrice": 29900, "salesStatus": "ON_SALE", "display": True}
+    state = {"props": {"pageProps": {"dehydratedState": {"queries": [{"state": {"data": {"product": product}}}]}}}}
+    html = f'<main>반팔 데님 원피스 <del>99,000원</del> 29,900원 첫 구매 쿠폰가 26,900원 <button>구매하기</button></main><script id="__NEXT_DATA__">{json.dumps(state, ensure_ascii=False)}</script>'
+    pricing = extract_site_pricing("queenit", html)
+    assert pricing is not None and pricing.regular_price == 99000 and pricing.purchase_price == 29900
+    product["salesStatus"] = "ARCHIVED"
+    assert extract_site_pricing("queenit", html.replace("ON_SALE", "ARCHIVED")) is None
+
+
+def test_brandi_uses_prefetch_sale_price_and_rejects_unsellable_product():
+    item = {"id": "158997563", "name": "튤립 원피스", "price": 50000, "sale_price": 34500,
+            "original_sale_price": 34500, "original_price_info": {"sale_price": 34500},
+            "coupon_apply_price": 30000, "is_sell": True, "is_sold_out": False,
+            "is_temporary_sold_out": False}
+    html = f'<script id="prefetch-data" type="application/json">{json.dumps({"data": item}, ensure_ascii=False)}</script>'
+    pricing = extract_site_pricing("brandi", html)
+    assert pricing is not None and pricing.regular_price == 50000 and pricing.purchase_price == 34500
+    assert extract_site_pricing("brandi", html.replace('"is_sell": true', '"is_sell": false')) is None
+    assert extract_site_pricing("brandi", html + html.replace("158997563", "999")) is None
+
+
+def test_4910_uses_goods_price_and_ignores_new_member_extra_discount():
+    goods = {"first_page_rendering": {"goods_name": "CACTUS FLOWER", "original_price": 44900, "price": 44900},
+             "price": 44900, "is_soldout": False,
+             "linked_option": {"price": 44900, "original_price": 44900, "is_soldout": False}}
+    state = {"props": {"serverQueryClient": {"queries": [{"state": {"data": {
+        "extra_discount": {"discounted_price": 35920}, "goods": goods}}}]}}}
+    html = f'<main>CACTUS FLOWER 44,900원 신규 쿠폰가 35,920원 <button>구매하기</button></main><script id="__NEXT_DATA__">{json.dumps(state)}</script>'
+    pricing = extract_site_pricing("4910", html)
+    assert pricing is not None and pricing.regular_price is None and pricing.purchase_price == 44900
+    assert extract_site_pricing("4910", html.replace('"is_soldout": false', '"is_soldout": true')) is None
+
+
+def _ld_product_html(*, name="상품", sku="123", price=39900, currency="KRW", availability="InStock", body=""):
+    product = {"@context": "https://schema.org", "@type": "Product", "name": name, "sku": sku,
+               "offers": {"@type": "Offer", "price": price, "priceCurrency": currency,
+                          "availability": f"https://schema.org/{availability}"}}
+    return f'<main>{body}</main><script type="application/ld+json">{json.dumps(product, ensure_ascii=False)}</script>'
+
+
+def test_ssfshop_cross_checks_jsonld_hidden_and_visible_sale_price():
+    html = _ld_product_html(name="베이스볼 티", sku="PCXGOLT", price=59400,
+        body='<div class="price-info"><span class="cost"><del>88,000원</del></span>59,400원</div><input id="lastSalePrc" value="59400"><button>장바구니</button><button>바로구매</button>')
+    pricing = extract_site_pricing("ssfshop", html)
+    assert pricing is not None and pricing.regular_price == 88000 and pricing.purchase_price == 59400
+    assert extract_site_pricing("ssfshop", html.replace('value="59400"', 'value="59000"')) is None
+    assert extract_site_pricing("ssfshop", html.replace("InStock", "OutOfStock")) is None
+
+
+def test_cjonstyle_uses_labeled_sale_price_not_card_price():
+    html = _ld_product_html(name="케이프니트 세트", sku="2078847097", price=39900,
+        body='케이프니트 세트 상품코드 2078847097 판매가격 39,900원 카드가 37,110원 <button>장바구니</button><button>바로구매</button>')
+    pricing = extract_site_pricing("cjonstyle", html)
+    assert pricing is not None and pricing.purchase_price == 39900 and pricing.regular_price is None
+    assert extract_site_pricing("cjonstyle", html.replace("InStock", "OutOfStock")) is None
+    assert extract_site_pricing("cjonstyle", html + _ld_product_html(sku="999", body="추천")) is None
+
+
+def test_elandmall_cross_checks_price_stock_and_sale_state():
+    html = '''<main>코인코즈 베스트 49,000원 <button>바로구매</button></main><script>
+    var s_item_no = "2410548876"; var s_item_name = "코인코즈 베스트";
+    var s_price = "49000"; var regular_price = "129600"; var final_price = "49000";
+    var item_stock_qty = "10"; var soldout_yn = "N";</script>'''
+    pricing = extract_site_pricing("elandmall", html)
+    assert pricing is not None and pricing.regular_price == 129600 and pricing.purchase_price == 49000
+    assert extract_site_pricing("elandmall", html.replace('soldout_yn = "N"', 'soldout_yn = "Y"')) is None
+    assert extract_site_pricing("elandmall", html.replace('final_price = "49000"', 'final_price = "48000"')) is None
+
+
+def test_zara_uses_main_price_and_validates_scaled_variant_offers():
+    group = {"@context": "https://schema.org", "@type": "ProductGroup", "name": "플리츠 코트",
+             "productGroupID": "05063701", "hasVariant": [
+                 {"@type": "Product", "offers": {"price": "1099", "priceCurrency": "KRW", "availability": "https://schema.org/InStock"}},
+                 {"@type": "Product", "offers": {"price": "1099", "priceCurrency": "KRW", "availability": "https://schema.org/OutOfStock"}}]}
+    analytics = {"pageType": "PRODUCT_DETAILS", "page": {"currency": "KRW"}, "mainPrice": 109900,
+                 "productRef": "05063701-I2026"}
+    html = f'<main>플리츠 코트 ₩ 109,900 <button>장바구니에 담기</button></main><script>zara.analyticsData = {json.dumps(analytics, ensure_ascii=False)};</script><script type="application/ld+json">{json.dumps(group, ensure_ascii=False)}</script>'
+    pricing = extract_site_pricing("zara", html)
+    assert pricing is not None and pricing.purchase_price == 109900 and pricing.regular_price is None
+    assert extract_site_pricing("zara", html.replace('"1099"', '"999"', 1)) is None
+    assert extract_site_pricing("zara", html.replace("InStock", "OutOfStock")) is None
+
+
+def test_currency_or_session_unsafe_expansions_abstain():
+    assert extract_site_pricing("nugu", '<main>¥1,777 쿠폰 ¥1,500 구매하기</main>') is None
+    assert extract_site_pricing("shein", '<main>9,890원 신규회원가 7,900원 앱 전용 7,500원 장바구니</main>') is None

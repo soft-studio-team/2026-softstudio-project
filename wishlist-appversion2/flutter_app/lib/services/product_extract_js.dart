@@ -473,9 +473,46 @@ const String productExtractJs = r'''
       var ostates={};document.querySelectorAll('script').forEach(function(x){var txt=x.textContent||'',m=/^\s*self\.__next_f\.push\((\[.*\])\)\s*$/s.exec(txt);if(!m)return;var payload;try{payload=JSON.parse(m[1]);}catch(e){return;}if(!Array.isArray(payload)||typeof payload[1]!=='string')return;var dec=payload[1],rx=/"data"\s*:\s*\{\s*"data"\s*:\s*\{/g,dm;while((dm=rx.exec(dec))){var obj=objectAt(dec,dm.index+dm[0].length-1),cand;try{cand=JSON.parse(obj);}catch(e){continue;}var gn=String(cand&&cand.goodsNumber||'');if(!gn)continue;if(ostates[gn]&&JSON.stringify(ostates[gn])!==JSON.stringify(cand)){ostates.__bad=true;return;}ostates[gn]=cand;}});if(ostates.__bad||Object.keys(ostates).length!==1)return null;state=ostates[Object.keys(ostates)[0]];if(state.saleableFlag!==true||state.displayableFlag!==true||state.soldOutFlag===true||String(state.status||'')!=='20'||!Array.isArray(state.options))return null;var ol=state.options.filter(function(o){var min=toPrice(o&&o.orderableMinimumQuantity),max=toPrice(o&&o.orderableMaximumQuantity);return o&&o.soldOutFlag!==true&&min&&max&&max>=min;});if(!ol.length||!state.maxBenefitPriceDto)return null;var ob=state.maxBenefitPriceDto,rep=ol.find(function(o){return String(o.optionNumber||'')===String(ob.optionNumber||'');}),promo=toPrice(ob.promotionSalePrice),orig=toPrice(ob.originalSalePrice),finalp=toPrice(ob.finalPrice);if(!rep||!promo||!orig||!finalp||promo>orig||finalp>promo||toPrice(rep.salePrice)!==orig||toPrice(rep.finalPrice)!==finalp)return null;var opp=[];for(i=0;i<ol.length;i++){var os=toPrice(ol[i].salePrice),of=toPrice(ol[i].finalPrice);if(!os||!of||of>os)return null;if(String(ol[i].optionNumber||'')===String(ob.optionNumber||''))opp.push(promo);else if(ob.hasCoupon!==true)opp.push(of);else if(os===orig&&of===finalp)opp.push(promo);else return null;}var oyname=firstStr(state.goodsName),oyt=pageText();if(!oyname||oyt.indexOf(oyname)<0||oyt.indexOf('장바구니')<0||oyt.indexOf('바로구매')<0||!(oyt.indexOf(won(finalp))>=0||oyt.indexOf(won(orig))>=0))return null;var olo=Math.min.apply(null,opp),ohi=Math.max.apply(null,opp),odep=olo!==ohi,oregs=uniqueRows(ol.map(function(o){return toPrice(o.salePrice);}).filter(Boolean)),oreg=oregs.length===1&&oregs[0]>olo&&oregs[0]>=ohi?oregs[0]:null;
       return result('oliveyoung',olo,oreg,'goods.maxBenefitPriceDto.promotionSalePrice + goods.options[soldOutFlag=false]',oreg?'goods.options[].salePrice':null,{priceConfidence:'medium',purchasePriceStatus:odep?'option_dependent':'confirmed',optionDependent:odep,optionPriceMin:odep?olo:null,optionPriceMax:odep?ohi:null});
     }
+
+    if(hostIs('queenit.kr')){
+      var qn=document.querySelector('script#__NEXT_DATA__');if(!qn)return null;try{state=JSON.parse(qn.textContent);var qq=state.props.pageProps.dehydratedState.queries;}catch(e){return null;}var qr=[];asArray(qq).forEach(function(q){var p=q&&q.state&&q.state.data&&q.state.data.product;if(!p||!p.productId||!p.name||p.display!==true||['ARCHIVED','SOLD_OUT','STOPPED'].indexOf(String(p.salesStatus||'').toUpperCase())>=0)return;sale=toPrice(p.finalPrice);regular=toPrice(p.originalPrice);if(sale&&regular>=sale)qr.push([String(p.productId),p.name,sale,regular]);});qr=uniqueRows(qr);if(qr.length!==1||pageText().indexOf(qr[0][1])<0||pageText().indexOf(Number(qr[0][2]).toLocaleString('en-US'))<0||pageText().indexOf('구매하기')<0)return null;
+      return result('queenit',qr[0][2],qr[0][3]>qr[0][2]?qr[0][3]:null,'product.finalPrice','product.originalPrice',{priceConfidence:'medium',optionDependent:false});
+    }
+
+    if(hostIs('brandi.co.kr')){
+      var bs=document.querySelectorAll('script#prefetch-data');if(bs.length!==1)return null;try{var bd=JSON.parse(bs[0].textContent).data;}catch(e){return null;}sale=toPrice(bd&&bd.sale_price);regular=toPrice(bd&&bd.price);if(!bd||!/^\d+$/.test(String(bd.id||''))||bd.is_sell!==true||bd.is_sold_out!==false||bd.is_temporary_sold_out!==false||!sale||!regular||regular<sale||toPrice(bd.original_sale_price)!==sale||toPrice(bd.original_price_info&&bd.original_price_info.sale_price)!==sale)return null;
+      return result('brandi',sale,regular>sale?regular:null,'prefetch-data.data.sale_price','prefetch-data.data.price',{priceConfidence:'medium',optionDependent:false});
+    }
+
+    if(hostIs('4910.kr')){
+      var fs=document.querySelector('script#__NEXT_DATA__');if(!fs)return null;try{state=JSON.parse(fs.textContent);var fq=state.props.serverQueryClient.queries;}catch(e){return null;}var fr=[];asArray(fq).forEach(function(q){var d=q&&q.state&&q.state.data,g=d&&d.goods,f=g&&g.first_page_rendering,l=g&&g.linked_option;if(!g||!f)return;sale=toPrice(g.price);regular=toPrice(f.original_price);if(sale&&toPrice(f.price)===sale&&(!l||toPrice(l.price)===sale)&&g.is_soldout===false&&(!l||l.is_soldout!==true)&&regular>=sale)fr.push([firstStr(f.goods_name),sale,regular]);});fr=uniqueRows(fr);if(fr.length!==1||!fr[0][0]||pageText().indexOf(fr[0][0])<0||pageText().indexOf(Number(fr[0][1]).toLocaleString('en-US'))<0||pageText().indexOf('구매하기')<0)return null;
+      return result('4910',fr[0][1],fr[0][2]>fr[0][1]?fr[0][2]:null,'goods.price','goods.first_page_rendering.original_price',{priceConfidence:'medium',optionDependent:false});
+    }
+
+    if(hostIs('ssfshop.com')){
+      var sp=products(),sh=document.querySelectorAll('#lastSalePrc');if(sp.length!==1||sh.length!==1)return null;var so=productOffers(sp[0]);if(so.length!==1||so[0].priceCurrency!=='KRW'||!availability(so[0].availability).endsWith('instock'))return null;sale=toPrice(so[0].price);if(!sale||toPrice(sh[0].value)!==sale||pageText().indexOf(Number(sale).toLocaleString('en-US'))<0||pageText().indexOf('장바구니')<0||pageText().indexOf('바로구매')<0)return null;var sc=document.querySelector('.price-info .cost del,.price-info del');regular=toPrice(sc&&sc.textContent);if(regular&&regular<sale)return null;
+      return result('ssfshop',sale,regular>sale?regular:null,'Product.offers.price + #lastSalePrc',regular>sale?'.price-info .cost del':null,{priceConfidence:'medium',optionDependent:false});
+    }
+
+    if(hostIs('cjonstyle.com')){
+      var cj=products();if(cj.length!==1)return null;var co=productOffers(cj[0]);if(co.length!==1||co[0].priceCurrency!=='KRW'||!availability(co[0].availability).endsWith('instock'))return null;sale=toPrice(co[0].price);var ccode=String(cj[0].sku||cj[0].productID||''),ct=pageText();if(!sale||ct.indexOf(Number(sale).toLocaleString('en-US'))<0||ct.indexOf('판매가격')<0||ct.indexOf('장바구니')<0||ct.indexOf('바로구매')<0||(ccode&&ct.indexOf(ccode)<0))return null;
+      return result('cjonstyle',sale,null,'Product.offers.price',null,{priceConfidence:'medium',optionDependent:false});
+    }
+
+    if(hostIs('elandmall.co.kr')){
+      sale=scriptPrice('final_price',raw);var ep=scriptPrice('s_price',raw);regular=scriptPrice('regular_price',raw);var es=scriptPrice('item_stock_qty',raw),em=/soldout_yn\s*=\s*['"]([^'"]+)/.exec(raw),en=/s_item_name\s*=\s*['"]([^'"]+)/.exec(raw);if(!sale||sale!==ep||!regular||regular<sale||!es||!em||em[1]!=='N'||!en||pageText().indexOf(en[1])<0||pageText().indexOf(Number(sale).toLocaleString('en-US'))<0||!/(바로구매|구매하기)/.test(pageText()))return null;
+      return result('elandmall',sale,regular>sale?regular:null,'final_price + s_price','regular_price',{priceConfidence:'medium',optionDependent:false});
+    }
+
+    if(hostIs('zara.com')){
+      var za=window.zara&&window.zara.analyticsData,zg=topJsonLd().filter(function(x){return exactType(x,'ProductGroup');});if(!za||za.pageType!=='PRODUCT_DETAILS'||!za.page||za.page.currency!=='KRW'||zg.length!==1)return null;sale=toPrice(za.mainPrice);var zp=[];asArray(zg[0].hasVariant).forEach(function(v){var o=v&&v.offers;if(o&&o.priceCurrency==='KRW'&&availability(o.availability).endsWith('instock')){var p=toPrice(o.price);if(p)zp.push(p*100);}});zp=uniqueRows(zp);var zref=String(za.productRef||'').split('-')[0],zt=pageText();if(!sale||zp.length!==1||zp[0]!==sale||zref!==String(zg[0].productGroupID||'')||zt.indexOf(firstStr(zg[0].name)||'\u0000')<0||zt.indexOf(Number(sale).toLocaleString('en-US'))<0||zt.indexOf('장바구니에 담기')<0)return null;
+      return result('zara',sale,null,'zara.analyticsData.mainPrice (ProductGroup offer ×100 cross-check)',null,{priceConfidence:'medium',optionDependent:false});
+    }
+
+    if(hostIs('nugu.jp')||hostIs('shein.com'))return null;
     return null;
   }
-  var managedDomains=['musinsa.com','wconcept.co.kr','29cm.co.kr','fila.co.kr','hago.kr','lookpin.co.kr','topten10.goodwearmall.com','mujikorea.co.kr','hmall.com','lotteon.com','mixxo.com','dailyjou.com','leekorea.co.kr','filluminate.com','urbanstoff.com','not4u.kr','insilence.co.kr','fabregat.kr','hotping.co.kr','uniqlo.com','ssg.com','hi.thehyundai.com','a-bly.com','zigzag.kr','kream.co.kr','guesskorea.com','levi.co.kr','vans.co.kr','covernat.co.kr','code-graphy.com','whoau.com','hm.com','gap.com','aritzia.com','noirer.com','liphop.com','marithe-official.com','mahagrid.com','vivastudio.co.kr','amomento.co','anderssonbell.com','yaleapparel.co.kr','ohora.kr','withyoon.com','66girls.co.kr','partimento.com','fashionplus.co.kr','frombeginning.co.kr','lfmall.co.kr','thereformation.com','nike.com','oliveyoung.co.kr'];
+  var managedDomains=['musinsa.com','wconcept.co.kr','29cm.co.kr','fila.co.kr','hago.kr','lookpin.co.kr','topten10.goodwearmall.com','mujikorea.co.kr','hmall.com','lotteon.com','mixxo.com','dailyjou.com','leekorea.co.kr','filluminate.com','urbanstoff.com','not4u.kr','insilence.co.kr','fabregat.kr','hotping.co.kr','uniqlo.com','ssg.com','hi.thehyundai.com','a-bly.com','zigzag.kr','kream.co.kr','guesskorea.com','levi.co.kr','vans.co.kr','covernat.co.kr','code-graphy.com','whoau.com','hm.com','gap.com','aritzia.com','noirer.com','liphop.com','marithe-official.com','mahagrid.com','vivastudio.co.kr','amomento.co','anderssonbell.com','yaleapparel.co.kr','ohora.kr','withyoon.com','66girls.co.kr','partimento.com','fashionplus.co.kr','frombeginning.co.kr','lfmall.co.kr','thereformation.com','nike.com','oliveyoung.co.kr','queenit.kr','brandi.co.kr','nugu.jp','cjonstyle.com','4910.kr','ssfshop.com','zara.com','shein.com','elandmall.co.kr'];
   var managedSite=managedDomains.some(hostIs);
   var sitePricing=extractVerifiedSitePricing();
   var dn = domName();
@@ -507,7 +544,7 @@ const String productExtractJs = r'''
   var image = (ld&&ld.image) || ogImage || null;
 
   // 자라: JSON-LD 원화가 실제의 1/100 → ×100 보정 (화면/OG 값에는 적용 안 함)
-  if(/(^|\.)zara\.com$/.test(host) && ld && ld.price){
+  if(/(^|\.)zara\.com$/.test(host) && !sitePricing && ld && ld.price){
     price = ld.price*100;
     if(originalPrice) originalPrice=originalPrice*100;
   }

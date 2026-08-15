@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:figmadesign/services/product_extract_js.dart';
 
 void main() {
-  test('Python HTML 어댑터 52개 도메인이 온디바이스 관리 목록에 있다', () {
+  test('Python HTML 어댑터와 guard 61개 도메인이 온디바이스 관리 목록에 있다', () {
     const domains = <String>[
       'musinsa.com',
       'wconcept.co.kr',
@@ -57,6 +57,15 @@ void main() {
       'thereformation.com',
       'nike.com',
       'oliveyoung.co.kr',
+      'queenit.kr',
+      'brandi.co.kr',
+      'nugu.jp',
+      'cjonstyle.com',
+      '4910.kr',
+      'ssfshop.com',
+      'zara.com',
+      'shein.com',
+      'elandmall.co.kr',
     ];
 
     for (final domain in domains) {
@@ -67,6 +76,13 @@ void main() {
   test('Gap과 LF몰은 양수 추출 없이 guard-only를 유지한다', () {
     expect(productExtractJs, contains("if(hostIs('gap.com'))return null"));
     expect(productExtractJs, contains("if(hostIs('lfmall.co.kr'))return null"));
+  });
+
+  test('NUGU와 SHEIN은 통화·세션 조건이 해소될 때까지 guard-only다', () {
+    expect(
+      productExtractJs,
+      contains("if(hostIs('nugu.jp')||hostIs('shein.com'))return null"),
+    );
   });
 
   test('관리 쇼핑몰은 전용 규칙 실패 시 범용 가격으로 우회하지 않는다', () {

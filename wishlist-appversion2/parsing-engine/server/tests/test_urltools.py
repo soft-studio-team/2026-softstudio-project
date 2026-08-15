@@ -68,6 +68,15 @@ from engine.urltools import analyze_url, is_http_url
     ("https://www.nike.com/kr/t/dunk-low-shoes-KJFYnLZQ/DD1391-100", "nike", "DD1391-100", False),
     ("https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000210792",
      "oliveyoung", "A000000210792", False),
+    ("https://web.queenit.kr/product/421b849e05731238976b9f01d96c7e31", "queenit", "421b849e05731238976b9f01d96c7e31", False),
+    ("https://www.brandi.co.kr/products/158997563", "brandi", "158997563", False),
+    ("https://www.nugu.jp/product/JQTFKT2457", "nugu", "JQTFKT2457", False),
+    ("https://display.cjonstyle.com/p/item/2078847097", "cjonstyle", "2078847097", False),
+    ("https://4910.kr/desktop/goods/64333542", "4910", "64333542", False),
+    ("https://www.ssfshop.com/GOOD-ON/GPCX25041604994/good", "ssfshop", "GPCX25041604994", False),
+    ("https://www.zara.com/kr/ko/item-p05063701.html", "zara", "05063701", False),
+    ("https://kr.shein.com/item-p-427349856.html", "shein", "427349856", False),
+    ("https://www.elandmall.co.kr/i/item?chnl_no=GSW&itemNo=2410548876", "elandmall", "2410548876", False),
     # 미등록 도메인 → unknown (Tier 3까지 내려가더라도 저장은 가능해야 함)
     ("https://example-shop.example.com/item/1", "unknown", None, False),
 ])
