@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -20,12 +21,15 @@ class AppStore extends ChangeNotifier {
   static const _notifyFollowKey = 'notify_follow';
   static const _notifyBasketKey = 'notify_basket';
   static const _notifyReviewKey = 'notify_review';
+  static const _notifyListKey = 'notify_list';
   static const _reviewsKey = 'my_reviews';
 
   AppStore({AccountRepository? repository})
       : _repo = repository ?? AccountRepository();
 
   final AccountRepository _repo;
+  StreamSubscription<List<AppNotification>>? _notificationSub;
+  StreamSubscription<List<SharedBasket>>? _receivedBasketSub;
 
   bool ready = false;
   bool firebaseReady = false;
@@ -41,6 +45,7 @@ class AppStore extends ChangeNotifier {
   bool notifyOnFollow = true;
   bool notifyOnBasket = true;
   bool notifyOnReview = true;
+  bool notifyOnList = true;
 
   List<WishlistTab> tabs = [];
   List<Product> products = [];
@@ -157,6 +162,7 @@ class AppStore extends ChangeNotifier {
     isLoggedIn = true;
     selectedTabId = 'all';
     await _reloadNotificationPrefs();
+    _watchInbox(fresh.uid);
   }
 
   Future<void> _reloadNotificationPrefs() async {
@@ -165,6 +171,7 @@ class AppStore extends ChangeNotifier {
     notifyOnFollow = prefs.getBool('${_notifyFollowKey}_$keySuffix') ?? true;
     notifyOnBasket = prefs.getBool('${_notifyBasketKey}_$keySuffix') ?? true;
     notifyOnReview = prefs.getBool('${_notifyReviewKey}_$keySuffix') ?? true;
+    notifyOnList = prefs.getBool('${_notifyListKey}_$keySuffix') ?? true;
   }
 
   /// Notifications / received baskets need updated Firestore rules.
@@ -206,6 +213,7 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> _clearSessionLocal() async {
+    _stopInboxWatch();
     isLoggedIn = false;
     awaitingEmailVerification = false;
     showSignupWelcome = false;
@@ -490,6 +498,9 @@ class AppStore extends ChangeNotifier {
     tabs = [...tabs, tab];
     selectedTabId = tab.id;
     await _persistTabs();
+    if (isPublic) {
+      await _notifyFollowersOfPublicList(tab);
+    }
     notifyListeners();
   }
 
@@ -512,10 +523,16 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> toggleTabPublic(String id) async {
+    final current = tabs.where((t) => t.id == id).firstOrNull;
+    if (current == null || current.id == 'all') return;
+    final becomingPublic = !current.isPublic;
     tabs = tabs
         .map((t) => t.id == id ? t.copyWith(isPublic: !t.isPublic) : t)
         .toList();
     await _persistTabs();
+    if (becomingPublic) {
+      await _notifyFollowersOfPublicList(current);
+    }
     notifyListeners();
   }
 
@@ -646,6 +663,7 @@ class AppStore extends ChangeNotifier {
         if (n.type == AppNotificationType.follow) return notifyOnFollow;
         if (n.type == AppNotificationType.basket) return notifyOnBasket;
         if (n.type == AppNotificationType.review) return notifyOnReview;
+        if (n.type == AppNotificationType.list) return notifyOnList;
         return true;
       }).toList();
 
@@ -815,6 +833,45 @@ class AppStore extends ChangeNotifier {
     notifyOnReview = value;
     await _persistNotificationPrefs();
     notifyListeners();
+  }
+
+  Future<void> setNotifyOnList(bool value) async {
+    notifyOnList = value;
+    await _persistNotificationPrefs();
+    notifyListeners();
+  }
+
+  Future<void> _notifyFollowersOfPublicList(WishlistTab tab) async {
+    final userId = uid;
+    if (userId == null) return;
+    try {
+      final followerIds = await _repo.followerIds(userId);
+      await _repo.notifyFollowersOfList(
+        from: currentUser.copyWith(uid: userId),
+        listId: tab.id,
+        listName: tab.name,
+        followerUids: followerIds,
+      );
+    } catch (_) {}
+  }
+
+  void _watchInbox(String userId) {
+    _stopInboxWatch();
+    _notificationSub = _repo.watchNotifications(userId).listen((list) {
+      notifications = list;
+      notifyListeners();
+    }, onError: (_) {});
+    _receivedBasketSub = _repo.watchReceivedBaskets(userId).listen((list) {
+      receivedBaskets = list;
+      notifyListeners();
+    }, onError: (_) {});
+  }
+
+  void _stopInboxWatch() {
+    _notificationSub?.cancel();
+    _notificationSub = null;
+    _receivedBasketSub?.cancel();
+    _receivedBasketSub = null;
   }
 
   void _syncFriendCounts() {
@@ -1015,6 +1072,7 @@ class AppStore extends ChangeNotifier {
     notifyOnFollow = prefs.getBool('${_notifyFollowKey}_${uid ?? 'guest'}') ?? true;
     notifyOnBasket = prefs.getBool('${_notifyBasketKey}_${uid ?? 'guest'}') ?? true;
     notifyOnReview = prefs.getBool('${_notifyReviewKey}_${uid ?? 'guest'}') ?? true;
+    notifyOnList = prefs.getBool('${_notifyListKey}_${uid ?? 'guest'}') ?? true;
     final sharedRaw = prefs.getString(_sharedKey);
     if (sharedRaw != null) {
       final list = jsonDecode(sharedRaw) as List;
@@ -1032,6 +1090,7 @@ class AppStore extends ChangeNotifier {
     await prefs.setBool('${_notifyFollowKey}_$keySuffix', notifyOnFollow);
     await prefs.setBool('${_notifyBasketKey}_$keySuffix', notifyOnBasket);
     await prefs.setBool('${_notifyReviewKey}_$keySuffix', notifyOnReview);
+    await prefs.setBool('${_notifyListKey}_$keySuffix', notifyOnList);
   }
 
   Product? findCatalogProduct(int id) {
@@ -1170,16 +1229,18 @@ class AppStore extends ChangeNotifier {
     await _persistLocalReviews();
     try {
       await _repo.upsertReview(userId, review);
-      if (existing == null) {
+    } catch (_) {
+      // Local review still works if Firestore rules are not deployed yet.
+    }
+    if (existing == null) {
+      try {
         final followerIds = await _repo.followerIds(userId);
         await _repo.notifyFollowersOfReview(
           from: currentUser.copyWith(uid: userId),
           review: review,
           followerUids: followerIds,
         );
-      }
-    } catch (_) {
-      // Local review still works if Firestore rules are not deployed yet.
+      } catch (_) {}
     }
     notifyListeners();
     return review;

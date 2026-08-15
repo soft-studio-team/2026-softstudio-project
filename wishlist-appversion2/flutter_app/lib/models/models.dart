@@ -315,7 +315,7 @@ class SharedBasket {
       );
 }
 
-enum AppNotificationType { follow, basket, review }
+enum AppNotificationType { follow, basket, review, list }
 
 class AppNotification {
   AppNotification({
@@ -375,6 +375,7 @@ class AppNotification {
       type: switch (typeRaw) {
         'basket' => AppNotificationType.basket,
         'review' => AppNotificationType.review,
+        'list' => AppNotificationType.list,
         _ => AppNotificationType.follow,
       },
       fromUid: json['fromUid'] as String? ?? '',
@@ -384,10 +385,25 @@ class AppNotification {
       message: json['message'] as String? ?? '',
       relatedId: json['relatedId'] as String?,
       read: json['read'] as bool? ?? false,
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
-          DateTime.now(),
+      createdAt: _notificationTime(json),
     );
   }
+}
+
+DateTime _notificationTime(Map<String, dynamic> json) {
+  final raw = json['createdAt'] ?? json['createdAtServer'];
+  if (raw is DateTime) return raw;
+  if (raw is String) {
+    return DateTime.tryParse(raw) ?? DateTime.now();
+  }
+  try {
+    final dynamic value = raw;
+    if (value != null) {
+      final dated = value.toDate();
+      if (dated is DateTime) return dated;
+    }
+  } catch (_) {}
+  return DateTime.now();
 }
 
 /// Friend who sent one or more 살까말까 baskets (for the friends tab).

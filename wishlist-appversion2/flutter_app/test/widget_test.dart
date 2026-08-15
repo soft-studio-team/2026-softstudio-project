@@ -71,4 +71,24 @@ void main() {
     expect(review.mood, 5);
     expect(review.imageUrls, isEmpty);
   });
+
+  test('AppNotification parses follow basket review and list types', () {
+    AppNotification n(String type) => AppNotification.fromJson({
+          'id': 'n-$type',
+          'type': type,
+          'fromUid': 'u1',
+          'fromName': '지은',
+          'fromHandle': '@jieun',
+          'fromAvatar': 'https://example.com/a.png',
+          'message': '알림',
+          'relatedId': 'x',
+          'read': false,
+          'createdAt': '2026-08-15T12:00:00.000',
+        });
+
+    expect(n('follow').type, AppNotificationType.follow);
+    expect(n('basket').type, AppNotificationType.basket);
+    expect(n('review').type, AppNotificationType.review);
+    expect(n('list').type, AppNotificationType.list);
+  });
 }

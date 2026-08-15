@@ -97,6 +97,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             Icons.shopping_bag_outlined,
                           AppNotificationType.review =>
                             Icons.menu_book_outlined,
+                          AppNotificationType.list => Icons.folder_open_outlined,
                           AppNotificationType.follow =>
                             Icons.person_add_alt_1_outlined,
                         },
@@ -112,6 +113,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _open(BuildContext context, AppStore store, AppNotification n) {
+    if (n.type == AppNotificationType.list) {
+      store.selectFriendsTab(2);
+      context.go('/friends');
+      return;
+    }
     if (n.type == AppNotificationType.review) {
       if (n.relatedId != null) {
         context.push('/reviews/${n.relatedId}');
