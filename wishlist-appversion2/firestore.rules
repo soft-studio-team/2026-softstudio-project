@@ -55,14 +55,20 @@ service cloud.firestore {
       // Same-email delete lets a re-registered Auth user clear Console leftovers.
       allow delete: if isOwner(userId) || emailMatchesAuth(resource.data);
 
+      // Private lists stay private at the database, not just in the UI.
+      // Friends must query where isPublic == true; unfiltered list reads fail.
+      function isPublicDoc() {
+        return resource.data.get('isPublic', false) == true;
+      }
+
       match /tabs/{tabId} {
-        allow read: if signedIn();
+        allow read: if isOwner(userId) || (signedIn() && isPublicDoc());
         allow create, update: if isOwner(userId);
         allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
 
       match /products/{productId} {
-        allow read: if signedIn();
+        allow read: if isOwner(userId) || (signedIn() && isPublicDoc());
         allow create, update: if isOwner(userId);
         allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
