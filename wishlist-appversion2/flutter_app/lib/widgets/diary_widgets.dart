@@ -276,6 +276,58 @@ class DiaryButton extends StatelessWidget {
   }
 }
 
+/// Password field with a small trailing eye to show/hide the value.
+class PasswordTextField extends StatefulWidget {
+  const PasswordTextField({
+    super.key,
+    required this.controller,
+    this.decoration = const InputDecoration(),
+    this.onSubmitted,
+    this.textInputAction,
+    this.autofillHints,
+  });
+
+  final TextEditingController controller;
+  final InputDecoration decoration;
+  final ValueChanged<String>? onSubmitted;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
+
+  @override
+  State<PasswordTextField> createState() => _PasswordTextFieldState();
+}
+
+class _PasswordTextFieldState extends State<PasswordTextField> {
+  bool hidden = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: widget.controller,
+      obscureText: hidden,
+      onSubmitted: widget.onSubmitted,
+      textInputAction: widget.textInputAction,
+      autofillHints: widget.autofillHints,
+      decoration: widget.decoration.copyWith(
+        suffixIcon: IconButton(
+          tooltip: hidden ? '비밀번호 보기' : '비밀번호 숨기기',
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          onPressed: () => setState(() => hidden = !hidden),
+          icon: Icon(
+            hidden
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
+            size: 20,
+            color: DiaryColors.inkMuted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 String formatWon(int price) {
   final s = price.toString();
   final buf = StringBuffer();

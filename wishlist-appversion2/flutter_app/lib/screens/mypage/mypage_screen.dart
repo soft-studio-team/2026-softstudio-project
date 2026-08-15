@@ -301,9 +301,8 @@ class MyPageScreen extends StatelessWidget {
                       style: DiaryTheme.body(13, color: DiaryColors.inkMuted),
                     ),
                     const SizedBox(height: 12),
-                    TextField(
+                    PasswordTextField(
                       controller: passwordCtrl,
-                      obscureText: true,
                       decoration: const InputDecoration(
                         labelText: '비밀번호 확인',
                       ),
@@ -387,19 +386,16 @@ class MyPageScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
+                    PasswordTextField(
                       controller: currentCtrl,
-                      obscureText: true,
                       decoration: const InputDecoration(labelText: '현재 비밀번호'),
                     ),
-                    TextField(
+                    PasswordTextField(
                       controller: nextCtrl,
-                      obscureText: true,
                       decoration: const InputDecoration(labelText: '새 비밀번호'),
                     ),
-                    TextField(
+                    PasswordTextField(
                       controller: confirmCtrl,
-                      obscureText: true,
                       decoration: const InputDecoration(labelText: '새 비밀번호 확인'),
                     ),
                     if (error != null) ...[
