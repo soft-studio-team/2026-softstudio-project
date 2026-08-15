@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../firebase_options.dart';
 import '../models/models.dart';
 import '../services/account_repository.dart';
+import '../services/push_notification_service.dart';
 import '../theme/diary_theme.dart';
 
 class AppStore extends ChangeNotifier {
@@ -163,6 +164,7 @@ class AppStore extends ChangeNotifier {
     selectedTabId = 'all';
     await _reloadNotificationPrefs();
     _watchInbox(fresh.uid);
+    unawaited(PushNotificationService.instance.register(fresh.uid, _repo));
   }
 
   Future<void> _reloadNotificationPrefs() async {
@@ -312,6 +314,7 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> cancelEmailVerification() async {
+    await PushNotificationService.instance.unregister();
     if (firebaseReady) {
       await _repo.logout();
     }
@@ -321,6 +324,7 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    await PushNotificationService.instance.unregister();
     if (firebaseReady) {
       await _repo.logout();
     }
@@ -334,6 +338,7 @@ class AppStore extends ChangeNotifier {
       throw Exception('비밀번호를 입력해 주세요.');
     }
     try {
+      await PushNotificationService.instance.unregister();
       await _repo.deleteAccount(password: password);
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
@@ -857,7 +862,20 @@ class AppStore extends ChangeNotifier {
 
   void _watchInbox(String userId) {
     _stopInboxWatch();
+    var primed = false;
+    final seen = <String>{};
     _notificationSub = _repo.watchNotifications(userId).listen((list) {
+      if (primed) {
+        for (final n in list) {
+          if (!seen.contains(n.id)) {
+            unawaited(PushNotificationService.instance.showInboxBanner(n));
+          }
+        }
+      }
+      seen
+        ..clear()
+        ..addAll(list.map((n) => n.id));
+      primed = true;
       notifications = list;
       notifyListeners();
     }, onError: (_) {});

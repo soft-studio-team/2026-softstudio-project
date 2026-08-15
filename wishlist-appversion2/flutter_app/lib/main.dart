@@ -8,6 +8,7 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'data/app_store.dart';
 import 'firebase_options.dart';
+import 'services/push_notification_service.dart';
 import 'screens/auth/account_recovery_screen.dart';
 import 'screens/auth/email_verification_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -34,6 +35,7 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    await PushNotificationService.instance.init();
   }
   final store = AppStore();
   await store.init();
@@ -57,6 +59,9 @@ class _WishlistAppState extends State<WishlistApp> {
   void initState() {
     super.initState();
     router = _buildRouter(widget.store);
+    PushNotificationService.instance.onBannerTap = () {
+      router.go('/notifications');
+    };
     _listenShares();
   }
 
@@ -87,6 +92,7 @@ class _WishlistAppState extends State<WishlistApp> {
 
   @override
   void dispose() {
+    PushNotificationService.instance.onBannerTap = null;
     _shareSub?.cancel();
     super.dispose();
   }

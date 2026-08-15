@@ -34,3 +34,6 @@ venv/
 # Local data
 **/server/data/*.json
 !**/server/data/.gitkeep
+
+# Cloud Functions
+functions/node_modules/

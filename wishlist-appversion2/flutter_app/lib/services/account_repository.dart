@@ -409,6 +409,20 @@ class AccountRepository {
     return AppUser.fromJson(snap.data()!..['uid'] = uid);
   }
 
+  Future<void> saveFcmToken(String uid, String token) async {
+    if (token.isEmpty) return;
+    await _userDoc(uid).set({
+      'fcmTokens': FieldValue.arrayUnion([token]),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> removeFcmToken(String uid, String token) async {
+    if (token.isEmpty) return;
+    await _userDoc(uid).update({
+      'fcmTokens': FieldValue.arrayRemove([token]),
+    });
+  }
+
   /// Creates the app account in Firestore only for a verified user.
   Future<void> ensureProfile(
     User user, {
