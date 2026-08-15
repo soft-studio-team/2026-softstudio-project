@@ -846,64 +846,6 @@ class AccountRepository {
     return out;
   }
 
-  Future<void> notifyFollowersOfReview({
-    required AppUser from,
-    required ProductReview review,
-    required List<String> followerUids,
-  }) {
-    return _notifyMany(
-      from: from,
-      recipientUids: followerUids,
-      type: 'review',
-      message: '${from.name} 님이 상품 리뷰를 올렸어요',
-      relatedId: review.id,
-    );
-  }
-
-  Future<void> notifyFollowersOfList({
-    required AppUser from,
-    required String listId,
-    required String listName,
-    required List<String> followerUids,
-  }) {
-    return _notifyMany(
-      from: from,
-      recipientUids: followerUids,
-      type: 'list',
-      message: '${from.name} 님이 "$listName" 리스트를 공개했어요',
-      relatedId: listId,
-    );
-  }
-
-  Future<void> _notifyMany({
-    required AppUser from,
-    required List<String> recipientUids,
-    required String type,
-    required String message,
-    String relatedId = '',
-  }) async {
-    if (recipientUids.isEmpty) return;
-    const chunk = 200;
-    for (var i = 0; i < recipientUids.length; i += chunk) {
-      final slice = recipientUids.sublist(
-        i,
-        i + chunk > recipientUids.length ? recipientUids.length : i + chunk,
-      );
-      final batch = _db.batch();
-      for (final recipientUid in slice) {
-        await _writeInboxNotification(
-          recipientUid: recipientUid,
-          from: from,
-          type: type,
-          message: message,
-          relatedId: relatedId,
-          batch: batch,
-        );
-      }
-      await batch.commit();
-    }
-  }
-
   Future<List<SharedBasket>> loadSentBaskets(String uid) async {
     final snap = await _sentBaskets(uid).limit(100).get();
     final list = snap.docs.map((d) {

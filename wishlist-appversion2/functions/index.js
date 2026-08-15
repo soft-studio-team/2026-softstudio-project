@@ -18,6 +18,8 @@ exports.pushOnInbox = onDocumentCreated(
     const snap = event.data;
     if (!snap) return;
     const notif = snap.data() || {};
+    const type = notif.type || "follow";
+    if (type === "review" || type === "list") return;
     const userId = event.params.userId;
     const user = await getFirestore().doc(`users/${userId}`).get();
     const tokens = (user.get("fcmTokens") || []).filter(
@@ -25,7 +27,6 @@ exports.pushOnInbox = onDocumentCreated(
     );
     if (!tokens.length) return;
 
-    const type = notif.type || "follow";
     const response = await getMessaging().sendEachForMulticast({
       tokens,
       notification: {

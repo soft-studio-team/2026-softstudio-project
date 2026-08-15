@@ -56,7 +56,7 @@ class PushNotificationService {
       const AndroidNotificationChannel(
         _channelId,
         _channelName,
-        description: '팔로우, 살까말까, 리뷰, 리스트 공개',
+        description: '팔로우, 살까말까',
         importance: Importance.high,
       ),
     );
@@ -122,7 +122,7 @@ class PushNotificationService {
     const android = AndroidNotificationDetails(
       _channelId,
       _channelName,
-      channelDescription: '팔로우, 살까말까, 리뷰, 리스트 공개',
+      channelDescription: '팔로우, 살까말까',
       importance: Importance.high,
       priority: Priority.high,
     );
