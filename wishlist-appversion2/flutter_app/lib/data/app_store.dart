@@ -16,10 +16,12 @@ class AppStore extends ChangeNotifier {
   static const _pendingNameKey = 'pending_register_name';
   static const _pendingHandleKey = 'pending_register_handle';
 
-  AppStore({AccountRepository? repository})
-      : _repo = repository ?? AccountRepository();
+  AppStore({AccountRepository? repository, bool? firebaseConfigured})
+    : _repo = repository ?? AccountRepository(),
+      _firebaseConfigured = firebaseConfigured ?? isFirebaseConfigured;
 
   final AccountRepository _repo;
+  final bool _firebaseConfigured;
 
   bool ready = false;
   bool firebaseReady = false;
@@ -48,7 +50,7 @@ class AppStore extends ChangeNotifier {
   );
 
   Future<void> init() async {
-    firebaseReady = isFirebaseConfigured;
+    firebaseReady = _firebaseConfigured;
     if (!firebaseReady) {
       firebaseError =
           'Firebase 키가 아직 설정되지 않았어요. FIREBASE_SETUP.md 를 따라 앱을 등록해 주세요.';
@@ -130,9 +132,7 @@ class AppStore extends ChangeNotifier {
     friends = await _repo.loadDirectory(myUid: fresh.uid, following: following);
     friendWishlists = await _repo.loadFriendWishlists(friends);
     _syncFriendCounts();
-    currentUser = currentUser.copyWith(
-      following: following.length,
-    );
+    currentUser = currentUser.copyWith(following: following.length);
     isLoggedIn = true;
     selectedTabId = 'all';
   }
@@ -338,13 +338,10 @@ class AppStore extends ChangeNotifier {
   WishlistTab get selectedTab =>
       tabs.firstWhere((t) => t.id == selectedTabId, orElse: () => tabs.first);
 
-  List<WishlistTab> get customTabs =>
-      tabs.where((t) => t.id != 'all').toList();
+  List<WishlistTab> get customTabs => tabs.where((t) => t.id != 'all').toList();
 
   Color tabColor(WishlistTab tab) {
-    const map = {
-      'all': DiaryColors.fileCream,
-    };
+    const map = {'all': DiaryColors.fileCream};
     if (tab.colorHex != null && tab.colorHex!.isNotEmpty) {
       final hex = tab.colorHex!.replaceFirst('#', '');
       try {
@@ -357,13 +354,14 @@ class AppStore extends ChangeNotifier {
 
   Color nextFileColor() {
     final used = <int>{
-      for (final t in tabs.where((t) => t.id != 'all'))
-        tabColor(t).toARGB32(),
+      for (final t in tabs.where((t) => t.id != 'all')) tabColor(t).toARGB32(),
     };
-    final unused =
-        DiaryColors.fileColors.where((c) => !used.contains(c.toARGB32()));
-    final pool =
-        unused.isNotEmpty ? unused.toList() : DiaryColors.fileColors.toList();
+    final unused = DiaryColors.fileColors.where(
+      (c) => !used.contains(c.toARGB32()),
+    );
+    final pool = unused.isNotEmpty
+        ? unused.toList()
+        : DiaryColors.fileColors.toList();
     return pool[Random().nextInt(pool.length)];
   }
 
@@ -371,8 +369,7 @@ class AppStore extends ChangeNotifier {
     final allTab = tabs.firstWhere((t) => t.id == 'all');
     final rest = tabs.where((t) => t.id != 'all').toList();
     if (oldIndex < 0 || oldIndex >= rest.length) return;
-    var target = newIndex;
-    if (target > oldIndex) target -= 1;
+    final target = newIndex;
     if (target < 0 || target >= rest.length) return;
     final item = rest.removeAt(oldIndex);
     rest.insert(target, item);
@@ -463,8 +460,9 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> updateMemo(int id, String memo) async {
-    products =
-        products.map((p) => p.id == id ? p.copyWith(memo: memo) : p).toList();
+    products = products
+        .map((p) => p.id == id ? p.copyWith(memo: memo) : p)
+        .toList();
     final userId = uid;
     final product = productById(id);
     if (userId != null && product != null) {
@@ -482,9 +480,9 @@ class AppStore extends ChangeNotifier {
 
   Future<void> toggleBasketSelected(int id) async {
     basket = basket
-        .map((b) => b.product.id == id
-            ? b.copyWith(isSelected: !b.isSelected)
-            : b)
+        .map(
+          (b) => b.product.id == id ? b.copyWith(isSelected: !b.isSelected) : b,
+        )
         .toList();
     await _persistBasket();
     notifyListeners();
@@ -532,8 +530,7 @@ class AppStore extends ChangeNotifier {
     return products.where((p) => p.id == id).firstOrNull;
   }
 
-  Friend? friendById(String id) =>
-      friends.where((f) => f.id == id).firstOrNull;
+  Friend? friendById(String id) => friends.where((f) => f.id == id).firstOrNull;
 
   List<FriendWishlist> wishlistsForFriend(String friendId) =>
       friendWishlists.where((w) => w.friendId == friendId).toList();
@@ -576,17 +573,10 @@ class AppStore extends ChangeNotifier {
     if (idx < 0) return;
     final wasFollowing = friends[idx].isFollowing;
     final next = !wasFollowing;
-    await _repo.setFollowing(
-      myUid: userId,
-      targetUid: friendId,
-      follow: next,
-    );
+    await _repo.setFollowing(myUid: userId, targetUid: friendId, follow: next);
     friends = [
       for (var i = 0; i < friends.length; i++)
-        if (i == idx)
-          friends[i].copyWith(isFollowing: next)
-        else
-          friends[i],
+        if (i == idx) friends[i].copyWith(isFollowing: next) else friends[i],
     ];
     currentUser = currentUser.copyWith(
       following: friends.where((f) => f.isFollowing).length,
@@ -625,20 +615,20 @@ class AppStore extends ChangeNotifier {
     final nextUser = currentUser.copyWith(
       name: name?.trim().isNotEmpty == true ? name!.trim() : null,
       handle: nextHandle,
-      avatarUrl: avatarUrl?.trim().isNotEmpty == true ? avatarUrl!.trim() : null,
+      avatarUrl: avatarUrl?.trim().isNotEmpty == true
+          ? avatarUrl!.trim()
+          : null,
     );
-    await _repo.updateProfile(
-      userId,
-      nextUser,
-      previousHandle: previousHandle,
-    );
+    await _repo.updateProfile(userId, nextUser, previousHandle: previousHandle);
     currentUser = nextUser;
     notifyListeners();
   }
 
   Future<SharedBasket> createSharedBasketFromSelection() async {
-    final selected =
-        basket.where((b) => b.isSelected).map((b) => b.product).toList();
+    final selected = basket
+        .where((b) => b.isSelected)
+        .map((b) => b.product)
+        .toList();
     if (selected.isEmpty) {
       throw Exception('공유할 상품을 선택해 주세요.');
     }
@@ -663,15 +653,19 @@ class AppStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _sharedKey,
-      jsonEncode(sharedBaskets.values
-          .map((s) => {
+      jsonEncode(
+        sharedBaskets.values
+            .map(
+              (s) => {
                 'id': s.id,
                 'title': s.title,
                 'ownerName': s.ownerName,
                 'createdAt': s.createdAt.toIso8601String(),
                 'items': s.items.map((p) => p.toJson()).toList(),
-              })
-          .toList()),
+              },
+            )
+            .toList(),
+      ),
     );
   }
 
@@ -717,7 +711,8 @@ class AppStore extends ChangeNotifier {
           items: (map['items'] as List? ?? [])
               .map((p) => Product.fromJson(p as Map<String, dynamic>))
               .toList(),
-          createdAt: DateTime.tryParse(map['createdAt'] as String? ?? '') ??
+          createdAt:
+              DateTime.tryParse(map['createdAt'] as String? ?? '') ??
               DateTime.now(),
         );
       }

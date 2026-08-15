@@ -177,9 +177,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                     style: DiaryTheme.ui(15, weight: FontWeight.w600),
                   ),
                   subtitle: Text(
-                    latest.isPublic
-                        ? '지금 공개 중 · 켜면 나만 볼 수 있어요'
-                        : '나만 볼 수 있어요',
+                    latest.isPublic ? '지금 공개 중 · 켜면 나만 볼 수 있어요' : '나만 볼 수 있어요',
                     style: DiaryTheme.ui(12, color: DiaryColors.inkMuted),
                   ),
                   value: !latest.isPublic,
@@ -236,10 +234,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: DiaryColors.paper,
-        title: Text(
-          '이름 변경',
-          style: DiaryTheme.ui(17, weight: FontWeight.w700),
-        ),
+        title: Text('이름 변경', style: DiaryTheme.ui(17, weight: FontWeight.w700)),
         content: TextField(
           controller: controller,
           style: DiaryTheme.ui(15),
@@ -429,7 +424,7 @@ class _TabsRowState extends State<_TabsRow> {
           child: child,
         );
       },
-      onReorder: store.reorderTabs,
+      onReorderItem: store.reorderTabs,
       header: Padding(
         padding: const EdgeInsets.only(left: 12, right: 6),
         child: _FolderTab(

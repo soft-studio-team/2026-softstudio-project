@@ -8,7 +8,7 @@ void main() {
 
   test('AppStore init without Firebase stays logged out', () async {
     SharedPreferences.setMockInitialValues({});
-    final store = AppStore();
+    final store = AppStore(firebaseConfigured: false);
     await store.init();
     expect(store.ready, true);
     expect(store.isLoggedIn, false);
@@ -17,7 +17,7 @@ void main() {
 
   test('createSharedBasketFromSelection builds shareable list', () async {
     SharedPreferences.setMockInitialValues({});
-    final store = AppStore();
+    final store = AppStore(firebaseConfigured: false);
     await store.init();
     store.products = [
       Product(
@@ -34,5 +34,21 @@ void main() {
     expect(shared.items, isNotEmpty);
     expect(store.sharedBasketById(shared.id), isNotNull);
     expect(store.shareUrlFor(shared), contains('/shared/${shared.id}'));
+  });
+
+  test('reorderTabs uses adjusted onReorderItem destination index', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    store.tabs = [
+      WishlistTab(id: 'all', name: '전체', isPublic: true),
+      WishlistTab(id: 'a', name: 'A', isPublic: false),
+      WishlistTab(id: 'b', name: 'B', isPublic: false),
+      WishlistTab(id: 'c', name: 'C', isPublic: false),
+    ];
+
+    await store.reorderTabs(0, 2);
+
+    expect(store.tabs.map((tab) => tab.id), ['all', 'b', 'c', 'a']);
   });
 }

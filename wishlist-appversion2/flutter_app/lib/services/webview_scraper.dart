@@ -11,24 +11,42 @@ class OnDeviceExtract {
   OnDeviceExtract({
     this.name,
     this.price,
+    this.originalPrice,
     this.brand,
     this.image,
     this.siteName,
     this.hasJsonLd = false,
+    this.looksLikeProductPage = false,
     this.blocked = false,
     this.finalUrl,
     this.source = const {},
+    this.purchasePriceStatus = 'unknown',
+    this.priceConfidence = 'unknown',
+    this.availability = 'unknown',
+    this.optionDependent,
+    this.optionPriceMin,
+    this.optionPriceMax,
+    this.priceEvidence = const [],
   });
 
   final String? name;
   final int? price;
+  final int? originalPrice;
   final String? brand;
   final String? image;
   final String? siteName;
   final bool hasJsonLd;
+  final bool looksLikeProductPage;
   final bool blocked;
   final String? finalUrl;
   final Map<String, dynamic> source;
+  final String purchasePriceStatus;
+  final String priceConfidence;
+  final String availability;
+  final bool? optionDependent;
+  final int? optionPriceMin;
+  final int? optionPriceMax;
+  final List<Map<String, dynamic>> priceEvidence;
 
   bool get hasAnything => name != null || price != null || image != null;
 
@@ -43,13 +61,27 @@ class OnDeviceExtract {
             ? (map['name'] as String).trim()
             : null,
         price: (map['price'] as num?)?.toInt(),
+        originalPrice: (map['originalPrice'] as num?)?.toInt(),
         brand: map['brand'] as String?,
         image: map['image'] as String?,
         siteName: map['siteName'] as String?,
         hasJsonLd: map['hasJsonLd'] == true,
+        looksLikeProductPage: map['looksLikeProductPage'] == true,
         blocked: map['blocked'] == true,
         finalUrl: map['finalUrl'] as String?,
         source: (map['source'] as Map?)?.cast<String, dynamic>() ?? const {},
+        purchasePriceStatus: map['purchasePriceStatus'] as String? ?? 'unknown',
+        priceConfidence: map['priceConfidence'] as String? ?? 'unknown',
+        availability: map['availability'] as String? ?? 'unknown',
+        optionDependent: map['optionDependent'] as bool?,
+        optionPriceMin: (map['optionPriceMin'] as num?)?.toInt(),
+        optionPriceMax: (map['optionPriceMax'] as num?)?.toInt(),
+        priceEvidence:
+            (map['priceEvidence'] as List?)
+                ?.whereType<Map>()
+                .map((e) => e.cast<String, dynamic>())
+                .toList() ??
+            const [],
       );
     } catch (_) {
       return null;
@@ -109,8 +141,10 @@ class WebViewScraper {
       await headless.run();
 
       // 첫 로드 완료 대기 (최대 15초)
-      await loaded.future
-          .timeout(const Duration(seconds: 15), onTimeout: () {});
+      await loaded.future.timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {},
+      );
       controller ??= headless.webViewController;
       if (controller == null) return null;
 
@@ -122,28 +156,34 @@ class WebViewScraper {
       // 가격이 보일 때까지 폴링하되, 최대 시간을 넘기면 그때까지의 결과를 쓴다.
       while (DateTime.now().isBefore(deadline)) {
         await Future<void>.delayed(const Duration(seconds: 1));
-        final raw =
-            await controller!.evaluateJavascript(source: productExtractJs);
+        final raw = await controller!.evaluateJavascript(
+          source: productExtractJs,
+        );
         final parsed = OnDeviceExtract.fromRaw(raw);
 
         // 쿠팡처럼 상품 URL 직행을 막는 곳: 홈을 한 번 거친 뒤 재시도(1회).
         final looksBlocked =
-            parsed == null || parsed.blocked || !parsed.hasAnything;
+            parsed == null ||
+            parsed.blocked ||
+            !parsed.looksLikeProductPage ||
+            !parsed.hasAnything;
         if (looksBlocked && !warmedUp) {
           warmedUp = true;
           final origin = Uri.tryParse(url)?.origin;
           if (origin != null && origin.startsWith('http')) {
-            await controller!
-                .loadUrl(urlRequest: URLRequest(url: WebUri(origin)));
+            await controller!.loadUrl(
+              urlRequest: URLRequest(url: WebUri(origin)),
+            );
             await Future<void>.delayed(const Duration(seconds: 3));
-            await controller!
-                .loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+            await controller!.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
             await Future<void>.delayed(const Duration(seconds: 2));
           }
           continue;
         }
 
-        if (parsed != null && parsed.hasAnything) {
+        if (parsed != null &&
+            parsed.looksLikeProductPage &&
+            parsed.hasAnything) {
           best = parsed;
           if (parsed.price != null) return parsed; // 가격까지 확보 → 종료
         }
