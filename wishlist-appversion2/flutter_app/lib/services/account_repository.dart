@@ -409,6 +409,20 @@ class AccountRepository {
     return AppUser.fromJson(snap.data()!..['uid'] = uid);
   }
 
+  Future<void> saveFcmToken(String uid, String token) async {
+    if (token.isEmpty) return;
+    await _userDoc(uid).set({
+      'fcmTokens': FieldValue.arrayUnion([token]),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> removeFcmToken(String uid, String token) async {
+    if (token.isEmpty) return;
+    await _userDoc(uid).update({
+      'fcmTokens': FieldValue.arrayRemove([token]),
+    });
+  }
+
   /// Creates the app account in Firestore only for a verified user.
   Future<void> ensureProfile(
     User user, {
@@ -672,24 +686,20 @@ class AccountRepository {
     }
     await batch.commit();
 
-    // Best-effort inbox notification (does not block follow).
     if (follow && actor != null) {
-      try {
-        final notifRef = _notifications(targetUid).doc();
-        await notifRef.set({
-          'id': notifRef.id,
-          'type': 'follow',
-          'fromUid': myUid,
-          'fromName': actor.name,
-          'fromHandle': actor.handle,
-          'fromAvatar': actor.avatarUrl,
-          'message': '${actor.name} 님이 회원님을 팔로우하기 시작했어요',
-          'relatedId': null,
-          'read': false,
-          'createdAt': DateTime.now().toIso8601String(),
-          'createdAtServer': FieldValue.serverTimestamp(),
-        });
-      } catch (_) {}
+      final from = actor.copyWith(
+        uid: actor.uid.isNotEmpty ? actor.uid : myUid,
+      );
+      if (from.uid.isNotEmpty) {
+        try {
+          await _writeInboxNotification(
+            recipientUid: targetUid,
+            from: from,
+            type: 'follow',
+            message: '${from.name} 님이 회원님을 팔로우하기 시작했어요',
+          );
+        } catch (_) {}
+      }
     }
   }
 
@@ -743,13 +753,56 @@ class AccountRepository {
 
   Future<List<AppNotification>> loadNotifications(String uid) async {
     final snap = await _notifications(uid).limit(100).get();
-    final list = snap.docs.map((d) {
+    return _notificationsFromDocs(snap.docs);
+  }
+
+  Stream<List<AppNotification>> watchNotifications(String uid) {
+    return _notifications(uid).limit(100).snapshots().map(
+          (snap) => _notificationsFromDocs(snap.docs),
+        );
+  }
+
+  List<AppNotification> _notificationsFromDocs(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final list = docs.map((d) {
       final data = Map<String, dynamic>.from(d.data());
       data['id'] = data['id'] ?? d.id;
       return AppNotification.fromJson(data);
     }).toList();
     list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return list;
+  }
+
+  Future<void> _writeInboxNotification({
+    required String recipientUid,
+    required AppUser from,
+    required String type,
+    required String message,
+    String relatedId = '',
+    WriteBatch? batch,
+  }) async {
+    final fromUid = from.uid;
+    if (fromUid.isEmpty || recipientUid == fromUid) return;
+    final notifRef = _notifications(recipientUid).doc();
+    final payload = <String, dynamic>{
+      'id': notifRef.id,
+      'type': type,
+      'fromUid': fromUid,
+      'fromName': from.name,
+      'fromHandle': from.handle,
+      'fromAvatar': from.avatarUrl,
+      'message': message,
+      'relatedId': relatedId,
+      'read': false,
+      'createdAt': DateTime.now().toIso8601String(),
+      'createdAtServer': FieldValue.serverTimestamp(),
+    };
+    if (batch != null) {
+      batch.set(notifRef, payload);
+      return;
+    }
+    await notifRef.set(payload);
   }
 
   Future<void> markNotificationsRead(String uid, List<String> ids) async {
@@ -793,41 +846,6 @@ class AccountRepository {
     return out;
   }
 
-  Future<void> notifyFollowersOfReview({
-    required AppUser from,
-    required ProductReview review,
-    required List<String> followerUids,
-  }) async {
-    if (followerUids.isEmpty) return;
-    final now = DateTime.now();
-    const chunk = 200;
-    for (var i = 0; i < followerUids.length; i += chunk) {
-      final slice = followerUids.sublist(
-        i,
-        i + chunk > followerUids.length ? followerUids.length : i + chunk,
-      );
-      final batch = _db.batch();
-      for (final recipientUid in slice) {
-        if (recipientUid == from.uid) continue;
-        final notifRef = _notifications(recipientUid).doc();
-        batch.set(notifRef, {
-          'id': notifRef.id,
-          'type': 'review',
-          'fromUid': from.uid,
-          'fromName': from.name,
-          'fromHandle': from.handle,
-          'fromAvatar': from.avatarUrl,
-          'message': '${from.name} 님이 상품 리뷰를 올렸어요',
-          'relatedId': review.id,
-          'read': false,
-          'createdAt': now.toIso8601String(),
-          'createdAtServer': FieldValue.serverTimestamp(),
-        });
-      }
-      await batch.commit();
-    }
-  }
-
   Future<List<SharedBasket>> loadSentBaskets(String uid) async {
     final snap = await _sentBaskets(uid).limit(100).get();
     final list = snap.docs.map((d) {
@@ -857,6 +875,18 @@ class AccountRepository {
     return list;
   }
 
+  Stream<List<SharedBasket>> watchReceivedBaskets(String uid) {
+    return _receivedBaskets(uid).limit(100).snapshots().map((snap) {
+      final list = snap.docs.map((d) {
+        final data = Map<String, dynamic>.from(d.data());
+        data['id'] = data['id'] ?? d.id;
+        return SharedBasket.fromJson(data);
+      }).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
+  }
+
   Future<void> sendBasketToFriends({
     required AppUser from,
     required List<String> recipientUids,
@@ -883,20 +913,14 @@ class AccountRepository {
         ...basket.toJson(),
         'createdAtServer': FieldValue.serverTimestamp(),
       });
-      final notifRef = _notifications(recipientUid).doc();
-      batch.set(notifRef, {
-        'id': notifRef.id,
-        'type': 'basket',
-        'fromUid': from.uid,
-        'fromName': from.name,
-        'fromHandle': from.handle,
-        'fromAvatar': from.avatarUrl,
-        'message': '${from.name} 님이 살까말까 장바구니를 보냈어요',
-        'relatedId': basketId,
-        'read': false,
-        'createdAt': now.toIso8601String(),
-        'createdAtServer': FieldValue.serverTimestamp(),
-      });
+      await _writeInboxNotification(
+        recipientUid: recipientUid,
+        from: from,
+        type: 'basket',
+        message: '${from.name} 님이 살까말까 장바구니를 보냈어요',
+        relatedId: basketId,
+        batch: batch,
+      );
     }
     await batch.commit();
   }

@@ -49,6 +49,8 @@ dependencies:
   firebase_auth: ^6.5.7
   cloud_firestore: ^6.8.0
   firebase_storage: ^13.0.0
+  firebase_messaging: ^16.0.0
+  flutter_local_notifications: ^19.0.0
   image_picker: ^1.1.2
   # 온디바이스 Tier 2.5: 안 보이는 WebView로 렌더링된 페이지에서 상품정보 추출
   flutter_inappwebview: ^6.1.5

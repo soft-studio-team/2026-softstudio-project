@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -10,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../firebase_options.dart';
 import '../models/models.dart';
 import '../services/account_repository.dart';
+import '../services/push_notification_service.dart';
 import '../theme/diary_theme.dart';
 
 class AppStore extends ChangeNotifier {
@@ -19,13 +21,14 @@ class AppStore extends ChangeNotifier {
   static const _pendingHandleKey = 'pending_register_handle';
   static const _notifyFollowKey = 'notify_follow';
   static const _notifyBasketKey = 'notify_basket';
-  static const _notifyReviewKey = 'notify_review';
   static const _reviewsKey = 'my_reviews';
 
   AppStore({AccountRepository? repository})
       : _repo = repository ?? AccountRepository();
 
   final AccountRepository _repo;
+  StreamSubscription<List<AppNotification>>? _notificationSub;
+  StreamSubscription<List<SharedBasket>>? _receivedBasketSub;
 
   bool ready = false;
   bool firebaseReady = false;
@@ -40,7 +43,6 @@ class AppStore extends ChangeNotifier {
   /// In-app notification preferences (MyPage → 알림 설정).
   bool notifyOnFollow = true;
   bool notifyOnBasket = true;
-  bool notifyOnReview = true;
 
   List<WishlistTab> tabs = [];
   List<Product> products = [];
@@ -157,6 +159,8 @@ class AppStore extends ChangeNotifier {
     isLoggedIn = true;
     selectedTabId = 'all';
     await _reloadNotificationPrefs();
+    _watchInbox(fresh.uid);
+    unawaited(PushNotificationService.instance.register(fresh.uid, _repo));
   }
 
   Future<void> _reloadNotificationPrefs() async {
@@ -164,7 +168,6 @@ class AppStore extends ChangeNotifier {
     final keySuffix = uid ?? 'guest';
     notifyOnFollow = prefs.getBool('${_notifyFollowKey}_$keySuffix') ?? true;
     notifyOnBasket = prefs.getBool('${_notifyBasketKey}_$keySuffix') ?? true;
-    notifyOnReview = prefs.getBool('${_notifyReviewKey}_$keySuffix') ?? true;
   }
 
   /// Notifications / received baskets need updated Firestore rules.
@@ -206,6 +209,7 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> _clearSessionLocal() async {
+    _stopInboxWatch();
     isLoggedIn = false;
     awaitingEmailVerification = false;
     showSignupWelcome = false;
@@ -304,6 +308,7 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> cancelEmailVerification() async {
+    await PushNotificationService.instance.unregister();
     if (firebaseReady) {
       await _repo.logout();
     }
@@ -313,6 +318,7 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    await PushNotificationService.instance.unregister();
     if (firebaseReady) {
       await _repo.logout();
     }
@@ -326,6 +332,7 @@ class AppStore extends ChangeNotifier {
       throw Exception('비밀번호를 입력해 주세요.');
     }
     try {
+      await PushNotificationService.instance.unregister();
       await _repo.deleteAccount(password: password);
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
@@ -643,9 +650,12 @@ class AppStore extends ChangeNotifier {
 
   /// Inbox rows filtered by MyPage notification preferences.
   List<AppNotification> get visibleNotifications => notifications.where((n) {
+        if (n.type == AppNotificationType.review ||
+            n.type == AppNotificationType.list) {
+          return false;
+        }
         if (n.type == AppNotificationType.follow) return notifyOnFollow;
         if (n.type == AppNotificationType.basket) return notifyOnBasket;
-        if (n.type == AppNotificationType.review) return notifyOnReview;
         return true;
       }).toList();
 
@@ -811,10 +821,38 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setNotifyOnReview(bool value) async {
-    notifyOnReview = value;
-    await _persistNotificationPrefs();
-    notifyListeners();
+  void _watchInbox(String userId) {
+    _stopInboxWatch();
+    var primed = false;
+    final seen = <String>{};
+    _notificationSub = _repo.watchNotifications(userId).listen((list) {
+      if (primed) {
+        for (final n in list) {
+          if (!seen.contains(n.id) &&
+              n.type != AppNotificationType.review &&
+              n.type != AppNotificationType.list) {
+            unawaited(PushNotificationService.instance.showInboxBanner(n));
+          }
+        }
+      }
+      seen
+        ..clear()
+        ..addAll(list.map((n) => n.id));
+      primed = true;
+      notifications = list;
+      notifyListeners();
+    }, onError: (_) {});
+    _receivedBasketSub = _repo.watchReceivedBaskets(userId).listen((list) {
+      receivedBaskets = list;
+      notifyListeners();
+    }, onError: (_) {});
+  }
+
+  void _stopInboxWatch() {
+    _notificationSub?.cancel();
+    _notificationSub = null;
+    _receivedBasketSub?.cancel();
+    _receivedBasketSub = null;
   }
 
   void _syncFriendCounts() {
@@ -1014,7 +1052,6 @@ class AppStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     notifyOnFollow = prefs.getBool('${_notifyFollowKey}_${uid ?? 'guest'}') ?? true;
     notifyOnBasket = prefs.getBool('${_notifyBasketKey}_${uid ?? 'guest'}') ?? true;
-    notifyOnReview = prefs.getBool('${_notifyReviewKey}_${uid ?? 'guest'}') ?? true;
     final sharedRaw = prefs.getString(_sharedKey);
     if (sharedRaw != null) {
       final list = jsonDecode(sharedRaw) as List;
@@ -1031,7 +1068,6 @@ class AppStore extends ChangeNotifier {
     final keySuffix = uid ?? 'guest';
     await prefs.setBool('${_notifyFollowKey}_$keySuffix', notifyOnFollow);
     await prefs.setBool('${_notifyBasketKey}_$keySuffix', notifyOnBasket);
-    await prefs.setBool('${_notifyReviewKey}_$keySuffix', notifyOnReview);
   }
 
   Product? findCatalogProduct(int id) {
@@ -1170,14 +1206,6 @@ class AppStore extends ChangeNotifier {
     await _persistLocalReviews();
     try {
       await _repo.upsertReview(userId, review);
-      if (existing == null) {
-        final followerIds = await _repo.followerIds(userId);
-        await _repo.notifyFollowersOfReview(
-          from: currentUser.copyWith(uid: userId),
-          review: review,
-          followerUids: followerIds,
-        );
-      }
     } catch (_) {
       // Local review still works if Firestore rules are not deployed yet.
     }
