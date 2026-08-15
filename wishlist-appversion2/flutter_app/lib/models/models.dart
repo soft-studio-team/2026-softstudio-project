@@ -52,6 +52,7 @@ class Product {
     this.discount,
     this.productUrl,
     this.memo,
+    this.isPublic = false,
   });
 
   final int id;
@@ -64,6 +65,7 @@ class Product {
   final int? discount;
   final String? productUrl;
   final String? memo;
+  final bool isPublic;
 
   Product copyWith({
     int? id,
@@ -76,6 +78,7 @@ class Product {
     int? discount,
     String? productUrl,
     String? memo,
+    bool? isPublic,
   }) {
     return Product(
       id: id ?? this.id,
@@ -88,6 +91,7 @@ class Product {
       discount: discount ?? this.discount,
       productUrl: productUrl ?? this.productUrl,
       memo: memo ?? this.memo,
+      isPublic: isPublic ?? this.isPublic,
     );
   }
 
@@ -102,6 +106,7 @@ class Product {
     'discount': discount,
     'productUrl': productUrl,
     'memo': memo,
+    'isPublic': isPublic,
   };
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
@@ -115,6 +120,7 @@ class Product {
     discount: (json['discount'] as num?)?.toInt(),
     productUrl: json['productUrl'] as String?,
     memo: json['memo'] as String?,
+    isPublic: json['isPublic'] as bool? ?? false,
   );
 }
 
@@ -238,7 +244,7 @@ class FriendWishlist {
   final List<Product> items;
 }
 
-/// Snapshot of a basket shared via URL (prototype, local).
+/// Snapshot of a basket shared via URL or sent to a friend in-app.
 class SharedBasket {
   SharedBasket({
     required this.id,
@@ -246,6 +252,11 @@ class SharedBasket {
     required this.ownerName,
     required this.items,
     required this.createdAt,
+    this.fromUid = '',
+    this.fromHandle = '',
+    this.fromAvatar = '',
+    this.recipientUids = const [],
+    this.recipientNames = const [],
   });
 
   final String id;
@@ -253,6 +264,306 @@ class SharedBasket {
   final String ownerName;
   final List<Product> items;
   final DateTime createdAt;
+  final String fromUid;
+  final String fromHandle;
+  final String fromAvatar;
+  final List<String> recipientUids;
+  final List<String> recipientNames;
+
+  SharedBasket copyWith({
+    List<String>? recipientUids,
+    List<String>? recipientNames,
+  }) {
+    return SharedBasket(
+      id: id,
+      title: title,
+      ownerName: ownerName,
+      items: items,
+      createdAt: createdAt,
+      fromUid: fromUid,
+      fromHandle: fromHandle,
+      fromAvatar: fromAvatar,
+      recipientUids: recipientUids ?? this.recipientUids,
+      recipientNames: recipientNames ?? this.recipientNames,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'ownerName': ownerName,
+    'fromUid': fromUid,
+    'fromHandle': fromHandle,
+    'fromAvatar': fromAvatar,
+    'createdAt': createdAt.toIso8601String(),
+    'items': items.map((p) => p.toJson()).toList(),
+    'recipientUids': recipientUids,
+    'recipientNames': recipientNames,
+  };
+
+  factory SharedBasket.fromJson(Map<String, dynamic> json) => SharedBasket(
+    id: json['id'] as String? ?? '',
+    title: json['title'] as String? ?? '살까말까 공유',
+    ownerName: json['ownerName'] as String? ?? '',
+    fromUid: json['fromUid'] as String? ?? '',
+    fromHandle: json['fromHandle'] as String? ?? '',
+    fromAvatar: json['fromAvatar'] as String? ?? '',
+    items: (json['items'] as List? ?? [])
+        .map((p) => Product.fromJson(Map<String, dynamic>.from(p as Map)))
+        .toList(),
+    createdAt:
+        DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+    recipientUids: (json['recipientUids'] as List? ?? [])
+        .map((e) => e.toString())
+        .toList(),
+    recipientNames: (json['recipientNames'] as List? ?? [])
+        .map((e) => e.toString())
+        .toList(),
+  );
+}
+
+enum AppNotificationType { follow, basket, review, list }
+
+class AppNotification {
+  AppNotification({
+    required this.id,
+    required this.type,
+    required this.fromUid,
+    required this.fromName,
+    required this.fromHandle,
+    required this.fromAvatar,
+    required this.message,
+    required this.createdAt,
+    this.relatedId,
+    this.read = false,
+  });
+
+  final String id;
+  final AppNotificationType type;
+  final String fromUid;
+  final String fromName;
+  final String fromHandle;
+  final String fromAvatar;
+  final String message;
+  final String? relatedId;
+  final bool read;
+  final DateTime createdAt;
+
+  AppNotification copyWith({bool? read}) => AppNotification(
+    id: id,
+    type: type,
+    fromUid: fromUid,
+    fromName: fromName,
+    fromHandle: fromHandle,
+    fromAvatar: fromAvatar,
+    message: message,
+    relatedId: relatedId,
+    createdAt: createdAt,
+    read: read ?? this.read,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'type': type.name,
+    'fromUid': fromUid,
+    'fromName': fromName,
+    'fromHandle': fromHandle,
+    'fromAvatar': fromAvatar,
+    'message': message,
+    'relatedId': relatedId,
+    'read': read,
+    'createdAt': createdAt.toIso8601String(),
+  };
+
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    final typeRaw = json['type'] as String? ?? 'follow';
+    return AppNotification(
+      id: json['id'] as String? ?? '',
+      type: switch (typeRaw) {
+        'basket' => AppNotificationType.basket,
+        'review' => AppNotificationType.review,
+        'list' => AppNotificationType.list,
+        _ => AppNotificationType.follow,
+      },
+      fromUid: json['fromUid'] as String? ?? '',
+      fromName: json['fromName'] as String? ?? '',
+      fromHandle: json['fromHandle'] as String? ?? '',
+      fromAvatar: json['fromAvatar'] as String? ?? '',
+      message: json['message'] as String? ?? '',
+      relatedId: json['relatedId'] as String?,
+      read: json['read'] as bool? ?? false,
+      createdAt: _notificationTime(json),
+    );
+  }
+}
+
+DateTime _notificationTime(Map<String, dynamic> json) {
+  final raw = json['createdAt'] ?? json['createdAtServer'];
+  if (raw is DateTime) return raw;
+  if (raw is String) {
+    return DateTime.tryParse(raw) ?? DateTime.now();
+  }
+  try {
+    final dynamic value = raw;
+    if (value != null) {
+      final dated = value.toDate();
+      if (dated is DateTime) return dated;
+    }
+  } catch (_) {}
+  return DateTime.now();
+}
+
+/// Friend who sent one or more 살까말까 baskets (for the friends tab).
+class FriendSalkamalka {
+  FriendSalkamalka({
+    required this.friendId,
+    required this.friendName,
+    required this.friendHandle,
+    required this.friendAvatar,
+    required this.baskets,
+  });
+
+  final String friendId;
+  final String friendName;
+  final String friendHandle;
+  final String friendAvatar;
+  final List<SharedBasket> baskets;
+
+  List<Product> get allProducts {
+    final seen = <int>{};
+    final out = <Product>[];
+    for (final b in baskets) {
+      for (final p in b.items) {
+        if (seen.add(p.id)) out.add(p);
+      }
+    }
+    return out;
+  }
+
+  int get itemCount => allProducts.length;
+}
+
+class SalkamalkaFeedEntry {
+  SalkamalkaFeedEntry({required this.basket, required this.isMine});
+
+  final SharedBasket basket;
+  final bool isMine;
+}
+
+/// Blog-style product review shared with followers.
+class ProductReview {
+  ProductReview({
+    required this.id,
+    required this.authorUid,
+    required this.authorName,
+    required this.authorHandle,
+    required this.authorAvatar,
+    required this.productId,
+    required this.productName,
+    required this.productImage,
+    required this.productPlatform,
+    required this.productPrice,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+    required this.updatedAt,
+    this.productUrl,
+    this.mood = 3,
+    this.imageUrls = const [],
+  });
+
+  final String id;
+  final String authorUid;
+  final String authorName;
+  final String authorHandle;
+  final String authorAvatar;
+  final int productId;
+  final String productName;
+  final String productImage;
+  final String productPlatform;
+  final int productPrice;
+  final String? productUrl;
+  final String title;
+  final String body;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final int mood;
+  final List<String> imageUrls;
+
+  ProductReview copyWith({
+    String? title,
+    String? body,
+    DateTime? updatedAt,
+    String? authorName,
+    String? authorHandle,
+    String? authorAvatar,
+    int? mood,
+    List<String>? imageUrls,
+  }) {
+    return ProductReview(
+      id: id,
+      authorUid: authorUid,
+      authorName: authorName ?? this.authorName,
+      authorHandle: authorHandle ?? this.authorHandle,
+      authorAvatar: authorAvatar ?? this.authorAvatar,
+      productId: productId,
+      productName: productName,
+      productImage: productImage,
+      productPlatform: productPlatform,
+      productPrice: productPrice,
+      productUrl: productUrl,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      mood: mood ?? this.mood,
+      imageUrls: imageUrls ?? this.imageUrls,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'authorUid': authorUid,
+    'authorName': authorName,
+    'authorHandle': authorHandle,
+    'authorAvatar': authorAvatar,
+    'productId': productId,
+    'productName': productName,
+    'productImage': productImage,
+    'productPlatform': productPlatform,
+    'productPrice': productPrice,
+    'productUrl': productUrl,
+    'title': title,
+    'body': body,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+    'mood': mood,
+    'imageUrls': imageUrls,
+  };
+
+  factory ProductReview.fromJson(Map<String, dynamic> json) => ProductReview(
+    id: json['id'] as String? ?? '',
+    authorUid: json['authorUid'] as String? ?? '',
+    authorName: json['authorName'] as String? ?? '',
+    authorHandle: json['authorHandle'] as String? ?? '',
+    authorAvatar: json['authorAvatar'] as String? ?? '',
+    productId: (json['productId'] as num?)?.toInt() ?? 0,
+    productName: json['productName'] as String? ?? '',
+    productImage: json['productImage'] as String? ?? '',
+    productPlatform: json['productPlatform'] as String? ?? '',
+    productPrice: (json['productPrice'] as num?)?.toInt() ?? 0,
+    productUrl: json['productUrl'] as String?,
+    title: json['title'] as String? ?? '',
+    body: json['body'] as String? ?? '',
+    createdAt:
+        DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+    updatedAt:
+        DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
+    mood: (json['mood'] as num?)?.toInt() ?? 3,
+    imageUrls: (json['imageUrls'] as List? ?? [])
+        .map((e) => e.toString())
+        .toList(),
+  );
 }
 
 class BasketItem {

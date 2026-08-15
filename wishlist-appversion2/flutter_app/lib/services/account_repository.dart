@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../models/models.dart';
+import '../theme/avatar_presets.dart';
 
 /// Firestore layout:
 ///   users/{uid}                         profile + counts
@@ -9,18 +13,27 @@ import '../models/models.dart';
 ///   users/{uid}/products/{productId}
 ///   users/{uid}/following/{otherUid}
 ///   users/{uid}/followers/{otherUid}
+///   users/{uid}/notifications/{notifId}
+///   users/{uid}/receivedBaskets/{basketId}
+///   users/{uid}/sentBaskets/{basketId}
+///   users/{uid}/reviews/{reviewId}
 class AccountRepository {
   AccountRepository({
     FirebaseAuth? auth,
     FirebaseFirestore? db,
+    FirebaseStorage? storage,
   })  : _authOverride = auth,
-        _dbOverride = db;
+        _dbOverride = db,
+        _storageOverride = storage;
 
   final FirebaseAuth? _authOverride;
   final FirebaseFirestore? _dbOverride;
+  final FirebaseStorage? _storageOverride;
 
   FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
   FirebaseFirestore get _db => _dbOverride ?? FirebaseFirestore.instance;
+  FirebaseStorage get _storage =>
+      _storageOverride ?? FirebaseStorage.instance;
 
   User? get firebaseUser {
     try {
@@ -44,6 +57,18 @@ class AccountRepository {
 
   CollectionReference<Map<String, dynamic>> _followers(String uid) =>
       _userDoc(uid).collection('followers');
+
+  CollectionReference<Map<String, dynamic>> _notifications(String uid) =>
+      _userDoc(uid).collection('notifications');
+
+  CollectionReference<Map<String, dynamic>> _receivedBaskets(String uid) =>
+      _userDoc(uid).collection('receivedBaskets');
+
+  CollectionReference<Map<String, dynamic>> _sentBaskets(String uid) =>
+      _userDoc(uid).collection('sentBaskets');
+
+  CollectionReference<Map<String, dynamic>> _reviews(String uid) =>
+      _userDoc(uid).collection('reviews');
 
   /// Creates Auth credentials and sends a verification email only.
   /// Firestore profile is created later via [ensureProfile] after verification.
@@ -162,6 +187,10 @@ class AccountRepository {
     await _deleteCollectionDocs(_products(uid));
     await _deleteCollectionDocs(_following(uid));
     await _deleteCollectionDocs(_followers(uid));
+    await _deleteCollectionDocs(_notifications(uid));
+    await _deleteCollectionDocs(_receivedBaskets(uid));
+    await _deleteCollectionDocs(_sentBaskets(uid));
+    await _deleteCollectionDocs(_reviews(uid));
 
     if (handle != null && handle.isNotEmpty) {
       final key = _normalizeHandle(handle).toLowerCase();
@@ -380,6 +409,20 @@ class AccountRepository {
     return AppUser.fromJson(snap.data()!..['uid'] = uid);
   }
 
+  Future<void> saveFcmToken(String uid, String token) async {
+    if (token.isEmpty) return;
+    await _userDoc(uid).set({
+      'fcmTokens': FieldValue.arrayUnion([token]),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> removeFcmToken(String uid, String token) async {
+    if (token.isEmpty) return;
+    await _userDoc(uid).update({
+      'fcmTokens': FieldValue.arrayRemove([token]),
+    });
+  }
+
   /// Creates the app account in Firestore only for a verified user.
   Future<void> ensureProfile(
     User user, {
@@ -471,6 +514,48 @@ class AccountRepository {
     });
   }
 
+  /// Uploads a local image as the user's avatar and returns its download URL.
+  Future<String> uploadAvatarFile(String uid, File file) async {
+    final ext = file.path.split('.').last.toLowerCase();
+    final safeExt = (ext == 'png' || ext == 'webp' || ext == 'jpg' || ext == 'jpeg')
+        ? (ext == 'jpeg' ? 'jpg' : ext)
+        : 'jpg';
+    final contentType = switch (safeExt) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+    final ref = _storage.ref('avatars/$uid/avatar.$safeExt');
+    await ref.putFile(
+      file,
+      SettableMetadata(contentType: contentType),
+    );
+    return ref.getDownloadURL();
+  }
+
+  Future<String> uploadReviewPhoto({
+    required String uid,
+    required String reviewId,
+    required File file,
+    required int index,
+  }) async {
+    final ext = file.path.split('.').last.toLowerCase();
+    final safeExt = (ext == 'png' || ext == 'webp' || ext == 'jpg' || ext == 'jpeg')
+        ? (ext == 'jpeg' ? 'jpg' : ext)
+        : 'jpg';
+    final contentType = switch (safeExt) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      _ => 'image/jpeg',
+    };
+    final ref = _storage.ref('reviews/$uid/$reviewId/$index.$safeExt');
+    await ref.putFile(
+      file,
+      SettableMetadata(contentType: contentType),
+    );
+    return ref.getDownloadURL();
+  }
+
   Future<List<WishlistTab>> loadTabs(String uid) async {
     final snap = await _tabs(uid).get();
     if (snap.docs.isEmpty) {
@@ -488,11 +573,34 @@ class AccountRepository {
   }
 
   Future<void> saveTabs(String uid, List<WishlistTab> tabs) async {
-    final batch = _db.batch();
+    final tabPublic = {for (final tab in tabs) tab.id: tab.isPublic};
+    var batch = _db.batch();
+    var ops = 0;
+
+    Future<void> flush() async {
+      if (ops == 0) return;
+      await batch.commit();
+      batch = _db.batch();
+      ops = 0;
+    }
+
     for (final tab in tabs) {
       batch.set(_tabs(uid).doc(tab.id), tab.toJson());
+      ops++;
+      if (ops >= 450) await flush();
     }
-    await batch.commit();
+
+    final productsSnap = await _products(uid).get();
+    for (final doc in productsSnap.docs) {
+      final listId = doc.data()['listId'] as String? ?? '';
+      final wantPublic = tabPublic[listId] ?? false;
+      if (doc.data()['isPublic'] != wantPublic) {
+        batch.update(doc.reference, {'isPublic': wantPublic});
+        ops++;
+        if (ops >= 450) await flush();
+      }
+    }
+    await flush();
   }
 
   Future<void> deleteTabDoc(String uid, String tabId) async {
@@ -500,13 +608,31 @@ class AccountRepository {
   }
 
   Future<List<Product>> loadProducts(String uid) async {
+    final tabsSnap = await _tabs(uid).get();
+    final tabPublic = {
+      for (final doc in tabsSnap.docs)
+        doc.id: doc.data()['isPublic'] as bool? ?? false,
+    };
     final snap = await _products(uid).get();
-    return snap.docs.map((d) {
-      final data = Map<String, dynamic>.from(d.data());
-      data['id'] = data['id'] ?? int.tryParse(d.id) ?? d.id.hashCode;
-      return Product.fromJson(data);
-    }).toList()
-      ..sort((a, b) => a.id.compareTo(b.id));
+    WriteBatch? backfill;
+    final products = <Product>[];
+    for (final doc in snap.docs) {
+      final data = Map<String, dynamic>.from(doc.data());
+      data['id'] = data['id'] ?? int.tryParse(doc.id) ?? doc.id.hashCode;
+      final listId = data['listId'] as String? ?? '';
+      final wantPublic = tabPublic[listId] ?? false;
+      if (data['isPublic'] != wantPublic) {
+        backfill ??= _db.batch();
+        backfill.update(doc.reference, {'isPublic': wantPublic});
+        data['isPublic'] = wantPublic;
+      }
+      products.add(Product.fromJson(data));
+    }
+    if (backfill != null) {
+      await backfill.commit();
+    }
+    products.sort((a, b) => a.id.compareTo(b.id));
+    return products;
   }
 
   Future<void> upsertProduct(String uid, Product product) async {
@@ -564,17 +690,22 @@ class AccountRepository {
   }
 
   Future<(int, int)> _wishlistCounts(String uid) async {
-    final tabs = await _tabs(uid).get();
-    final products = await _products(uid).get();
-    final publicLists =
-        tabs.docs.where((d) => (d.data()['isPublic'] as bool? ?? true) && d.id != 'all').length;
-    return (publicLists, products.docs.length);
+    try {
+      final tabs = await _tabs(uid).where('isPublic', isEqualTo: true).get();
+      final products =
+          await _products(uid).where('isPublic', isEqualTo: true).get();
+      final publicLists = tabs.docs.where((d) => d.id != 'all').length;
+      return (publicLists, products.docs.length);
+    } catch (_) {
+      return (0, 0);
+    }
   }
 
   Future<void> setFollowing({
     required String myUid,
     required String targetUid,
     required bool follow,
+    AppUser? actor,
   }) async {
     if (myUid == targetUid) return;
     final batch = _db.batch();
@@ -599,6 +730,40 @@ class AccountRepository {
       batch.update(themRef, {'followers': FieldValue.increment(-1)});
     }
     await batch.commit();
+
+    if (follow && actor != null) {
+      final from = actor.copyWith(
+        uid: actor.uid.isNotEmpty ? actor.uid : myUid,
+      );
+      if (from.uid.isNotEmpty) {
+        try {
+          await _writeInboxNotification(
+            recipientUid: targetUid,
+            from: from,
+            type: 'follow',
+            message: '${from.name} 님이 회원님을 팔로우하기 시작했어요',
+          );
+        } catch (_) {}
+      }
+    }
+  }
+
+  /// Instagram-style: remove [followerUid] from my followers list.
+  Future<void> removeFollower({
+    required String myUid,
+    required String followerUid,
+  }) async {
+    if (myUid == followerUid) return;
+    final followerEdge = _followers(myUid).doc(followerUid);
+    final existing = await followerEdge.get();
+    if (!existing.exists) return;
+
+    final batch = _db.batch();
+    batch.delete(followerEdge);
+    batch.delete(_following(followerUid).doc(myUid));
+    batch.update(_userDoc(myUid), {'followers': FieldValue.increment(-1)});
+    batch.update(_userDoc(followerUid), {'following': FieldValue.increment(-1)});
+    await batch.commit();
   }
 
   Future<List<FriendWishlist>> loadFriendWishlists(
@@ -606,29 +771,210 @@ class AccountRepository {
   ) async {
     final result = <FriendWishlist>[];
     for (final friend in followingFriends.where((f) => f.isFollowing)) {
-      final tabsSnap = await _tabs(friend.id).get();
-      final productsSnap = await _products(friend.id).get();
-      final products = productsSnap.docs.map((d) {
-        final data = Map<String, dynamic>.from(d.data());
-        data['id'] = data['id'] ?? int.tryParse(d.id) ?? d.id.hashCode;
-        return Product.fromJson(data);
-      }).toList();
+      try {
+        final tabsSnap =
+            await _tabs(friend.id).where('isPublic', isEqualTo: true).get();
+        final productsSnap = await _products(friend.id)
+            .where('isPublic', isEqualTo: true)
+            .get();
+        final products = productsSnap.docs.map((d) {
+          final data = Map<String, dynamic>.from(d.data());
+          data['id'] = data['id'] ?? int.tryParse(d.id) ?? d.id.hashCode;
+          return Product.fromJson(data);
+        }).toList();
 
-      for (final tabDoc in tabsSnap.docs) {
-        final tab = WishlistTab.fromJson(tabDoc.data());
-        if (tab.id == 'all' || !tab.isPublic) continue;
-        final items = products.where((p) => p.listId == tab.id).toList();
-        result.add(FriendWishlist(
-          id: '${friend.id}_${tab.id}',
-          friendId: friend.id,
-          friendName: friend.name,
-          listName: tab.name,
-          isPublic: true,
-          items: items,
-        ));
+        for (final tabDoc in tabsSnap.docs) {
+          final tab = WishlistTab.fromJson(tabDoc.data());
+          if (tab.id == 'all') continue;
+          final items = products.where((p) => p.listId == tab.id).toList();
+          result.add(FriendWishlist(
+            id: '${friend.id}_${tab.id}',
+            friendId: friend.id,
+            friendName: friend.name,
+            listName: tab.name,
+            isPublic: true,
+            items: items,
+          ));
+        }
+      } catch (_) {
+        continue;
       }
     }
     return result;
+  }
+
+  Future<List<AppNotification>> loadNotifications(String uid) async {
+    final snap = await _notifications(uid).limit(100).get();
+    return _notificationsFromDocs(snap.docs);
+  }
+
+  Stream<List<AppNotification>> watchNotifications(String uid) {
+    return _notifications(uid).limit(100).snapshots().map(
+          (snap) => _notificationsFromDocs(snap.docs),
+        );
+  }
+
+  List<AppNotification> _notificationsFromDocs(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
+    final list = docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = data['id'] ?? d.id;
+      return AppNotification.fromJson(data);
+    }).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<void> _writeInboxNotification({
+    required String recipientUid,
+    required AppUser from,
+    required String type,
+    required String message,
+    String relatedId = '',
+    WriteBatch? batch,
+  }) async {
+    final fromUid = from.uid;
+    if (fromUid.isEmpty || recipientUid == fromUid) return;
+    final notifRef = _notifications(recipientUid).doc();
+    final payload = <String, dynamic>{
+      'id': notifRef.id,
+      'type': type,
+      'fromUid': fromUid,
+      'fromName': from.name,
+      'fromHandle': from.handle,
+      'fromAvatar': from.avatarUrl,
+      'message': message,
+      'relatedId': relatedId,
+      'read': false,
+      'createdAt': DateTime.now().toIso8601String(),
+      'createdAtServer': FieldValue.serverTimestamp(),
+    };
+    if (batch != null) {
+      batch.set(notifRef, payload);
+      return;
+    }
+    await notifRef.set(payload);
+  }
+
+  Future<void> markNotificationsRead(String uid, List<String> ids) async {
+    if (ids.isEmpty) return;
+    final batch = _db.batch();
+    for (final id in ids) {
+      batch.update(_notifications(uid).doc(id), {'read': true});
+    }
+    await batch.commit();
+  }
+
+  Future<List<ProductReview>> loadReviews(String uid) async {
+    final snap = await _reviews(uid).get();
+    final list = snap.docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = data['id'] ?? d.id;
+      return ProductReview.fromJson(data);
+    }).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<void> upsertReview(String uid, ProductReview review) async {
+    await _reviews(uid).doc(review.id).set(review.toJson());
+  }
+
+  Future<void> deleteReview(String uid, String reviewId) async {
+    await _reviews(uid).doc(reviewId).delete();
+  }
+
+  Future<List<ProductReview>> loadFriendReviews(
+    List<Friend> followingFriends,
+  ) async {
+    final out = <ProductReview>[];
+    for (final friend in followingFriends.where((f) => f.isFollowing)) {
+      try {
+        out.addAll(await loadReviews(friend.id));
+      } catch (_) {}
+    }
+    out.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return out;
+  }
+
+  Future<List<SharedBasket>> loadSentBaskets(String uid) async {
+    final snap = await _sentBaskets(uid).limit(100).get();
+    final list = snap.docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = data['id'] ?? d.id;
+      return SharedBasket.fromJson(data);
+    }).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Future<void> upsertSentBasket(String uid, SharedBasket basket) async {
+    await _sentBaskets(uid).doc(basket.id).set({
+      ...basket.toJson(),
+      'createdAtServer': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<List<SharedBasket>> loadReceivedBaskets(String uid) async {
+    final snap = await _receivedBaskets(uid).limit(100).get();
+    final list = snap.docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = data['id'] ?? d.id;
+      return SharedBasket.fromJson(data);
+    }).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
+  }
+
+  Stream<List<SharedBasket>> watchReceivedBaskets(String uid) {
+    return _receivedBaskets(uid).limit(100).snapshots().map((snap) {
+      final list = snap.docs.map((d) {
+        final data = Map<String, dynamic>.from(d.data());
+        data['id'] = data['id'] ?? d.id;
+        return SharedBasket.fromJson(data);
+      }).toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
+  }
+
+  Future<void> sendBasketToFriends({
+    required AppUser from,
+    required List<String> recipientUids,
+    required List<Product> items,
+  }) async {
+    if (recipientUids.isEmpty || items.isEmpty) return;
+    final now = DateTime.now();
+    final batch = _db.batch();
+    for (final recipientUid in recipientUids) {
+      if (recipientUid == from.uid) continue;
+      final basketRef = _receivedBaskets(recipientUid).doc();
+      final basketId = basketRef.id;
+      final basket = SharedBasket(
+        id: basketId,
+        title: '${from.name}의 살까말까',
+        ownerName: from.name,
+        fromUid: from.uid,
+        fromHandle: from.handle,
+        fromAvatar: from.avatarUrl,
+        items: items,
+        createdAt: now,
+      );
+      batch.set(basketRef, {
+        ...basket.toJson(),
+        'createdAtServer': FieldValue.serverTimestamp(),
+      });
+      await _writeInboxNotification(
+        recipientUid: recipientUid,
+        from: from,
+        type: 'basket',
+        message: '${from.name} 님이 살까말까 장바구니를 보냈어요',
+        relatedId: basketId,
+        batch: batch,
+      );
+    }
+    await batch.commit();
   }
 
   /// New accounts start with only the fixed '전체' tab — no demo categories.
@@ -645,7 +991,8 @@ class AccountRepository {
   }
 
   String _defaultAvatar(String handle) {
-    final seed = Uri.encodeComponent(handle.replaceFirst('@', ''));
-    return 'https://api.dicebear.com/7.x/thumbs/png?seed=$seed';
+    final seed = handle.replaceFirst('@', '');
+    if (seed.isEmpty) return AvatarPresets.urls.first;
+    return AvatarPresets.urlForSeed(seed);
   }
 }

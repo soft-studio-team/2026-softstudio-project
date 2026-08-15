@@ -16,6 +16,7 @@ class SharedWishlistScreen extends StatelessWidget {
     required this.products,
     this.accentColor,
     this.emptyMessage = '아직 공개된 아이템이 없어요',
+    this.onShare,
   });
 
   final String title;
@@ -23,6 +24,7 @@ class SharedWishlistScreen extends StatelessWidget {
   final List<Product> products;
   final Color? accentColor;
   final String emptyMessage;
+  final VoidCallback? onShare;
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +43,14 @@ class SharedWishlistScreen extends StatelessWidget {
           title,
           style: DiaryTheme.ui(16, weight: FontWeight.w700),
         ),
+        actions: [
+          if (onShare != null)
+            IconButton(
+              tooltip: '다시 보내기',
+              onPressed: onShare,
+              icon: const Icon(Icons.ios_share),
+            ),
+        ],
       ),
       body: SafeArea(
         child: Column(

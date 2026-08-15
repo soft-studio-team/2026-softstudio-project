@@ -152,10 +152,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: _input('이메일'),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
+                      PasswordTextField(
                         controller: passwordCtrl,
-                        obscureText: true,
                         decoration: _input('비밀번호'),
+                        textInputAction: TextInputAction.done,
+                        autofillHints: const [AutofillHints.password],
                         onSubmitted: (_) => _submit(),
                       ),
                       if (error != null) ...[

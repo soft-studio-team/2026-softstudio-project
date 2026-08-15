@@ -9,14 +9,21 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'data/app_store.dart';
 import 'firebase_options.dart';
+import 'services/push_notification_service.dart';
 import 'screens/auth/account_recovery_screen.dart';
 import 'screens/auth/email_verification_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_welcome_screen.dart';
 import 'screens/friends/friends_screen.dart';
+import 'screens/friends/notifications_screen.dart';
 import 'screens/mypage/follow_list_screen.dart';
 import 'screens/mypage/mypage_screen.dart';
+import 'screens/mypage/notification_settings_screen.dart';
+import 'screens/mypage/sent_baskets_screen.dart';
 import 'screens/product/product_detail_screen.dart';
+import 'screens/reviews/my_reviews_screen.dart';
+import 'screens/reviews/review_compose_screen.dart';
+import 'screens/reviews/review_detail_screen.dart';
 import 'screens/salkamalka/salkamalka_screen.dart';
 import 'screens/share/share_intake_screen.dart';
 import 'screens/shared/shared_wishlist_screen.dart';
@@ -30,6 +37,7 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    await PushNotificationService.instance.init();
   }
   final store = AppStore();
   await store.init();
@@ -60,6 +68,9 @@ class _WishlistAppState extends State<WishlistApp> {
     super.initState();
     router = _buildRouter(widget.store);
     _listenNativeShareText();
+    PushNotificationService.instance.onBannerTap = () {
+      router.go('/notifications');
+    };
     _listenShares();
   }
 
@@ -105,7 +116,8 @@ class _WishlistAppState extends State<WishlistApp> {
 
     final url = ShareInput.firstUrl(input)!;
     final now = DateTime.now();
-    final isImmediateDuplicate = url == _lastHandledShareUrl &&
+    final isImmediateDuplicate =
+        url == _lastHandledShareUrl &&
         _lastHandledShareAt != null &&
         now.difference(_lastHandledShareAt!) < const Duration(seconds: 2);
     if (isImmediateDuplicate) return;
@@ -119,6 +131,7 @@ class _WishlistAppState extends State<WishlistApp> {
   @override
   void dispose() {
     _nativeShareChannel.setMethodCallHandler(null);
+    PushNotificationService.instance.onBannerTap = null;
     _shareSub?.cancel();
     super.dispose();
   }
@@ -183,9 +196,8 @@ GoRouter _buildRouter(AppStore store) {
       ),
       GoRoute(
         path: '/share',
-        builder: (context, state) => ShareIntakeScreen(
-          sharedUrl: state.uri.queryParameters['url'],
-        ),
+        builder: (context, state) =>
+            ShareIntakeScreen(sharedUrl: state.uri.queryParameters['url']),
       ),
       GoRoute(
         path: '/product/:id',
@@ -235,6 +247,63 @@ GoRouter _buildRouter(AppStore store) {
             const FollowListScreen(kind: FollowListKind.following),
       ),
       GoRoute(
+        path: '/reviews/write',
+        builder: (context, state) {
+          final productId = int.tryParse(
+            state.uri.queryParameters['productId'] ?? '',
+          );
+          final reviewId = state.uri.queryParameters['reviewId'];
+          return ReviewComposeScreen(productId: productId, reviewId: reviewId);
+        },
+      ),
+      GoRoute(
+        path: '/reviews/:id',
+        builder: (context, state) =>
+            ReviewDetailScreen(reviewId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/my-reviews',
+        builder: (context, state) => const MyReviewsScreen(),
+      ),
+      GoRoute(
+        path: '/sent-baskets',
+        builder: (context, state) => const SentBasketsScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/notification-settings',
+        builder: (context, state) => const NotificationSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/friend-salkamalka/:friendId',
+        builder: (context, state) {
+          final friendId = state.pathParameters['friendId']!;
+          final store = context.read<AppStore>();
+          final group = store.friendSalkamalkaByFriendId(friendId);
+          if (group == null) {
+            return Scaffold(
+              appBar: AppBar(
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.pop(),
+                ),
+              ),
+              body: const Center(child: Text('받은 살까말까를 찾을 수 없어요')),
+            );
+          }
+          return SharedWishlistScreen(
+            title: '${group.friendName}의 살까말까',
+            subtitle: '${group.friendHandle} · 상품 ${group.itemCount}개',
+            products: group.allProducts,
+            accentColor: DiaryColors.folderPeach,
+            emptyMessage: '보낸 상품이 없어요',
+          );
+        },
+      ),
+      GoRoute(
         path: '/shared/:id',
         builder: (context, state) {
           final id = state.pathParameters['id']!;
@@ -256,6 +325,9 @@ GoRouter _buildRouter(AppStore store) {
             subtitle: '${shared.ownerName} 님이 공유한 살까말까 바구니',
             products: shared.items,
             accentColor: DiaryColors.folderPeach,
+            onShare: store.sharedBaskets.containsKey(id)
+                ? () => showSentBasketShareSheet(context, store, shared)
+                : null,
           );
         },
       ),
@@ -264,22 +336,35 @@ GoRouter _buildRouter(AppStore store) {
           return HomeShell(navigationShell: navigationShell);
         },
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/', builder: (_, __) => const WishlistScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-                path: '/friends', builder: (_, __) => const FriendsScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/', builder: (_, __) => const WishlistScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/friends',
+                builder: (_, __) => const FriendsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: '/basket',
-                builder: (_, __) => const SalkamalkaScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-                path: '/profile', builder: (_, __) => const MyPageScreen()),
-          ]),
+                builder: (_, __) => const SalkamalkaScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                builder: (_, __) => const MyPageScreen(),
+              ),
+            ],
+          ),
         ],
       ),
     ],
@@ -293,6 +378,11 @@ class HomeShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final store = context.watch<AppStore>();
+    final showWishlistFab = navigationShell.currentIndex == 0;
+    final showReviewFab =
+        navigationShell.currentIndex == 1 && store.friendsTab == 4;
+
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Container(
@@ -340,13 +430,21 @@ class HomeShell extends StatelessWidget {
           ),
         ),
       ),
-      floatingActionButton: navigationShell.currentIndex == 0
+      floatingActionButton: showWishlistFab
           ? FloatingActionButton.extended(
               backgroundColor: DiaryColors.folderYellow,
               foregroundColor: DiaryColors.ink,
               onPressed: () => context.push('/share'),
               label: const Text('공유 담기'),
               icon: const Icon(Icons.add_link),
+            )
+          : showReviewFab
+          ? FloatingActionButton.extended(
+              backgroundColor: DiaryColors.folderYellow,
+              foregroundColor: DiaryColors.ink,
+              onPressed: () => context.push('/reviews/write'),
+              label: const Text('리뷰 쓰기'),
+              icon: const Icon(Icons.edit_outlined),
             )
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,

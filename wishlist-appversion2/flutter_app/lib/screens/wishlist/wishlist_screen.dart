@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +18,8 @@ class WishlistScreen extends StatefulWidget {
 }
 
 class _WishlistScreenState extends State<WishlistScreen> {
+  final _tabsRowKey = GlobalKey<_TabsRowState>();
+
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
@@ -43,9 +47,11 @@ class _WishlistScreenState extends State<WishlistScreen> {
             SizedBox(
               height: 46,
               child: _TabsRow(
+                key: _tabsRowKey,
                 store: store,
                 onDoubleTapTab: (t) => _openListEditSheet(context, store, t),
                 onAdd: () => _showAddListDialog(context, store),
+                onMoveProduct: (p, t) => _handleMoveProduct(context, store, p, t),
               ),
             ),
             Padding(
@@ -53,7 +59,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '스와이프: 스크롤 · 더블탭: 편집 · 꾹 눌러 드래그: 순서 변경',
+                  '스와이프: 스크롤 · 더블탭: 편집 · 꾹 눌러 드래그: 탭 순서 변경 · 아이템 이동',
                   style: DiaryTheme.ui(11, color: DiaryColors.inkMuted),
                 ),
               ),
@@ -106,12 +112,44 @@ class _WishlistScreenState extends State<WishlistScreen> {
                                         const SizedBox(height: 10),
                                     itemBuilder: (context, i) {
                                       final p = products[i];
-                                      return WishlistProductCard(
+                                      final card = WishlistProductCard(
                                         product: p,
                                         onOpen: () =>
                                             context.push('/product/${p.id}'),
                                         onDelete: () =>
                                             store.removeProduct(p.id),
+                                      );
+                                      return LayoutBuilder(
+                                        builder: (context, constraints) {
+                                          return LongPressDraggable<Product>(
+                                            data: p,
+                                            onDragStarted: () =>
+                                                HapticFeedback.mediumImpact(),
+                                            onDragUpdate: (details) =>
+                                                _tabsRowKey.currentState
+                                                    ?.updateAutoScroll(
+                                                  details.globalPosition,
+                                                ),
+                                            onDragEnd: (_) => _tabsRowKey
+                                                .currentState
+                                                ?.endAutoScrollDrag(),
+                                            feedback: Material(
+                                              color: Colors.transparent,
+                                              elevation: 6,
+                                              borderRadius:
+                                                  BorderRadius.circular(14),
+                                              child: SizedBox(
+                                                width: constraints.maxWidth,
+                                                child: card,
+                                              ),
+                                            ),
+                                            childWhenDragging: Opacity(
+                                              opacity: 0.35,
+                                              child: card,
+                                            ),
+                                            child: card,
+                                          );
+                                        },
                                       );
                                     },
                                   ),
@@ -127,6 +165,22 @@ class _WishlistScreenState extends State<WishlistScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleMoveProduct(
+    BuildContext context,
+    AppStore store,
+    Product product,
+    WishlistTab tab,
+  ) async {
+    try {
+      await store.moveProduct(product.id, tab.id);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('이동에 실패했어요: $e')),
+      );
+    }
   }
 
   Future<void> _openListEditSheet(
@@ -330,14 +384,17 @@ class _WishlistScreenState extends State<WishlistScreen> {
 /// lets that swipe pass through to the scrollable instead of starting a drag.
 class _TabsRow extends StatefulWidget {
   const _TabsRow({
+    super.key,
     required this.store,
     required this.onDoubleTapTab,
     required this.onAdd,
+    required this.onMoveProduct,
   });
 
   final AppStore store;
   final void Function(WishlistTab tab) onDoubleTapTab;
   final VoidCallback onAdd;
+  final void Function(Product product, WishlistTab tab) onMoveProduct;
 
   @override
   State<_TabsRow> createState() => _TabsRowState();
@@ -354,8 +411,79 @@ class _TabsRowState extends State<_TabsRow> {
   // id we last scrolled to ourselves instead of diffing old vs new widget.
   String? _lastScrolledId;
 
+  // Edge auto-scroll while dragging a product card over the strip. Driven by
+  // a repeating Timer rather than animateTo: the user controls how long to
+  // scroll for by how long they hold near the edge, which a fixed-duration
+  // animation can't express.
+  static const _autoScrollEdgeZone = 44.0;
+  static const _autoScrollMinPxPerTick = 1.5;
+  static const _autoScrollMaxPxPerTick = 5.0;
+  static const _autoScrollTick = Duration(milliseconds: 16);
+  Timer? _autoScrollTimer;
+  double _autoScrollPxPerTick = 0;
+
   GlobalKey _keyFor(String tabId) =>
       _chipKeys.putIfAbsent(tabId, () => GlobalKey());
+
+  /// Called with the drag pointer's global position on every frame of a
+  /// product-card drag. Starts/adjusts/stops the edge auto-scroll based on
+  /// how close the pointer is to the strip's left/right edge.
+  void updateAutoScroll(Offset globalPosition) {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.attached) {
+      _stopAutoScroll();
+      return;
+    }
+    final local = box.globalToLocal(globalPosition);
+    final size = box.size;
+    // Small vertical tolerance so a slightly-off finger position (the card
+    // is lifted above the finger) still registers as "over the strip".
+    if (local.dy < -_autoScrollEdgeZone ||
+        local.dy > size.height + _autoScrollEdgeZone) {
+      _stopAutoScroll();
+      return;
+    }
+    double pxPerTick = 0;
+    if (local.dx < _autoScrollEdgeZone) {
+      final depth = (_autoScrollEdgeZone - local.dx)
+          .clamp(0.0, _autoScrollEdgeZone);
+      pxPerTick = -_speedForDepth(depth);
+    } else if (local.dx > size.width - _autoScrollEdgeZone) {
+      final depth = (_autoScrollEdgeZone - (size.width - local.dx))
+          .clamp(0.0, _autoScrollEdgeZone);
+      pxPerTick = _speedForDepth(depth);
+    }
+    if (pxPerTick == 0) {
+      _stopAutoScroll();
+      return;
+    }
+    _autoScrollPxPerTick = pxPerTick;
+    _autoScrollTimer ??= Timer.periodic(_autoScrollTick, (_) => _autoScrollStep());
+  }
+
+  double _speedForDepth(double depth) {
+    final t = (depth / _autoScrollEdgeZone).clamp(0.0, 1.0);
+    return _autoScrollMinPxPerTick +
+        (_autoScrollMaxPxPerTick - _autoScrollMinPxPerTick) * t;
+  }
+
+  void _autoScrollStep() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    final next = (position.pixels + _autoScrollPxPerTick)
+        .clamp(position.minScrollExtent, position.maxScrollExtent);
+    if (next == position.pixels) return;
+    _scrollController.jumpTo(next);
+  }
+
+  /// Called on drop and on drag cancel — both surface as Draggable's
+  /// onDragEnd, so a single hook covers both.
+  void endAutoScrollDrag() => _stopAutoScroll();
+
+  void _stopAutoScroll() {
+    _autoScrollTimer?.cancel();
+    _autoScrollTimer = null;
+  }
 
   void _scheduleScrollToSelected() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -400,6 +528,7 @@ class _TabsRowState extends State<_TabsRow> {
 
   @override
   void dispose() {
+    _stopAutoScroll();
     _scrollController.dispose();
     super.dispose();
   }
@@ -443,19 +572,32 @@ class _TabsRowState extends State<_TabsRow> {
       itemCount: custom.length,
       itemBuilder: (context, index) {
         final tab = custom[index];
+        // DragTarget only registers itself for hit-testing during a
+        // Draggable's pointer move — it adds no gesture recognizer of its
+        // own, so nesting it here doesn't compete with
+        // ReorderableDelayedDragStartListener's long-press-to-reorder arena.
         return ReorderableDelayedDragStartListener(
           key: ValueKey(tab.id),
           index: index,
           child: Padding(
             padding: const EdgeInsets.only(right: 6),
-            child: _FolderTab(
-              key: _keyFor(tab.id),
-              tab: tab,
-              selected: store.selectedTabId == tab.id,
-              count: store.countFor(tab),
-              color: store.tabColor(tab),
-              onTap: () => store.selectTab(tab.id),
-              onDoubleTap: () => widget.onDoubleTapTab(tab),
+            child: DragTarget<Product>(
+              onWillAcceptWithDetails: (details) =>
+                  details.data.listId != tab.id,
+              onAcceptWithDetails: (details) =>
+                  widget.onMoveProduct(details.data, tab),
+              builder: (context, candidateData, rejectedData) {
+                return _FolderTab(
+                  key: _keyFor(tab.id),
+                  tab: tab,
+                  selected: store.selectedTabId == tab.id,
+                  count: store.countFor(tab),
+                  color: store.tabColor(tab),
+                  onTap: () => store.selectTab(tab.id),
+                  onDoubleTap: () => widget.onDoubleTapTab(tab),
+                  highlighted: candidateData.isNotEmpty,
+                );
+              },
             ),
           ),
         );
@@ -473,6 +615,7 @@ class _FolderTab extends StatelessWidget {
     required this.color,
     required this.onTap,
     this.onDoubleTap,
+    this.highlighted = false,
   });
 
   final WishlistTab tab;
@@ -481,6 +624,7 @@ class _FolderTab extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
   final VoidCallback? onDoubleTap;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -495,11 +639,13 @@ class _FolderTab extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: bg,
+            color: highlighted ? DiaryColors.accent.withValues(alpha: 0.35) : bg,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
             border: Border.all(
-              color: color.withValues(alpha: 0.9),
-              width: selected ? 2 : 1,
+              color: highlighted
+                  ? DiaryColors.accent
+                  : color.withValues(alpha: 0.9),
+              width: highlighted ? 2.5 : (selected ? 2 : 1),
             ),
           ),
           child: Row(

@@ -106,6 +106,25 @@ class _SpiralPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+class MineBadge extends StatelessWidget {
+  const MineBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: DiaryColors.ink,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '나',
+        style: DiaryTheme.body(10, weight: FontWeight.w700, color: Colors.white),
+      ),
+    );
+  }
+}
+
 class WhiteProductCard extends StatelessWidget {
   const WhiteProductCard({
     super.key,
@@ -113,12 +132,14 @@ class WhiteProductCard extends StatelessWidget {
     this.indexColor,
     this.onTap,
     this.margin = const EdgeInsets.only(bottom: 10),
+    this.backgroundColor = DiaryColors.white,
   });
 
   final Widget child;
   final Color? indexColor;
   final VoidCallback? onTap;
   final EdgeInsets margin;
+  final Color backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +164,7 @@ class WhiteProductCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: DiaryColors.white,
+                  color: backgroundColor,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: DiaryColors.ink.withValues(alpha: 0.08)),
                 ),
@@ -248,6 +269,58 @@ class DiaryButton extends StatelessWidget {
                 Text(label, style: DiaryTheme.body(13, weight: FontWeight.w600)),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Password field with a small trailing eye to show/hide the value.
+class PasswordTextField extends StatefulWidget {
+  const PasswordTextField({
+    super.key,
+    required this.controller,
+    this.decoration = const InputDecoration(),
+    this.onSubmitted,
+    this.textInputAction,
+    this.autofillHints,
+  });
+
+  final TextEditingController controller;
+  final InputDecoration decoration;
+  final ValueChanged<String>? onSubmitted;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
+
+  @override
+  State<PasswordTextField> createState() => _PasswordTextFieldState();
+}
+
+class _PasswordTextFieldState extends State<PasswordTextField> {
+  bool hidden = true;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: widget.controller,
+      obscureText: hidden,
+      onSubmitted: widget.onSubmitted,
+      textInputAction: widget.textInputAction,
+      autofillHints: widget.autofillHints,
+      decoration: widget.decoration.copyWith(
+        suffixIcon: IconButton(
+          tooltip: hidden ? '비밀번호 보기' : '비밀번호 숨기기',
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          onPressed: () => setState(() => hidden = !hidden),
+          icon: Icon(
+            hidden
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
+            size: 20,
+            color: DiaryColors.inkMuted,
           ),
         ),
       ),
