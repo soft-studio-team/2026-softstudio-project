@@ -573,11 +573,34 @@ class AccountRepository {
   }
 
   Future<void> saveTabs(String uid, List<WishlistTab> tabs) async {
-    final batch = _db.batch();
+    final tabPublic = {for (final tab in tabs) tab.id: tab.isPublic};
+    var batch = _db.batch();
+    var ops = 0;
+
+    Future<void> flush() async {
+      if (ops == 0) return;
+      await batch.commit();
+      batch = _db.batch();
+      ops = 0;
+    }
+
     for (final tab in tabs) {
       batch.set(_tabs(uid).doc(tab.id), tab.toJson());
+      ops++;
+      if (ops >= 450) await flush();
     }
-    await batch.commit();
+
+    final productsSnap = await _products(uid).get();
+    for (final doc in productsSnap.docs) {
+      final listId = doc.data()['listId'] as String? ?? '';
+      final wantPublic = tabPublic[listId] ?? false;
+      if (doc.data()['isPublic'] != wantPublic) {
+        batch.update(doc.reference, {'isPublic': wantPublic});
+        ops++;
+        if (ops >= 450) await flush();
+      }
+    }
+    await flush();
   }
 
   Future<void> deleteTabDoc(String uid, String tabId) async {
@@ -585,13 +608,31 @@ class AccountRepository {
   }
 
   Future<List<Product>> loadProducts(String uid) async {
+    final tabsSnap = await _tabs(uid).get();
+    final tabPublic = {
+      for (final doc in tabsSnap.docs)
+        doc.id: doc.data()['isPublic'] as bool? ?? false,
+    };
     final snap = await _products(uid).get();
-    return snap.docs.map((d) {
-      final data = Map<String, dynamic>.from(d.data());
-      data['id'] = data['id'] ?? int.tryParse(d.id) ?? d.id.hashCode;
-      return Product.fromJson(data);
-    }).toList()
-      ..sort((a, b) => a.id.compareTo(b.id));
+    WriteBatch? backfill;
+    final products = <Product>[];
+    for (final doc in snap.docs) {
+      final data = Map<String, dynamic>.from(doc.data());
+      data['id'] = data['id'] ?? int.tryParse(doc.id) ?? doc.id.hashCode;
+      final listId = data['listId'] as String? ?? '';
+      final wantPublic = tabPublic[listId] ?? false;
+      if (data['isPublic'] != wantPublic) {
+        backfill ??= _db.batch();
+        backfill.update(doc.reference, {'isPublic': wantPublic});
+        data['isPublic'] = wantPublic;
+      }
+      products.add(Product.fromJson(data));
+    }
+    if (backfill != null) {
+      await backfill.commit();
+    }
+    products.sort((a, b) => a.id.compareTo(b.id));
+    return products;
   }
 
   Future<void> upsertProduct(String uid, Product product) async {
@@ -649,11 +690,15 @@ class AccountRepository {
   }
 
   Future<(int, int)> _wishlistCounts(String uid) async {
-    final tabs = await _tabs(uid).get();
-    final products = await _products(uid).get();
-    final publicLists =
-        tabs.docs.where((d) => (d.data()['isPublic'] as bool? ?? true) && d.id != 'all').length;
-    return (publicLists, products.docs.length);
+    try {
+      final tabs = await _tabs(uid).where('isPublic', isEqualTo: true).get();
+      final products =
+          await _products(uid).where('isPublic', isEqualTo: true).get();
+      final publicLists = tabs.docs.where((d) => d.id != 'all').length;
+      return (publicLists, products.docs.length);
+    } catch (_) {
+      return (0, 0);
+    }
   }
 
   Future<void> setFollowing({
@@ -726,26 +771,33 @@ class AccountRepository {
   ) async {
     final result = <FriendWishlist>[];
     for (final friend in followingFriends.where((f) => f.isFollowing)) {
-      final tabsSnap = await _tabs(friend.id).get();
-      final productsSnap = await _products(friend.id).get();
-      final products = productsSnap.docs.map((d) {
-        final data = Map<String, dynamic>.from(d.data());
-        data['id'] = data['id'] ?? int.tryParse(d.id) ?? d.id.hashCode;
-        return Product.fromJson(data);
-      }).toList();
+      try {
+        final tabsSnap =
+            await _tabs(friend.id).where('isPublic', isEqualTo: true).get();
+        final productsSnap = await _products(friend.id)
+            .where('isPublic', isEqualTo: true)
+            .get();
+        final products = productsSnap.docs.map((d) {
+          final data = Map<String, dynamic>.from(d.data());
+          data['id'] = data['id'] ?? int.tryParse(d.id) ?? d.id.hashCode;
+          return Product.fromJson(data);
+        }).toList();
 
-      for (final tabDoc in tabsSnap.docs) {
-        final tab = WishlistTab.fromJson(tabDoc.data());
-        if (tab.id == 'all' || !tab.isPublic) continue;
-        final items = products.where((p) => p.listId == tab.id).toList();
-        result.add(FriendWishlist(
-          id: '${friend.id}_${tab.id}',
-          friendId: friend.id,
-          friendName: friend.name,
-          listName: tab.name,
-          isPublic: true,
-          items: items,
-        ));
+        for (final tabDoc in tabsSnap.docs) {
+          final tab = WishlistTab.fromJson(tabDoc.data());
+          if (tab.id == 'all') continue;
+          final items = products.where((p) => p.listId == tab.id).toList();
+          result.add(FriendWishlist(
+            id: '${friend.id}_${tab.id}',
+            friendId: friend.id,
+            friendName: friend.name,
+            listName: tab.name,
+            isPublic: true,
+            items: items,
+          ));
+        }
+      } catch (_) {
+        continue;
       }
     }
     return result;

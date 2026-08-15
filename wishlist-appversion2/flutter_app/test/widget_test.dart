@@ -72,6 +72,26 @@ void main() {
     expect(review.imageUrls, isEmpty);
   });
 
+  test('Product json round-trips list privacy', () {
+    final product = Product(
+      id: 3,
+      listId: 'summer',
+      name: '선글라스',
+      price: 20000,
+      image: 'https://example.com/s.png',
+      platform: '테스트',
+      isPublic: true,
+    );
+    final decoded = Product.fromJson(product.toJson());
+    expect(decoded.isPublic, true);
+    expect(Product.fromJson({
+      'id': 1,
+      'listId': 'secret',
+      'name': '비공개 상품',
+      'price': 1,
+    }).isPublic, false);
+  });
+
   test('AppNotification parses follow basket review and list types', () {
     AppNotification n(String type) => AppNotification.fromJson({
           'id': 'n-$type',

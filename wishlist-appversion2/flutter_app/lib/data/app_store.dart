@@ -522,6 +522,11 @@ class AppStore extends ChangeNotifier {
     tabs = tabs
         .map((t) => t.id == id ? t.copyWith(isPublic: !t.isPublic) : t)
         .toList();
+    final isPublic = tabs.where((t) => t.id == id).firstOrNull?.isPublic ?? false;
+    products = [
+      for (final p in products)
+        p.listId == id ? p.copyWith(isPublic: isPublic) : p,
+    ];
     await _persistTabs();
     notifyListeners();
   }
@@ -544,7 +549,10 @@ class AppStore extends ChangeNotifier {
     final previous = products;
     final product = productById(id);
     if (product == null || product.listId == listId) return;
-    final updated = product.copyWith(listId: listId);
+    final updated = product.copyWith(
+      listId: listId,
+      isPublic: _isListPublic(listId),
+    );
     products = [
       for (final p in products) p.id == id ? updated : p,
     ];
@@ -611,6 +619,7 @@ class AppStore extends ChangeNotifier {
       originalPrice: info.originalPrice,
       discount: info.discount,
       productUrl: info.productUrl,
+      isPublic: _isListPublic(listId),
     );
     products = [...products, product];
     final userId = uid;
@@ -628,6 +637,10 @@ class AppStore extends ChangeNotifier {
 
   Product? productById(int id) {
     return products.where((p) => p.id == id).firstOrNull;
+  }
+
+  bool _isListPublic(String listId) {
+    return tabs.where((t) => t.id == listId).firstOrNull?.isPublic ?? false;
   }
 
   Friend? friendById(String id) =>

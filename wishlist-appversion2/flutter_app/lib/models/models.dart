@@ -52,6 +52,7 @@ class Product {
     this.discount,
     this.productUrl,
     this.memo,
+    this.isPublic = false,
   });
 
   final int id;
@@ -64,6 +65,7 @@ class Product {
   final int? discount;
   final String? productUrl;
   final String? memo;
+  final bool isPublic;
 
   Product copyWith({
     int? id,
@@ -76,6 +78,7 @@ class Product {
     int? discount,
     String? productUrl,
     String? memo,
+    bool? isPublic,
   }) {
     return Product(
       id: id ?? this.id,
@@ -88,6 +91,7 @@ class Product {
       discount: discount ?? this.discount,
       productUrl: productUrl ?? this.productUrl,
       memo: memo ?? this.memo,
+      isPublic: isPublic ?? this.isPublic,
     );
   }
 
@@ -102,6 +106,7 @@ class Product {
         'discount': discount,
         'productUrl': productUrl,
         'memo': memo,
+        'isPublic': isPublic,
       };
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
@@ -115,6 +120,7 @@ class Product {
         discount: (json['discount'] as num?)?.toInt(),
         productUrl: json['productUrl'] as String?,
         memo: json['memo'] as String?,
+        isPublic: json['isPublic'] as bool? ?? false,
       );
 }
 
