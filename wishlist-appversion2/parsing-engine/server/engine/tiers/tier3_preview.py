@@ -16,7 +16,13 @@ UX 원칙: "전부 수동 입력"이 아니라 "빠진 것만 확인".
 from __future__ import annotations
 
 from ..metadata import ExtractedMetadata
-from ..models import Product, SourceType, discount_rate_from
+from ..models import (
+    PriceConfidence,
+    Product,
+    PurchasePriceStatus,
+    SourceType,
+    discount_rate_from,
+)
 
 
 def build_preview_product(
@@ -42,4 +48,17 @@ def build_preview_product(
         platform_label=platform_label,
         source_type=SourceType.MANUAL,
         price_trackable=False,  # 문서 6: Tier 3 가격 추적 미지원
+        purchase_price_status=(
+            PurchasePriceStatus.PROVISIONAL
+            if price is not None else PurchasePriceStatus.UNKNOWN
+        ),
+        price_confidence=(
+            PriceConfidence.LOW if price is not None else PriceConfidence.UNKNOWN
+        ),
+        price_evidence=([{
+            "price_role": "purchase_price",
+            "source": "metadata",
+            "adapter": None,
+            "field": meta.price_source,
+        }] if meta and price is not None else []),
     )

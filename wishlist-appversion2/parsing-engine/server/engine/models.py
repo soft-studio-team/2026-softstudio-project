@@ -36,6 +36,33 @@ class TierOutcome(str, enum.Enum):
     FAILED = "failed"      # 시도했으나 실패 → 다음 티어로 폴백
 
 
+class PurchasePriceStatus(str, enum.Enum):
+    """`purchase_price`의 의미가 확인된 정도."""
+
+    UNKNOWN = "unknown"
+    PROVISIONAL = "provisional"
+    CONFIRMED = "confirmed"
+    OPTION_DEPENDENT = "option_dependent"
+
+
+class PriceConfidence(str, enum.Enum):
+    """숫자 추출이 아니라 가격의 의미 판정에 대한 신뢰도."""
+
+    UNKNOWN = "unknown"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    VERIFIED = "verified"
+
+
+class Availability(str, enum.Enum):
+    """상품의 현재 구매 가능 상태. 가격과 독립적으로 관리한다."""
+
+    UNKNOWN = "unknown"
+    AVAILABLE = "available"
+    UNAVAILABLE = "unavailable"
+
+
 # 정규화된 상품 필드 중 "핵심"으로 간주하는 것.
 # 이 중 빠진 필드는 missing_fields 로 내려보내 앱이 사용자 입력을 받게 한다.
 CORE_FIELDS = ("title", "image_url", "price")
@@ -66,6 +93,13 @@ class Product:
                                          # 미등록 사이트는 og:site_name 또는 도메인)
     source_type: SourceType = SourceType.MANUAL   # API | METADATA | MANUAL
     price_trackable: bool = False        # 가격 추적 가능 여부 (source_type에서 파생)
+    purchase_price_status: PurchasePriceStatus = PurchasePriceStatus.UNKNOWN
+    price_confidence: PriceConfidence = PriceConfidence.UNKNOWN
+    availability: Availability = Availability.UNKNOWN
+    option_dependent: bool | None = None
+    option_price_min: int | None = None
+    option_price_max: int | None = None
+    price_evidence: list[dict] = field(default_factory=list)
     fetched_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
@@ -88,7 +122,27 @@ class Product:
 
     def to_dict(self) -> dict:
         data = asdict(self)
+        data["schema_version"] = 2
         data["source_type"] = self.source_type.value
+        data["purchase_price_status"] = self.purchase_price_status.value
+        data["price_confidence"] = self.price_confidence.value
+        data["availability"] = self.availability.value
+        data["pricing"] = {
+            "regular_price": self.original_price,
+            "purchase_price": self.price,
+            "purchase_price_status": self.purchase_price_status.value,
+            "currency": self.currency,
+            "option_dependent": self.option_dependent,
+            "option_price_min": self.option_price_min,
+            "option_price_max": self.option_price_max,
+            "excluded_conditions": [
+                "coupon", "membership", "card", "points", "shipping",
+            ],
+            "confidence": self.price_confidence.value,
+            "evidence": self.price_evidence,
+        }
+        # price/original_price는 v1 앱과 저장 데이터용 호환 필드다.
+        # 신규 소비자는 pricing 객체를 기준으로 읽는다.
         return data
 
 

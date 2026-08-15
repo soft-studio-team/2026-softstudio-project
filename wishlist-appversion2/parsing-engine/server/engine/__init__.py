@@ -9,7 +9,16 @@
     print(result.product.title, result.resolved_tier)
 """
 
-from .models import ParseResult, Product, SourceType, TierAttempt, TierOutcome
+from .models import (
+    Availability,
+    ParseResult,
+    PriceConfidence,
+    Product,
+    PurchasePriceStatus,
+    SourceType,
+    TierAttempt,
+    TierOutcome,
+)
 from .pipeline import InvalidUrlError, ProductParsingEngine
 
 __all__ = [
@@ -17,6 +26,9 @@ __all__ = [
     "InvalidUrlError",
     "ParseResult",
     "Product",
+    "PurchasePriceStatus",
+    "PriceConfidence",
+    "Availability",
     "SourceType",
     "TierAttempt",
     "TierOutcome",

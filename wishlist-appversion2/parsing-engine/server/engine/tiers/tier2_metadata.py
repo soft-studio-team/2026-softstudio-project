@@ -17,26 +17,36 @@ JSON-LD → Open Graph 순으로 추출된 메타데이터(metadata.extract_meta
 from __future__ import annotations
 
 from ..metadata import ExtractedMetadata
-from ..models import Product, SourceType, discount_rate_from
+from ..models import (
+    PriceConfidence,
+    Product,
+    PurchasePriceStatus,
+    SourceType,
+    discount_rate_from,
+)
+from ..site_adapters import SitePricing
 
 
 def build_metadata_product(
     meta: ExtractedMetadata, original_url: str,
     platform: str, platform_label: str,
+    site_pricing: SitePricing | None = None,
 ) -> Product | None:
     """추출된 메타데이터가 핵심 필드(제목·이미지·가격)를 모두 갖추면 Product 로 정규화한다.
 
     하나라도 없으면 None 을 반환하고 Tier 3으로 폴백한다.
     """
-    if not meta.has_product_core():
+    purchase_price = site_pricing.purchase_price if site_pricing else meta.price
+    regular_price = site_pricing.regular_price if site_pricing else meta.original_price
+    if not meta.title or not meta.image_url or purchase_price is None:
         return None
     product = Product(
         original_url=original_url,
         title=meta.title,
         image_url=meta.image_url,
-        price=meta.price,
-        original_price=meta.original_price,
-        discount_rate=discount_rate_from(meta.price, meta.original_price),
+        price=purchase_price,
+        original_price=regular_price,
+        discount_rate=discount_rate_from(purchase_price, regular_price),
         currency=meta.currency or "KRW",
         brand=meta.brand,
         seller=meta.seller,
@@ -48,5 +58,31 @@ def build_metadata_product(
         # 가격 변동 추적은 공식 API 재조회가 가능한 Tier 1부터 지원한다(문서 6).
         # Tier 2는 "주기적 재파싱으로 제한적 지원 검토" 단계이므로 아직 False.
         price_trackable=False,
+        purchase_price_status=(
+            site_pricing.purchase_price_status
+            if site_pricing else PurchasePriceStatus.PROVISIONAL
+        ),
+        price_confidence=(
+            site_pricing.confidence if site_pricing else PriceConfidence.MEDIUM
+        ),
+        option_dependent=(
+            site_pricing.option_dependent if site_pricing else None
+        ),
+        option_price_min=(site_pricing.option_price_min if site_pricing else None),
+        option_price_max=(site_pricing.option_price_max if site_pricing else None),
+        price_evidence=site_pricing.evidence() if site_pricing else [
+            {
+                "price_role": "purchase_price",
+                "source": "metadata",
+                "adapter": None,
+                "field": meta.price_source,
+            },
+            *([{
+                "price_role": "regular_price",
+                "source": "metadata",
+                "adapter": None,
+                "field": meta.regular_price_source,
+            }] if meta.original_price is not None else []),
+        ],
     )
     return product

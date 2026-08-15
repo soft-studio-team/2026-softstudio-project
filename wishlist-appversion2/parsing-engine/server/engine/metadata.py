@@ -33,6 +33,8 @@ class ExtractedMetadata:
     image_url: str | None = None
     price: int | None = None              # 판매가/할인가
     original_price: int | None = None     # 정가 (할인 전)
+    price_source: str | None = None       # 채택한 구매 가격 후보 필드
+    regular_price_source: str | None = None
     currency: str | None = None
     brand: str | None = None
     seller: str | None = None           # 판매자/입점 스토어 (JSON-LD offers.seller)
@@ -145,6 +147,31 @@ def _price_type_is_list(price_type) -> bool:
     return False
 
 
+def _price_type_is_conditional(price_type) -> bool:
+    """쿠폰·회원 등 사용자 조건이 필요한 가격 유형인지 본다."""
+    if price_type is None:
+        return False
+    values = price_type if isinstance(price_type, list) else [price_type]
+    markers = (
+        "coupon", "member", "membership", "loyalty", "subscription",
+        "voucher", "promo", "promotional",
+    )
+    for value in values:
+        text = str(value).lower().replace(" ", "").replace("_", "")
+        if any(marker in text for marker in markers):
+            return True
+    return False
+
+
+def _offer_is_conditional(offer: dict) -> bool:
+    """로그인·등급·쿠폰 소유 여부에 따라 달라지는 Offer를 제외한다."""
+    if _price_type_is_conditional(offer.get("priceType")):
+        return True
+    return any(offer.get(key) not in (None, "", [], {}) for key in (
+        "validForMemberTier", "membershipPointsEarned",
+    ))
+
+
 def _extract_from_price_specification(spec) -> tuple[int | None, int | None, str | None]:
     """priceSpecification 에서 (판매가, 정가, 통화)를 뽑는다."""
     if isinstance(spec, list):
@@ -161,6 +188,8 @@ def _extract_from_price_specification(spec) -> tuple[int | None, int | None, str
         return None, None, None
     amount = normalize_price(spec.get("price") or spec.get("priceAmount"))
     currency = _first_str(spec.get("priceCurrency"))
+    if _price_type_is_conditional(spec.get("priceType")) or _offer_is_conditional(spec):
+        return None, None, currency
     if _price_type_is_list(spec.get("priceType")):
         return None, amount, currency
     return amount, None, currency
@@ -181,6 +210,9 @@ def _extract_offer(offers) -> tuple[int | None, int | None, str | None]:
         return None, None, None
     if not isinstance(offers, dict):
         return None, None, None
+
+    if _offer_is_conditional(offers):
+        return None, None, _first_str(offers.get("priceCurrency"))
 
     price = normalize_price(
         offers.get("price")
@@ -246,6 +278,13 @@ def parse_jsonld_product(soup: BeautifulSoup, base_url: str) -> ExtractedMetadat
                 image_url=urljoin(base_url, image) if image else None,
                 price=price,
                 original_price=original_price,
+                price_source=(
+                    "json-ld:offers" if price is not None else None
+                ),
+                regular_price_source=(
+                    "json-ld:offers:list-price"
+                    if original_price is not None else None
+                ),
                 currency=currency,
                 brand=_first_str(node.get("brand")),
                 seller=_extract_seller(node.get("offers")),
@@ -289,7 +328,10 @@ def parse_open_graph(soup: BeautifulSoup, base_url: str) -> ExtractedMetadata | 
     price = normalize_price(get(*_OG_PRICE_KEYS))
     # Facebook 상품 OG: product:price:amount=정가, product:sale_price:amount=할인가
     sale = normalize_price(get("product:sale_price:amount", "og:sale_price:amount"))
-    listed = normalize_price(get("product:original_price:amount", "og:original_price:amount"))
+    listed = normalize_price(get(
+        "product:original_price:amount", "og:original_price:amount",
+        "product:price:normal_price",
+    ))
     original_price = listed
     if sale is not None and price is not None and sale < price:
         # price 가 정가, sale 이 할인가인 관례
@@ -306,6 +348,15 @@ def parse_open_graph(soup: BeautifulSoup, base_url: str) -> ExtractedMetadata | 
         image_url=urljoin(base_url, image) if image else None,
         price=price,
         original_price=original_price,
+        price_source=(
+            "open-graph:product:sale_price:amount"
+            if sale is not None and price == sale
+            else "open-graph:product:price:amount"
+            if price is not None else None
+        ),
+        regular_price_source=(
+            "open-graph:regular-price" if original_price is not None else None
+        ),
         currency=get(*_OG_CURRENCY_KEYS),
         description=get("og:description", "description", "twitter:description"),
         og_type=get("og:type"),
@@ -336,7 +387,8 @@ def extract_metadata(html: str, base_url: str) -> ExtractedMetadata | None:
         return jsonld
 
     # JSON-LD 를 기준으로, 비어 있는 필드만 OG 값으로 채운다.
-    for field_name in ("title", "image_url", "price", "original_price", "currency",
+    for field_name in ("title", "image_url", "price", "original_price",
+                       "price_source", "regular_price_source", "currency",
                        "brand", "seller", "category", "description"):
         if getattr(jsonld, field_name) in (None, "") and getattr(og, field_name):
             setattr(jsonld, field_name, getattr(og, field_name))
