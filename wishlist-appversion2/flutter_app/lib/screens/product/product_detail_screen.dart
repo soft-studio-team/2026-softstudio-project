@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/app_store.dart';
+import '../../services/app_error.dart';
 import '../../theme/diary_theme.dart';
+import '../../widgets/app_status_view.dart';
 import '../../widgets/diary_widgets.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -36,17 +38,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
-    final product = store.findCatalogProduct(widget.productId) ??
-        store.products.firstOrNull;
+    final product = store.findCatalogProduct(widget.productId);
     if (product == null) {
-      return Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.pop(),
-          ),
-        ),
-        body: const Center(child: Text('상품을 찾을 수 없어요')),
+      return const AppStatusScaffold(
+        title: '상품을 찾을 수 없어요',
+        message: '삭제되었거나 잘못된 주소예요.',
       );
     }
     final isOwn = store.productById(product.id) != null;
@@ -173,7 +169,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     border: InputBorder.none,
                                   ),
                                   onChanged: (v) =>
-                                      store.updateMemo(product.id, v),
+                                      runAppAction(
+                                        context,
+                                        () => store.updateMemo(product.id, v),
+                                      ),
                                 )
                               else
                                 Padding(
@@ -220,15 +219,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               child: DiaryButton(
                                 label: '바구니에 추가',
                                 icon: Icons.shopping_basket_outlined,
-                                onPressed: () async {
-                                  await store.addToBasket(product);
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text('살까말까 바구니에 담았어요')),
-                                    );
-                                  }
-                                },
+                                onPressed: () => runAppAction(
+                                  context,
+                                  () => store.addToBasket(product),
+                                  success: '살까말까 바구니에 담았어요',
+                                ),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -239,10 +234,25 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 color: DiaryColors.folderMint,
                                 icon: Icons.open_in_new,
                                 onPressed: () async {
-                                  final url = product.productUrl ??
-                                      'https://www.musinsa.com';
-                                  await launchUrl(Uri.parse(url),
-                                      mode: LaunchMode.externalApplication);
+                                  final url = product.productUrl;
+                                  if (url == null || url.isEmpty) {
+                                    showAppMessage(
+                                      context,
+                                      '이 상품에는 연결할 링크가 없어요.',
+                                    );
+                                    return;
+                                  }
+                                  try {
+                                    final ok = await launchUrl(
+                                      Uri.parse(url),
+                                      mode: LaunchMode.externalApplication,
+                                    );
+                                    if (!ok && context.mounted) {
+                                      showAppMessage(context, '링크를 열지 못했어요.');
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) showAppError(context, e);
+                                  }
                                 },
                               ),
                             ),

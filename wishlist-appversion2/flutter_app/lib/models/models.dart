@@ -628,6 +628,13 @@ class ParsedProductInfo {
   /// 단말 WebView(Tier 2.5)로 정보를 보완했는지. UI 배지 표시용.
   final bool onDeviceExtracted;
 
+  /// 엔진·단말 추출이 모두 실패해 자리만 채운 결과.
+  bool get isPlaceholder =>
+      !engineUsed &&
+      !onDeviceExtracted &&
+      (name.isEmpty || name == '공유된 상품') &&
+      price <= 0;
+
   /// 서버가 못 채운 칸을 단말 WebView 추출 결과로 메운다.
   /// [replacePrice]일 때는 화면에서 검증한 정가·판매가 쌍으로 교체한다.
   ParsedProductInfo mergeOnDevice({

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
+import '../../services/app_error.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 
@@ -30,7 +31,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       setState(() => message = '인증 메일을 다시 보냈어요. 메일함을 확인해 주세요.');
     } catch (e) {
       if (!mounted) return;
-      setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => error = userFacingMessage(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -50,7 +51,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => error = userFacingMessage(e));
     } finally {
       if (mounted) setState(() => busy = false);
     }

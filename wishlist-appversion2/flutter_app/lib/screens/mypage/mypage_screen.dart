@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
+import '../../services/app_error.dart';
 import '../../theme/avatar_presets.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
@@ -162,8 +163,8 @@ class MyPageScreen extends StatelessWidget {
                               ],
                             ),
                           );
-                          if (name != null && name.isNotEmpty) {
-                            await store.addTab(name);
+                          if (name != null && name.isNotEmpty && context.mounted) {
+                            await runAppAction(context, () => store.addTab(name));
                           }
                         },
                       ),
@@ -356,11 +357,7 @@ class MyPageScreen extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-          ),
-        );
+        showAppError(context, e);
       }
     }
   }
@@ -450,11 +447,7 @@ class MyPageScreen extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-          ),
-        );
+        showAppError(context, e);
       }
     }
   }
@@ -616,9 +609,7 @@ class MyPageScreen extends StatelessWidget {
                           } catch (e) {
                             setLocal(() {
                               saving = false;
-                              localError = e
-                                  .toString()
-                                  .replaceFirst('Exception: ', '');
+                              localError = userFacingMessage(e);
                             });
                           }
                         },

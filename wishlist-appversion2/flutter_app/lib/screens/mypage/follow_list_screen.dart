@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
+import '../../services/app_error.dart';
 import '../../theme/diary_theme.dart';
+import '../../widgets/app_status_view.dart';
 import '../../widgets/diary_widgets.dart';
 
 enum FollowListKind { followers, following }
@@ -50,7 +52,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = userFacingMessage(e);
         _loading = false;
       });
     }
@@ -77,11 +79,11 @@ class _FollowListScreenState extends State<FollowListScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-                ? Center(
-                    child: Text(
-                      _error!,
-                      style: DiaryTheme.body(14, color: DiaryColors.pin),
-                    ),
+                ? AppStatusView(
+                    title: '목록을 불러오지 못했어요',
+                    message: _error,
+                    actionLabel: '다시 시도',
+                    onAction: _reload,
                   )
                 : (_users == null || _users!.isEmpty)
                     ? Center(
@@ -167,9 +169,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('삭제 실패: $e')),
-      );
+      showAppError(context, e);
     }
   }
 }

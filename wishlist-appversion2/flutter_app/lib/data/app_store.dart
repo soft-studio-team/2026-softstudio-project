@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../firebase_options.dart';
 import '../models/models.dart';
 import '../services/account_repository.dart';
+import '../services/app_error.dart';
 import '../services/push_notification_service.dart';
 import '../theme/diary_theme.dart';
 
@@ -35,6 +36,10 @@ class AppStore extends ChangeNotifier {
   bool ready = false;
   bool firebaseReady = false;
   String? firebaseError;
+  String? sessionError;
+  String? inboxError;
+  String? friendsError;
+  String? lastWarning;
   bool isLoggedIn = false;
   bool awaitingEmailVerification = false;
   bool showSignupWelcome = false;
@@ -62,6 +67,12 @@ class AppStore extends ChangeNotifier {
   int friendsTab = 0;
   String? pendingShareUrl;
 
+  String? takeLastWarning() {
+    final warning = lastWarning;
+    lastWarning = null;
+    return warning;
+  }
+
   AppUser currentUser = AppUser(
     name: '게스트',
     handle: '@guest',
@@ -86,12 +97,32 @@ class AppStore extends ChangeNotifier {
         await _hydrateSession(user);
       }
     } catch (e) {
-      firebaseError = e.toString();
+      sessionError = userFacingMessage(e);
     }
 
     await _loadLocalExtras();
     ready = true;
     notifyListeners();
+  }
+
+  Future<void> retrySession() async {
+    sessionError = null;
+    notifyListeners();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      sessionError = '로그인 세션이 없어요. 다시 로그인해 주세요.';
+      notifyListeners();
+      throw Exception(sessionError);
+    }
+    try {
+      await _hydrateSession(user);
+      sessionError = null;
+    } catch (e) {
+      sessionError = userFacingMessage(e);
+      rethrow;
+    } finally {
+      notifyListeners();
+    }
   }
 
   Future<void> _loadPendingProfileDraft() async {
@@ -160,6 +191,7 @@ class AppStore extends ChangeNotifier {
     );
     isLoggedIn = true;
     selectedTabId = 'all';
+    sessionError = null;
     await _reloadNotificationPrefs();
     _watchInbox(fresh.uid);
     unawaited(PushNotificationService.instance.register(fresh.uid, _repo));
@@ -172,18 +204,18 @@ class AppStore extends ChangeNotifier {
     notifyOnBasket = prefs.getBool('${_notifyBasketKey}_$keySuffix') ?? true;
   }
 
-  /// Notifications / received baskets need updated Firestore rules.
-  /// Never block login if those collections are still denied.
+  /// Inbox collections must not block login, but a failure is not "empty".
   Future<void> _loadInboxSafely(String userId) async {
+    final problems = <String>[];
     try {
       notifications = await _repo.loadNotifications(userId);
     } catch (_) {
-      notifications = [];
+      problems.add('알림');
     }
     try {
       receivedBaskets = await _repo.loadReceivedBaskets(userId);
     } catch (_) {
-      receivedBaskets = [];
+      problems.add('받은 살까말까');
     }
     try {
       final sent = await _repo.loadSentBaskets(userId);
@@ -191,7 +223,10 @@ class AppStore extends ChangeNotifier {
         sharedBaskets[b.id] = b;
       }
       await _persistShared();
-    } catch (_) {}
+    } catch (_) {
+      problems.add('보낸 살까말까');
+    }
+    inboxError = problems.isEmpty ? null : '${problems.join('·')}을 불러오지 못했어요.';
   }
 
   Future<void> _loadReviewsSafely(String userId) async {
@@ -206,7 +241,7 @@ class AppStore extends ChangeNotifier {
     try {
       friendReviews = await _repo.loadFriendReviews(friends);
     } catch (_) {
-      friendReviews = [];
+      lastWarning = '친구 리뷰를 불러오지 못했어요.';
     }
   }
 
@@ -226,6 +261,10 @@ class AppStore extends ChangeNotifier {
     receivedBaskets = [];
     myReviews = [];
     friendReviews = [];
+    sessionError = null;
+    inboxError = null;
+    friendsError = null;
+    lastWarning = null;
     currentUser = AppUser(
       name: '게스트',
       handle: '@guest',
@@ -484,6 +523,8 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> addTab(String name, {bool isPublic = false}) async {
+    final previousTabs = tabs;
+    final previousSelected = selectedTabId;
     final color = nextFileColor();
     final hex =
         '#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
@@ -495,29 +536,54 @@ class AppStore extends ChangeNotifier {
     );
     tabs = [...tabs, tab];
     selectedTabId = tab.id;
-    await _persistTabs();
     notifyListeners();
+    try {
+      await _persistTabs();
+    } catch (e) {
+      tabs = previousTabs;
+      selectedTabId = previousSelected;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> renameTab(String id, String name) async {
+    final previous = tabs;
     tabs = tabs.map((t) => t.id == id ? t.copyWith(name: name) : t).toList();
-    await _persistTabs();
     notifyListeners();
+    try {
+      await _persistTabs();
+    } catch (e) {
+      tabs = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> deleteTab(String id) async {
     if (id == 'all') return;
+    final previousTabs = tabs;
+    final previousSelected = selectedTabId;
     tabs = tabs.where((t) => t.id != id).toList();
     if (selectedTabId == id) selectedTabId = 'all';
-    final userId = uid;
-    if (userId != null) {
-      await _repo.deleteTabDoc(userId, id);
-      await _persistTabs();
-    }
     notifyListeners();
+    try {
+      final userId = uid;
+      if (userId != null) {
+        await _repo.deleteTabDoc(userId, id);
+        await _persistTabs();
+      }
+    } catch (e) {
+      tabs = previousTabs;
+      selectedTabId = previousSelected;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> toggleTabPublic(String id) async {
+    final previousTabs = tabs;
+    final previousProducts = products;
     tabs = tabs
         .map((t) => t.id == id ? t.copyWith(isPublic: !t.isPublic) : t)
         .toList();
@@ -527,19 +593,35 @@ class AppStore extends ChangeNotifier {
       for (final p in products)
         p.listId == id ? p.copyWith(isPublic: isPublic) : p,
     ];
-    await _persistTabs();
     notifyListeners();
+    try {
+      await _persistTabs();
+    } catch (e) {
+      tabs = previousTabs;
+      products = previousProducts;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> removeProduct(int id) async {
+    final previousProducts = products;
+    final previousBasket = basket;
     products = products.where((p) => p.id != id).toList();
     basket = basket.where((b) => b.product.id != id).toList();
-    final userId = uid;
-    if (userId != null) {
-      await _repo.deleteProduct(userId, id);
-    }
-    await _persistBasket();
     notifyListeners();
+    try {
+      final userId = uid;
+      if (userId != null) {
+        await _repo.deleteProduct(userId, id);
+      }
+      await _persistBasket();
+    } catch (e) {
+      products = previousProducts;
+      basket = previousBasket;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   /// Optimistically moves [id] into [listId], persists to Firestore, and
@@ -567,15 +649,22 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> updateMemo(int id, String memo) async {
+    final previous = products;
     products = products
         .map((p) => p.id == id ? p.copyWith(memo: memo) : p)
         .toList();
-    final userId = uid;
-    final product = productById(id);
-    if (userId != null && product != null) {
-      await _repo.upsertProduct(userId, product);
-    }
     notifyListeners();
+    try {
+      final userId = uid;
+      final product = productById(id);
+      if (userId != null && product != null) {
+        await _repo.upsertProduct(userId, product);
+      }
+    } catch (e) {
+      products = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> addToBasket(Product product) async {
@@ -635,11 +724,17 @@ class AppStore extends ChangeNotifier {
       isPublic: _isListPublic(listId),
     );
     products = [...products, product];
-    final userId = uid;
-    if (userId != null) {
-      await _repo.upsertProduct(userId, product);
-    }
     notifyListeners();
+    try {
+      final userId = uid;
+      if (userId != null) {
+        await _repo.upsertProduct(userId, product);
+      }
+    } catch (e) {
+      products = products.where((p) => p.id != product.id).toList();
+      notifyListeners();
+      rethrow;
+    }
     return product;
   }
 
@@ -749,23 +844,30 @@ class AppStore extends ChangeNotifier {
   Future<void> refreshFriends() async {
     final userId = uid;
     if (userId == null) return;
-    final following = (await _repo.followingIds(userId)).toSet();
-    friends = await _repo.loadDirectory(myUid: userId, following: following);
-    friendWishlists = await _repo.loadFriendWishlists(friends);
-    followerUsers = await _repo.loadUsers(await _repo.followerIds(userId));
-    await _loadInboxSafely(userId);
-    await _loadReviewsSafely(userId);
-    _syncFriendCounts();
-    final profile = await _repo.loadProfile(userId);
-    if (profile != null) {
-      currentUser = profile;
-    } else {
-      currentUser = currentUser.copyWith(
-        following: following.length,
-        followers: followerUsers.length,
-      );
+    try {
+      final following = (await _repo.followingIds(userId)).toSet();
+      friends = await _repo.loadDirectory(myUid: userId, following: following);
+      friendWishlists = await _repo.loadFriendWishlists(friends);
+      followerUsers = await _repo.loadUsers(await _repo.followerIds(userId));
+      await _loadInboxSafely(userId);
+      await _loadReviewsSafely(userId);
+      _syncFriendCounts();
+      final profile = await _repo.loadProfile(userId);
+      if (profile != null) {
+        currentUser = profile;
+      } else {
+        currentUser = currentUser.copyWith(
+          following: following.length,
+          followers: followerUsers.length,
+        );
+      }
+      friendsError = null;
+    } catch (e) {
+      friendsError = userFacingMessage(e);
+      rethrow;
+    } finally {
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   Future<void> refreshNotifications() async {
@@ -773,10 +875,13 @@ class AppStore extends ChangeNotifier {
     if (userId == null) return;
     try {
       notifications = await _repo.loadNotifications(userId);
-    } catch (_) {
-      notifications = [];
+      inboxError = null;
+    } catch (e) {
+      inboxError = userFacingMessage(e);
+      rethrow;
+    } finally {
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   Future<void> markAllNotificationsRead() async {
@@ -787,11 +892,9 @@ class AppStore extends ChangeNotifier {
         .map((n) => n.id)
         .toList();
     if (unread.isEmpty) return;
-    try {
-      await _repo.markNotificationsRead(userId, unread);
-      notifications = [for (final n in notifications) n.copyWith(read: true)];
-      notifyListeners();
-    } catch (_) {}
+    await _repo.markNotificationsRead(userId, unread);
+    notifications = [for (final n in notifications) n.copyWith(read: true)];
+    notifyListeners();
   }
 
   Future<void> toggleFollow(String friendId) async {
@@ -817,7 +920,9 @@ class AppStore extends ChangeNotifier {
     friendWishlists = await _repo.loadFriendWishlists(friends);
     try {
       friendReviews = await _repo.loadFriendReviews(friends);
-    } catch (_) {}
+    } catch (_) {
+      lastWarning = '팔로우는 반영했지만 친구 리뷰를 불러오지 못했어요.';
+    }
     _syncFriendCounts();
     notifyListeners();
   }
@@ -865,11 +970,17 @@ class AppStore extends ChangeNotifier {
       primed = true;
       notifications = list;
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e, _) {
+      inboxError = userFacingMessage(e);
+      notifyListeners();
+    });
     _receivedBasketSub = _repo.watchReceivedBaskets(userId).listen((list) {
       receivedBaskets = list;
       notifyListeners();
-    }, onError: (_) {});
+    }, onError: (e, _) {
+      inboxError = userFacingMessage(e);
+      notifyListeners();
+    });
   }
 
   void _stopInboxWatch() {
@@ -977,7 +1088,9 @@ class AppStore extends ChangeNotifier {
     if (userId != null) {
       try {
         await _repo.upsertSentBasket(userId, shared);
-      } catch (_) {}
+      } catch (_) {
+        lastWarning = '친구에게는 전달됐을 수 있지만, 보낸 목록 저장에 실패했어요.';
+      }
     }
     notifyListeners();
     return shared;
@@ -1225,7 +1338,7 @@ class AppStore extends ChangeNotifier {
     try {
       await _repo.upsertReview(userId, review);
     } catch (_) {
-      // Local review still works if Firestore rules are not deployed yet.
+      lastWarning = '리뷰는 이 기기에 저장했지만 서버에 올리지 못했어요.';
     }
     notifyListeners();
     return review;
@@ -1263,13 +1376,19 @@ class AppStore extends ChangeNotifier {
 
   Future<void> deleteReview(String reviewId) async {
     final userId = uid;
+    final previous = myReviews;
     myReviews = myReviews.where((r) => r.id != reviewId).toList();
     await _persistLocalReviews();
-    if (userId != null) {
-      try {
-        await _repo.deleteReview(userId, reviewId);
-      } catch (_) {}
-    }
     notifyListeners();
+    try {
+      if (userId != null) {
+        await _repo.deleteReview(userId, reviewId);
+      }
+    } catch (e) {
+      myReviews = previous;
+      await _persistLocalReviews();
+      notifyListeners();
+      rethrow;
+    }
   }
 }

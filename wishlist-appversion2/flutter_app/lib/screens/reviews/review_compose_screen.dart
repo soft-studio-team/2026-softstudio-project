@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
+import '../../services/app_error.dart';
 import '../../theme/avatar_presets.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
@@ -164,12 +165,12 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
         existingId: existing?.id,
       );
       if (!mounted) return;
+      final warning = store.takeLastWarning();
+      if (warning != null) showAppMessage(context, warning);
       context.pushReplacement('/reviews/${review.id}');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
+      showAppError(context, e);
     } finally {
       if (mounted) setState(() => saving = false);
     }
