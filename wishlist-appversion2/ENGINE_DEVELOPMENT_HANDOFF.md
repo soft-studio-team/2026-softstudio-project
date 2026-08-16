@@ -56,6 +56,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음: iOS(기기 필요), 반스 이름 재감사, Hmall/리바이스/나이키/이랜드몰 규칙, 실패 UX, Python 폴백 결정.
 검사 후 일반 앱을 `-r`로 복구했다.
+iOS 작업자용 시작 프롬프트: `wishlist-appversion2/IOS_WEBVIEW_AUDIT_PROMPT.md`
 
 ## 0.2 2026-08-16 실기기 생성·로드·JS 복구
 
