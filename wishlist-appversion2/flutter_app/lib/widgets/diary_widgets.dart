@@ -188,12 +188,25 @@ class PersonRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: DiaryTheme.body(14, weight: FontWeight.w700)),
-                Text(handle,
-                    style: DiaryTheme.body(12, color: DiaryColors.inkMuted)),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DiaryTheme.body(14, weight: FontWeight.w700),
+                ),
+                Text(
+                  handle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DiaryTheme.body(12, color: DiaryColors.inkMuted),
+                ),
                 if (subtitle != null)
-                  Text(subtitle!,
-                      style: DiaryTheme.body(11, color: DiaryColors.accent)),
+                  Text(
+                    subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: DiaryTheme.body(11, color: DiaryColors.accent),
+                  ),
               ],
             ),
           ),
@@ -245,7 +258,13 @@ class DiaryButton extends StatelessWidget {
                   Icon(icon, size: 18, color: DiaryColors.ink),
                   const SizedBox(width: 6),
                 ],
-                Text(label, style: DiaryTheme.body(13, weight: FontWeight.w600)),
+                Flexible(
+                  child: OneLineText(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: DiaryTheme.body(13, weight: FontWeight.w600),
+                  ),
+                ),
               ],
             ),
           ),
@@ -302,6 +321,42 @@ class _PasswordTextFieldState extends State<PasswordTextField> {
             color: DiaryColors.inkMuted,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Label that must stay on one line: shrinks to fit instead of wrapping.
+class OneLineText extends StatelessWidget {
+  const OneLineText(
+    this.text, {
+    super.key,
+    required this.style,
+    this.textAlign,
+  });
+
+  final String text;
+  final TextStyle style;
+  final TextAlign? textAlign;
+
+  Alignment get _alignment => switch (textAlign) {
+        TextAlign.center => Alignment.center,
+        TextAlign.right || TextAlign.end => Alignment.centerRight,
+        _ => Alignment.centerLeft,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: _alignment,
+      child: Text(
+        text,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.fade,
+        textAlign: textAlign,
+        style: style,
       ),
     );
   }
