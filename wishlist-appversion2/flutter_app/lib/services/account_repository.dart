@@ -1035,12 +1035,16 @@ class AccountRepository {
   }) async {
     if (recipientUids.isEmpty || items.isEmpty || threadId.isEmpty) return;
     final now = DateTime.now();
-    await upsertBasketThread(
-      threadId: threadId,
-      ownerUid: from.uid,
-      participantUids: recipientUids,
-      memo: memo,
-    );
+    try {
+      await upsertBasketThread(
+        threadId: threadId,
+        ownerUid: from.uid,
+        participantUids: recipientUids,
+        memo: memo,
+      );
+    } catch (_) {
+      // Sharing the basket must not depend on the comment thread existing.
+    }
     final batch = _db.batch();
     for (final recipientUid in recipientUids) {
       if (recipientUid == from.uid) continue;
@@ -1084,22 +1088,13 @@ class AccountRepository {
     if (threadId.isEmpty || ownerUid.isEmpty) return;
     final participants = {ownerUid, ...participantUids}.toList();
     final ref = _basketThreads.doc(threadId);
-    final snap = await ref.get();
-    if (!snap.exists) {
-      await ref.set({
-        'id': threadId,
-        'ownerUid': ownerUid,
-        'participantUids': participants,
-        'memo': memo,
-        'createdAt': DateTime.now().toIso8601String(),
-      });
-      return;
-    }
-    final existingMemo = snap.data()?['memo'] as String? ?? '';
-    await ref.update({
+    await ref.set({
+      'id': threadId,
+      'ownerUid': ownerUid,
       'participantUids': FieldValue.arrayUnion(participants),
-      if (existingMemo.isEmpty && memo.isNotEmpty) 'memo': memo,
-    });
+      'memo': memo,
+      'createdAt': DateTime.now().toIso8601String(),
+    }, SetOptions(merge: true));
   }
 
   Stream<List<BasketComment>> watchBasketComments(String threadId) {
