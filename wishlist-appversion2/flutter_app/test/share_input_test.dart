@@ -44,5 +44,17 @@ https://link.coupang.com/a/example''';
     test('returns null for image-only shares', () {
       expect(ShareInput.fromCandidates([r'C:\cache\product.jpg']), isNull);
     });
+
+    test('reads an iOS share-extension title plus URL payload', () {
+      const message = '무신사 후드티\nhttps://www.musinsa.com/products/3348384';
+
+      expect(
+        ShareInput.fromCandidates([
+          message,
+          'https://www.musinsa.com/products/3348384',
+        ]),
+        message,
+      );
+    });
   });
 }
