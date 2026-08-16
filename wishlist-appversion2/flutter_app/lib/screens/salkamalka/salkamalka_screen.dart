@@ -24,8 +24,20 @@ class SalkamalkaScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-              child: Text('살까말까', style: DiaryTheme.display(34)),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: kMinInteractiveDimension,
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('살까말까', style: DiaryTheme.display(34)),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
             ),
             Expanded(
               child: Padding(
