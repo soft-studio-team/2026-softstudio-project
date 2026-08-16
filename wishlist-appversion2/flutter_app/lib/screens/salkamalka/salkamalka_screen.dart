@@ -20,17 +20,16 @@ class SalkamalkaScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: DiaryColors.canvas,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 22, 14, 3),
-                child: Text('살까말까', style: DiaryTheme.display(34)),
-              ),
-              const SizedBox(height: 6),
-              Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+              child: Text('살까말까', style: DiaryTheme.display(34)),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                 child: DiaryGridPaper(
                   border: Border.all(color: DiaryColors.fileCream, width: 3),
                   child: Column(
@@ -169,8 +168,8 @@ class SalkamalkaScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
