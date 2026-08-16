@@ -23,10 +23,12 @@ class AppStore extends ChangeNotifier {
   static const _notifyBasketKey = 'notify_basket';
   static const _reviewsKey = 'my_reviews';
 
-  AppStore({AccountRepository? repository})
-      : _repo = repository ?? AccountRepository();
+  AppStore({AccountRepository? repository, bool? firebaseConfigured})
+    : _repo = repository ?? AccountRepository(),
+      _firebaseConfigured = firebaseConfigured ?? isFirebaseConfigured;
 
   final AccountRepository _repo;
+  final bool _firebaseConfigured;
   StreamSubscription<List<AppNotification>>? _notificationSub;
   StreamSubscription<List<SharedBasket>>? _receivedBasketSub;
 
@@ -67,7 +69,7 @@ class AppStore extends ChangeNotifier {
   );
 
   Future<void> init() async {
-    firebaseReady = isFirebaseConfigured;
+    firebaseReady = _firebaseConfigured;
     if (!firebaseReady) {
       firebaseError =
           'Firebase 키가 아직 설정되지 않았어요. FIREBASE_SETUP.md 를 따라 앱을 등록해 주세요.';
@@ -419,13 +421,10 @@ class AppStore extends ChangeNotifier {
   WishlistTab get selectedTab =>
       tabs.firstWhere((t) => t.id == selectedTabId, orElse: () => tabs.first);
 
-  List<WishlistTab> get customTabs =>
-      tabs.where((t) => t.id != 'all').toList();
+  List<WishlistTab> get customTabs => tabs.where((t) => t.id != 'all').toList();
 
   Color tabColor(WishlistTab tab) {
-    const map = {
-      'all': DiaryColors.fileCream,
-    };
+    const map = {'all': DiaryColors.fileCream};
     if (tab.colorHex != null && tab.colorHex!.isNotEmpty) {
       final hex = tab.colorHex!.replaceFirst('#', '');
       try {
@@ -438,13 +437,14 @@ class AppStore extends ChangeNotifier {
 
   Color nextFileColor() {
     final used = <int>{
-      for (final t in tabs.where((t) => t.id != 'all'))
-        tabColor(t).toARGB32(),
+      for (final t in tabs.where((t) => t.id != 'all')) tabColor(t).toARGB32(),
     };
-    final unused =
-        DiaryColors.fileColors.where((c) => !used.contains(c.toARGB32()));
-    final pool =
-        unused.isNotEmpty ? unused.toList() : DiaryColors.fileColors.toList();
+    final unused = DiaryColors.fileColors.where(
+      (c) => !used.contains(c.toARGB32()),
+    );
+    final pool = unused.isNotEmpty
+        ? unused.toList()
+        : DiaryColors.fileColors.toList();
     return pool[Random().nextInt(pool.length)];
   }
 
@@ -452,8 +452,7 @@ class AppStore extends ChangeNotifier {
     final allTab = tabs.firstWhere((t) => t.id == 'all');
     final rest = tabs.where((t) => t.id != 'all').toList();
     if (oldIndex < 0 || oldIndex >= rest.length) return;
-    var target = newIndex;
-    if (target > oldIndex) target -= 1;
+    final target = newIndex;
     if (target < 0 || target >= rest.length) return;
     final item = rest.removeAt(oldIndex);
     rest.insert(target, item);
@@ -522,7 +521,8 @@ class AppStore extends ChangeNotifier {
     tabs = tabs
         .map((t) => t.id == id ? t.copyWith(isPublic: !t.isPublic) : t)
         .toList();
-    final isPublic = tabs.where((t) => t.id == id).firstOrNull?.isPublic ?? false;
+    final isPublic =
+        tabs.where((t) => t.id == id).firstOrNull?.isPublic ?? false;
     products = [
       for (final p in products)
         p.listId == id ? p.copyWith(isPublic: isPublic) : p,
@@ -553,9 +553,7 @@ class AppStore extends ChangeNotifier {
       listId: listId,
       isPublic: _isListPublic(listId),
     );
-    products = [
-      for (final p in products) p.id == id ? updated : p,
-    ];
+    products = [for (final p in products) p.id == id ? updated : p];
     notifyListeners();
     final userId = uid;
     if (userId == null) return;
@@ -569,8 +567,9 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> updateMemo(int id, String memo) async {
-    products =
-        products.map((p) => p.id == id ? p.copyWith(memo: memo) : p).toList();
+    products = products
+        .map((p) => p.id == id ? p.copyWith(memo: memo) : p)
+        .toList();
     final userId = uid;
     final product = productById(id);
     if (userId != null && product != null) {
@@ -588,9 +587,9 @@ class AppStore extends ChangeNotifier {
 
   Future<void> toggleBasketSelected(int id) async {
     basket = basket
-        .map((b) => b.product.id == id
-            ? b.copyWith(isSelected: !b.isSelected)
-            : b)
+        .map(
+          (b) => b.product.id == id ? b.copyWith(isSelected: !b.isSelected) : b,
+        )
         .toList();
     await _persistBasket();
     notifyListeners();
@@ -643,8 +642,7 @@ class AppStore extends ChangeNotifier {
     return tabs.where((t) => t.id == listId).firstOrNull?.isPublic ?? false;
   }
 
-  Friend? friendById(String id) =>
-      friends.where((f) => f.id == id).firstOrNull;
+  Friend? friendById(String id) => friends.where((f) => f.id == id).firstOrNull;
 
   List<FriendWishlist> wishlistsForFriend(String friendId) =>
       friendWishlists.where((w) => w.friendId == friendId).toList();
@@ -663,14 +661,14 @@ class AppStore extends ChangeNotifier {
 
   /// Inbox rows filtered by MyPage notification preferences.
   List<AppNotification> get visibleNotifications => notifications.where((n) {
-        if (n.type == AppNotificationType.review ||
-            n.type == AppNotificationType.list) {
-          return false;
-        }
-        if (n.type == AppNotificationType.follow) return notifyOnFollow;
-        if (n.type == AppNotificationType.basket) return notifyOnBasket;
-        return true;
-      }).toList();
+    if (n.type == AppNotificationType.review ||
+        n.type == AppNotificationType.list) {
+      return false;
+    }
+    if (n.type == AppNotificationType.follow) return notifyOnFollow;
+    if (n.type == AppNotificationType.basket) return notifyOnBasket;
+    return true;
+  }).toList();
 
   List<FriendSalkamalka> get friendSalkamalkaGroups {
     final byFriend = <String, List<SharedBasket>>{};
@@ -692,8 +690,9 @@ class AppStore extends ChangeNotifier {
         baskets: baskets,
       );
     }).toList();
-    groups.sort((a, b) =>
-        b.baskets.first.createdAt.compareTo(a.baskets.first.createdAt));
+    groups.sort(
+      (a, b) => b.baskets.first.createdAt.compareTo(a.baskets.first.createdAt),
+    );
     return groups;
   }
 
@@ -769,13 +768,14 @@ class AppStore extends ChangeNotifier {
   Future<void> markAllNotificationsRead() async {
     final userId = uid;
     if (userId == null) return;
-    final unread = notifications.where((n) => !n.read).map((n) => n.id).toList();
+    final unread = notifications
+        .where((n) => !n.read)
+        .map((n) => n.id)
+        .toList();
     if (unread.isEmpty) return;
     try {
       await _repo.markNotificationsRead(userId, unread);
-      notifications = [
-        for (final n in notifications) n.copyWith(read: true),
-      ];
+      notifications = [for (final n in notifications) n.copyWith(read: true)];
       notifyListeners();
     } catch (_) {}
   }
@@ -795,10 +795,7 @@ class AppStore extends ChangeNotifier {
     );
     friends = [
       for (var i = 0; i < friends.length; i++)
-        if (i == idx)
-          friends[i].copyWith(isFollowing: next)
-        else
-          friends[i],
+        if (i == idx) friends[i].copyWith(isFollowing: next) else friends[i],
     ];
     currentUser = currentUser.copyWith(
       following: friends.where((f) => f.isFollowing).length,
@@ -897,13 +894,11 @@ class AppStore extends ChangeNotifier {
     final nextUser = currentUser.copyWith(
       name: name?.trim().isNotEmpty == true ? name!.trim() : null,
       handle: nextHandle,
-      avatarUrl: avatarUrl?.trim().isNotEmpty == true ? avatarUrl!.trim() : null,
+      avatarUrl: avatarUrl?.trim().isNotEmpty == true
+          ? avatarUrl!.trim()
+          : null,
     );
-    await _repo.updateProfile(
-      userId,
-      nextUser,
-      previousHandle: previousHandle,
-    );
+    await _repo.updateProfile(userId, nextUser, previousHandle: previousHandle);
     currentUser = nextUser;
     notifyListeners();
   }
@@ -919,15 +914,14 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<SharedBasket> createSharedBasketFromSelection() async {
-    final selected =
-        basket.where((b) => b.isSelected).map((b) => b.product).toList();
+    final selected = basket
+        .where((b) => b.isSelected)
+        .map((b) => b.product)
+        .toList();
     if (selected.isEmpty) {
       throw Exception('공유할 상품을 선택해 주세요.');
     }
-    return rememberSentBasket(
-      items: selected,
-      title: '살까말까 공유',
-    );
+    return rememberSentBasket(items: selected, title: '살까말까 공유');
   }
 
   List<SharedBasket> get sentBaskets {
@@ -946,10 +940,7 @@ class AppStore extends ChangeNotifier {
     final now = DateTime.now();
     final id = existingId ?? 'sb-${now.millisecondsSinceEpoch}';
     final existing = sharedBaskets[id];
-    final mergedUids = {
-      ...?existing?.recipientUids,
-      ...recipientUids,
-    }.toList();
+    final mergedUids = {...?existing?.recipientUids, ...recipientUids}.toList();
     final mergedNames = {
       ...?existing?.recipientNames,
       ...recipientNames,
@@ -979,15 +970,14 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> sendBasketToFriends(List<String> friendIds) async {
-    final selected =
-        basket.where((b) => b.isSelected).map((b) => b.product).toList();
+    final selected = basket
+        .where((b) => b.isSelected)
+        .map((b) => b.product)
+        .toList();
     if (selected.isEmpty) {
       throw Exception('공유할 상품을 선택해 주세요.');
     }
-    await resendBasketToFriends(
-      items: selected,
-      friendIds: friendIds,
-    );
+    await resendBasketToFriends(items: selected, friendIds: friendIds);
   }
 
   Future<void> resendBasketToFriends({
@@ -1063,8 +1053,10 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _loadLocalExtras() async {
     final prefs = await SharedPreferences.getInstance();
-    notifyOnFollow = prefs.getBool('${_notifyFollowKey}_${uid ?? 'guest'}') ?? true;
-    notifyOnBasket = prefs.getBool('${_notifyBasketKey}_${uid ?? 'guest'}') ?? true;
+    notifyOnFollow =
+        prefs.getBool('${_notifyFollowKey}_${uid ?? 'guest'}') ?? true;
+    notifyOnBasket =
+        prefs.getBool('${_notifyBasketKey}_${uid ?? 'guest'}') ?? true;
     final sharedRaw = prefs.getString(_sharedKey);
     if (sharedRaw != null) {
       final list = jsonDecode(sharedRaw) as List;
@@ -1126,7 +1118,9 @@ class AppStore extends ChangeNotifier {
     try {
       final list = jsonDecode(raw) as List;
       final restored = list
-          .map((e) => ProductReview.fromJson(Map<String, dynamic>.from(e as Map)))
+          .map(
+            (e) => ProductReview.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
           .toList();
       if (myReviews.isEmpty) {
         myReviews = restored;
@@ -1212,10 +1206,7 @@ class AppStore extends ChangeNotifier {
             imageUrls: uploaded,
           );
 
-    myReviews = [
-      review,
-      ...myReviews.where((r) => r.id != review.id),
-    ];
+    myReviews = [review, ...myReviews.where((r) => r.id != review.id)];
     await _persistLocalReviews();
     try {
       await _repo.upsertReview(userId, review);
@@ -1248,8 +1239,8 @@ class AppStore extends ChangeNotifier {
       final ext = file.path.split('.').last.toLowerCase();
       final safeExt =
           (ext == 'png' || ext == 'webp' || ext == 'jpg' || ext == 'jpeg')
-              ? ext
-              : 'jpg';
+          ? ext
+          : 'jpg';
       final dest = File('${folder.path}/$index.$safeExt');
       await file.copy(dest.path);
       return dest.path;

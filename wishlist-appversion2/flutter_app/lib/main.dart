@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
@@ -27,6 +28,7 @@ import 'screens/salkamalka/salkamalka_screen.dart';
 import 'screens/share/share_intake_screen.dart';
 import 'screens/shared/shared_wishlist_screen.dart';
 import 'screens/wishlist/wishlist_screen.dart';
+import 'services/share_input.dart';
 import 'theme/diary_theme.dart';
 
 Future<void> main() async {
@@ -52,46 +54,83 @@ class WishlistApp extends StatefulWidget {
 }
 
 class _WishlistAppState extends State<WishlistApp> {
+  static const _nativeShareChannel = MethodChannel(
+    'com.softstudio.wishlist/share',
+  );
+
   late final GoRouter router;
   StreamSubscription? _shareSub;
+  String? _lastHandledShareUrl;
+  DateTime? _lastHandledShareAt;
 
   @override
   void initState() {
     super.initState();
     router = _buildRouter(widget.store);
+    _listenNativeShareText();
     PushNotificationService.instance.onBannerTap = () {
       router.go('/notifications');
     };
     _listenShares();
   }
 
+  void _listenNativeShareText() {
+    _nativeShareChannel.setMethodCallHandler((call) async {
+      if (call.method == 'sharedText') {
+        _handleSharedText(call.arguments as String?);
+      }
+    });
+    _nativeShareChannel
+        .invokeMethod<String>('takePendingShareText')
+        .then(_handleSharedText, onError: (_) {});
+  }
+
   void _listenShares() {
     // App already running
-    _shareSub = ReceiveSharingIntent.instance.getMediaStream().listen((files) {
-      final text = files
-          .map((f) => f.path)
-          .where((p) => p.startsWith('http'))
-          .cast<String?>()
-          .firstOrNull;
-      // Also check shared text via value if available
-      if (text != null) {
-        widget.store.setPendingShareUrl(text);
-        router.go('/share');
-      }
-    }, onError: (_) {});
+    _shareSub = ReceiveSharingIntent.instance.getMediaStream().listen(
+      _handleSharedMedia,
+      onError: (_) {},
+    );
 
     // App launched by share
     ReceiveSharingIntent.instance.getInitialMedia().then((files) {
-      final urls = files.map((f) => f.path).where((p) => p.startsWith('http'));
-      if (urls.isNotEmpty) {
-        widget.store.setPendingShareUrl(urls.first);
-        router.go('/share');
-      }
+      _handleSharedMedia(files);
+      // Do not replay the same cold-start share on the next app launch.
+      ReceiveSharingIntent.instance.reset();
+    }, onError: (_) {});
+  }
+
+  void _handleSharedMedia(List<SharedMediaFile> files) {
+    final candidates = files.expand<String?>((file) {
+      // Some senders attach a URL as the message of an image share, while
+      // text-only senders place the complete shared text in `path`.
+      return [file.message, file.path];
     });
+    final input = ShareInput.fromCandidates(candidates);
+    _handleSharedText(input);
+  }
+
+  void _handleSharedText(String? sharedText) {
+    final input = ShareInput.fromCandidates([sharedText]);
+    if (input == null) return;
+
+    final url = ShareInput.firstUrl(input)!;
+    final now = DateTime.now();
+    final isImmediateDuplicate =
+        url == _lastHandledShareUrl &&
+        _lastHandledShareAt != null &&
+        now.difference(_lastHandledShareAt!) < const Duration(seconds: 2);
+    if (isImmediateDuplicate) return;
+
+    _lastHandledShareUrl = url;
+    _lastHandledShareAt = now;
+    widget.store.setPendingShareUrl(input);
+    router.go('/share');
   }
 
   @override
   void dispose() {
+    _nativeShareChannel.setMethodCallHandler(null);
     PushNotificationService.instance.onBannerTap = null;
     _shareSub?.cancel();
     super.dispose();
@@ -157,9 +196,8 @@ GoRouter _buildRouter(AppStore store) {
       ),
       GoRoute(
         path: '/share',
-        builder: (context, state) => ShareIntakeScreen(
-          sharedUrl: state.uri.queryParameters['url'],
-        ),
+        builder: (context, state) =>
+            ShareIntakeScreen(sharedUrl: state.uri.queryParameters['url']),
       ),
       GoRoute(
         path: '/product/:id',
@@ -215,17 +253,13 @@ GoRouter _buildRouter(AppStore store) {
             state.uri.queryParameters['productId'] ?? '',
           );
           final reviewId = state.uri.queryParameters['reviewId'];
-          return ReviewComposeScreen(
-            productId: productId,
-            reviewId: reviewId,
-          );
+          return ReviewComposeScreen(productId: productId, reviewId: reviewId);
         },
       ),
       GoRoute(
         path: '/reviews/:id',
-        builder: (context, state) => ReviewDetailScreen(
-          reviewId: state.pathParameters['id']!,
-        ),
+        builder: (context, state) =>
+            ReviewDetailScreen(reviewId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/my-reviews',
@@ -302,22 +336,35 @@ GoRouter _buildRouter(AppStore store) {
           return HomeShell(navigationShell: navigationShell);
         },
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/', builder: (_, __) => const WishlistScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-                path: '/friends', builder: (_, __) => const FriendsScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/', builder: (_, __) => const WishlistScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/friends',
+                builder: (_, __) => const FriendsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: '/basket',
-                builder: (_, __) => const SalkamalkaScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-                path: '/profile', builder: (_, __) => const MyPageScreen()),
-          ]),
+                builder: (_, __) => const SalkamalkaScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                builder: (_, __) => const MyPageScreen(),
+              ),
+            ],
+          ),
         ],
       ),
     ],
@@ -392,14 +439,14 @@ class HomeShell extends StatelessWidget {
               icon: const Icon(Icons.add_link),
             )
           : showReviewFab
-              ? FloatingActionButton.extended(
-                  backgroundColor: DiaryColors.folderYellow,
-                  foregroundColor: DiaryColors.ink,
-                  onPressed: () => context.push('/reviews/write'),
-                  label: const Text('리뷰 쓰기'),
-                  icon: const Icon(Icons.edit_outlined),
-                )
-              : null,
+          ? FloatingActionButton.extended(
+              backgroundColor: DiaryColors.folderYellow,
+              foregroundColor: DiaryColors.ink,
+              onPressed: () => context.push('/reviews/write'),
+              label: const Text('리뷰 쓰기'),
+              icon: const Icon(Icons.edit_outlined),
+            )
+          : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
     );
   }

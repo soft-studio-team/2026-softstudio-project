@@ -206,6 +206,35 @@ def test_og_product_price_tags():
     assert meta.currency == "KRW"
 
 
+def test_musinsa_basic_sale_and_normal_price_are_kept():
+    """쿠폰가·옵션 추가금과 분리된 기본 판매가와 정가를 저장한다."""
+    html = """
+    <meta property="og:title" content="컴포트 썸머 와이드 팬츠"/>
+    <meta property="og:image" content="https://image.msscdn.net/item.jpg"/>
+    <meta property="product:price:amount" content="30400"/>
+    <meta property="product:price:normal_price" content="32000"/>
+    <meta property="product:price:sale_rate" content="5"/>
+    """
+    meta = extract_metadata(html, "https://www.musinsa.com/products/6152461")
+    assert meta.price == 30400
+    assert meta.original_price == 32000
+    assert meta.has_product_core()
+
+
+def test_conditional_jsonld_price_is_ignored():
+    html = """
+    <script type="application/ld+json">
+    {"@type": "Product", "name": "회원 전용 상품",
+     "image": "https://cdn.example.com/item.jpg",
+     "offers": {"@type": "Offer", "price": "21000",
+                "priceCurrency": "KRW",
+                "validForMemberTier": {"name": "VIP"}}}
+    </script>
+    """
+    meta = extract_metadata(html, BASE)
+    assert meta.price is None
+
+
 # ---------------------------------------------------------------------------
 # 통합: JSON-LD 우선 + OG 로 빈 칸 보완
 # ---------------------------------------------------------------------------

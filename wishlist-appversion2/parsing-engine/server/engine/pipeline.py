@@ -31,6 +31,7 @@ from .cache import TTLCache
 from .fetch import FetchBlocked, FetchFailed, FetchResponse, HttpFetcher
 from .metadata import ExtractedMetadata, extract_metadata
 from .models import ParseResult, Product, TierAttempt, TierOutcome
+from .site_adapters import extract_site_pricing
 from .tiers.tier1_api import (
     AdapterError,
     OpenApiAdapter,
@@ -99,6 +100,11 @@ class _ParseContext:
                 self._response.html, self._response.final_url
             )
         return self._metadata
+
+    def html(self) -> str | None:
+        """이미 한 번 가져온 원문 HTML. 추가 네트워크 요청은 하지 않는다."""
+        self._ensure_fetched()
+        return self._response.html if self._response is not None else None
 
     def platform_label(self) -> str:
         """화면 표시용 쇼핑몰 이름.
@@ -252,8 +258,10 @@ class ProductParsingEngine:
                 "no JSON-LD or Open Graph metadata found in page",
             ))
             return None, 0
+        site_pricing = extract_site_pricing(ctx.url_info.platform, ctx.html())
         product = build_metadata_product(
-            meta, ctx.original_url, ctx.url_info.platform, ctx.platform_label()
+            meta, ctx.original_url, ctx.url_info.platform, ctx.platform_label(),
+            site_pricing=site_pricing,
         )
         if product is None:
             missing = []
@@ -261,7 +269,9 @@ class ProductParsingEngine:
                 missing.append("title")
             if not meta.image_url:
                 missing.append("image_url")
-            if meta.price is None:
+            if meta.price is None and (
+                site_pricing is None or site_pricing.purchase_price is None
+            ):
                 missing.append("price")
             attempts.append(TierAttempt(
                 2, "metadata", TierOutcome.FAILED,
@@ -272,7 +282,8 @@ class ProductParsingEngine:
             return None, 0
         attempts.append(TierAttempt(
             2, "metadata", TierOutcome.SUCCESS,
-            f"extracted via {', '.join(meta.sources)}",
+            f"extracted via {', '.join(meta.sources)}"
+            + (f"; pricing adapter={site_pricing.adapter}" if site_pricing else ""),
         ))
         return product, 2
 

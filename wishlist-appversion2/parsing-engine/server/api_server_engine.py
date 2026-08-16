@@ -22,6 +22,7 @@ API 문서: http://127.0.0.1:8000/docs
 from __future__ import annotations
 
 import re
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -61,6 +62,16 @@ class ScrapRequest(BaseModel):
 
 class UpdateFields(BaseModel):
     title: str | None = None
+    # Canonical v2 names. price/original_price are accepted for v1 clients.
+    purchase_price: int | None = None
+    regular_price: int | None = None
+    purchase_price_status: Literal[
+        "unknown", "provisional", "confirmed", "option_dependent"
+    ] | None = None
+    availability: Literal["unknown", "available", "unavailable"] | None = None
+    option_dependent: bool | None = None
+    option_price_min: int | None = None
+    option_price_max: int | None = None
     price: int | None = None
     original_price: int | None = None
     image_url: str | None = None
@@ -116,6 +127,13 @@ def update_product(item_id: str, fields: UpdateFields) -> dict:
     from engine.models import discount_rate_from
 
     updates = {k: v for k, v in fields.model_dump().items() if v is not None}
+    if "purchase_price" in updates:
+        updates["price"] = updates.pop("purchase_price")
+    if "regular_price" in updates:
+        updates["original_price"] = updates.pop("regular_price")
+    if "price" in updates and "purchase_price_status" not in updates:
+        # PATCH의 가격은 사용자가 직접 확인·입력한 값으로 취급한다.
+        updates["purchase_price_status"] = "confirmed"
     if not updates:
         raise HTTPException(status_code=400, detail="갱신할 필드가 없어요.")
     item = store.update_fields(item_id, updates)
@@ -125,6 +143,35 @@ def update_product(item_id: str, fields: UpdateFields) -> dict:
         rate = discount_rate_from(item.get("price"), item.get("original_price"))
         item = store.update_fields(item_id, {"discount_rate": rate}) or item
         item["discount_rate"] = rate
+    pricing = dict(item.get("pricing") or {})
+    pricing.update({
+        "regular_price": item.get("original_price"),
+        "purchase_price": item.get("price"),
+        "purchase_price_status": item.get(
+            "purchase_price_status", "unknown"
+        ),
+        "currency": item.get("currency", "KRW"),
+        "option_dependent": item.get("option_dependent"),
+        "option_price_min": item.get("option_price_min"),
+        "option_price_max": item.get("option_price_max"),
+        "excluded_conditions": [
+            "coupon", "membership", "card", "points", "shipping",
+        ],
+    })
+    if "price" in updates:
+        pricing["confidence"] = "high"
+        pricing["evidence"] = [{
+            "price_role": "purchase_price",
+            "source": "manual",
+            "adapter": None,
+            "field": "user_input",
+        }]
+        item["price_confidence"] = "high"
+    item["pricing"] = pricing
+    store.update_fields(item_id, {
+        "pricing": pricing,
+        "price_confidence": item.get("price_confidence", "unknown"),
+    })
     item["missing_fields"] = [
         f for f in item.get("missing_fields", []) if f not in updates
     ]
