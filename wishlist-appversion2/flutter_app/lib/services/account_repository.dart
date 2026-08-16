@@ -195,12 +195,22 @@ class AccountRepository {
     return out;
   }
 
+  /// Counts only public lists. Must query `isPublic == true` so Firestore
+  /// rules that hide private tabs don't reject the whole collection read.
   Future<(int, int)> _wishlistCounts(String uid) async {
-    final tabs = await _tabs(uid).get();
+    final tabs = await _tabs(uid).where('isPublic', isEqualTo: true).get();
+    final publicTabIds = tabs.docs
+        .map((d) => d.id)
+        .where((id) => id != 'all')
+        .toSet();
+    if (publicTabIds.isEmpty) return (0, 0);
+
     final products = await _products(uid).get();
-    final publicLists =
-        tabs.docs.where((d) => (d.data()['isPublic'] as bool? ?? true) && d.id != 'all').length;
-    return (publicLists, products.docs.length);
+    final publicItemCount = products.docs.where((d) {
+      final listId = d.data()['listId'] as String?;
+      return listId != null && publicTabIds.contains(listId);
+    }).length;
+    return (publicTabIds.length, publicItemCount);
   }
 
   Future<void> setFollowing({
@@ -238,7 +248,9 @@ class AccountRepository {
   ) async {
     final result = <FriendWishlist>[];
     for (final friend in followingFriends.where((f) => f.isFollowing)) {
-      final tabsSnap = await _tabs(friend.id).get();
+      // Rules only allow non-owners to list public tabs.
+      final tabsSnap =
+          await _tabs(friend.id).where('isPublic', isEqualTo: true).get();
       final productsSnap = await _products(friend.id).get();
       final products = productsSnap.docs.map((d) {
         final data = Map<String, dynamic>.from(d.data());
@@ -248,7 +260,7 @@ class AccountRepository {
 
       for (final tabDoc in tabsSnap.docs) {
         final tab = WishlistTab.fromJson(tabDoc.data());
-        if (tab.id == 'all' || !tab.isPublic) continue;
+        if (tab.id == 'all') continue;
         final items = products.where((p) => p.listId == tab.id).toList();
         result.add(FriendWishlist(
           id: '${friend.id}_${tab.id}',

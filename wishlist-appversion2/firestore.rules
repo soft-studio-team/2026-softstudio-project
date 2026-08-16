@@ -9,32 +9,145 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function emailMatchesAuth(data) {
+      return signedIn()
+        && data.keys().hasAll(['email'])
+        && request.auth.token.email != null
+        && data.email.lower() == request.auth.token.email.lower();
+    }
+
+    function userEmailMatchesAuth(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId))
+        && emailMatchesAuth(
+          get(/databases/$(database)/documents/users/$(userId)).data
+        );
+    }
+
+    // A signed-in user may bump someone else's follower count by exactly one
+    // when they follow/unfollow them — nothing else on the doc may change.
+    function isFollowerCountStep() {
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followers'])
+        && (
+          request.resource.data.followers == resource.data.get('followers', 0) + 1
+          || request.resource.data.followers == resource.data.get('followers', 0) - 1
+        );
+    }
+
+    // Same idea when removing a follower: bump their following count by ±1.
+    function isFollowingCountStep() {
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['following'])
+        && (
+          request.resource.data.following == resource.data.get('following', 0) + 1
+          || request.resource.data.following == resource.data.get('following', 0) - 1
+        );
+    }
+
     match /users/{userId} {
-      // Profiles are readable by signed-in users (friend search / follow).
-      allow read: if signedIn();
+      // Profiles are public so friend discovery and id-based
+      // account recovery (masked email in the app) can work.
+      allow read: if true;
       allow create: if isOwner(userId);
-      allow update, delete: if isOwner(userId);
+      allow update: if isOwner(userId)
+        || isFollowerCountStep()
+        || isFollowingCountStep();
+      // Same-email delete lets a re-registered Auth user clear Console leftovers.
+      allow delete: if isOwner(userId) || emailMatchesAuth(resource.data);
+
+      function isPublicDoc() {
+        return resource.data.get('isPublic', false) == true;
+      }
 
       match /tabs/{tabId} {
-        allow read: if signedIn();
-        allow write: if isOwner(userId);
+        // Collection queries from non-owners MUST filter isPublic == true
+        // (see AccountRepository public tab reads).
+        allow read: if isOwner(userId) || (signedIn() && isPublicDoc());
+        allow create, update: if isOwner(userId);
+        allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
 
       match /products/{productId} {
-        allow read: if signedIn();
-        allow write: if isOwner(userId);
+        // Products do not store isPublic; list privacy lives on tabs.
+        // Friend discovery / shared wishlists need signed-in collection reads,
+        // then the app only surfaces items whose listId is a public tab.
+        allow read: if isOwner(userId) || signedIn();
+        allow create, update: if isOwner(userId);
+        allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
 
       match /following/{targetId} {
         allow read: if signedIn();
-        allow write: if isOwner(userId);
+        allow create, update: if isOwner(userId);
+        allow delete: if isOwner(userId)
+          || (signedIn() && request.auth.uid == targetId)
+          || userEmailMatchesAuth(userId);
       }
 
       match /followers/{followerId} {
         allow read: if signedIn();
-        // A user may add/remove themselves as a follower of someone else.
-        allow write: if signedIn() && request.auth.uid == followerId;
+        allow create, update: if signedIn() && request.auth.uid == followerId;
+        allow delete: if (signedIn() && request.auth.uid == followerId)
+          || isOwner(userId)
+          || userEmailMatchesAuth(userId);
       }
+
+      match /notifications/{notifId} {
+        allow read, update: if isOwner(userId);
+        allow create: if signedIn()
+          && request.resource.data.fromUid == request.auth.uid;
+        allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
+      }
+
+      match /receivedBaskets/{basketId} {
+        allow read: if isOwner(userId);
+        allow create: if signedIn()
+          && request.resource.data.fromUid == request.auth.uid;
+        allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
+      }
+
+      match /sentBaskets/{basketId} {
+        allow read, create, update: if isOwner(userId);
+        allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
+      }
+
+      match /reviews/{reviewId} {
+        allow read: if signedIn();
+        allow create, update: if isOwner(userId);
+        allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
+      }
+    }
+
+    // Unique wishkit ids (@handle). One doc per id, owned by a single uid.
+    // Orphan / same-email rows can be reclaimed after Auth-only Console deletes.
+    match /handles/{handleId} {
+      function handleOwnerAlive() {
+        return exists(/databases/$(database)/documents/users/$(resource.data.uid));
+      }
+
+      function handleOwnerEmailMatchesAuth() {
+        return handleOwnerAlive()
+          && emailMatchesAuth(
+            get(/databases/$(database)/documents/users/$(resource.data.uid)).data
+          );
+      }
+
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && (
+          resource.data.uid == request.auth.uid
+          || !handleOwnerAlive()
+          || handleOwnerEmailMatchesAuth()
+        );
+      allow delete: if signedIn()
+        && (
+          resource.data.uid == request.auth.uid
+          || !handleOwnerAlive()
+          || handleOwnerEmailMatchesAuth()
+        );
     }
   }
 }
