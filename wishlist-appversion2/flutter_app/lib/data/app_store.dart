@@ -24,6 +24,7 @@ class AppStore extends ChangeNotifier {
   static const _legacyNotifyFollowKey = 'notify_follow';
   static const _legacyNotifyBasketKey = 'notify_basket';
   static const _reviewsKey = 'my_reviews';
+  static const _hiddenFeedKey = 'hidden_feed_baskets';
 
   AppStore({AccountRepository? repository, bool? firebaseConfigured})
     : _repo = repository ?? AccountRepository(),
@@ -58,6 +59,17 @@ class AppStore extends ChangeNotifier {
   List<ProductReview> myReviews = [];
   List<ProductReview> friendReviews = [];
   final Map<String, SharedBasket> sharedBaskets = {};
+
+  /// Baskets the user X-ed out of the 내 친구 탭 feed. The profile doc is the
+  /// source of truth; this is the local cache the UI reads, kept so nothing
+  /// flashes back while the server copy loads.
+  Set<String> _hiddenFeedIds = {};
+
+  /// Hide / unhide taps the server has not confirmed yet (offline, or a failed
+  /// write). Replayed on the next sync and layered over the server value so a
+  /// local tap is never silently lost.
+  Set<String> _pendingHideIds = {};
+  Set<String> _pendingUnhideIds = {};
 
   String selectedTabId = 'all';
   int friendsTab = 0;
@@ -204,6 +216,41 @@ class AppStore extends ChangeNotifier {
       }
       await _persistShared();
     } catch (_) {}
+    await _syncHiddenFeed(userId);
+  }
+
+  /// Local cache first (so nothing flashes), then let the profile doc win:
+  /// an id the server does not list is dropped even if this device still has
+  /// it cached, which is what makes an unhide on another device stick.
+  ///
+  /// Only this device's unconfirmed taps survive that — they are replayed and
+  /// re-applied on top. Offline the server read throws and the cache is kept
+  /// untouched.
+  Future<void> _syncHiddenFeed(String userId) async {
+    await _restoreHiddenFeedLocal();
+    final Set<String> remote;
+    try {
+      remote = await _repo.loadHiddenFeedBaskets(userId);
+    } catch (_) {
+      return;
+    }
+
+    // Snapshot the queues before flushing so a tap made mid-flight is not
+    // dropped from the merge below.
+    final hideQueue = {..._pendingHideIds};
+    final unhideQueue = {..._pendingUnhideIds};
+    try {
+      await _repo.hideFeedBaskets(userId, hideQueue);
+      _pendingHideIds.removeAll(hideQueue);
+    } catch (_) {}
+    try {
+      await _repo.unhideFeedBaskets(userId, unhideQueue);
+      _pendingUnhideIds.removeAll(unhideQueue);
+    } catch (_) {}
+
+    _hiddenFeedIds = {...remote, ...hideQueue}..removeAll(unhideQueue);
+    await _persistHiddenFeed();
+    notifyListeners();
   }
 
   Future<void> _loadReviewsSafely(String userId) async {
@@ -238,6 +285,9 @@ class AppStore extends ChangeNotifier {
     receivedBaskets = [];
     myReviews = [];
     friendReviews = [];
+    _hiddenFeedIds = {};
+    _pendingHideIds = {};
+    _pendingUnhideIds = {};
     currentUser = AppUser(
       name: '게스트',
       handle: '@guest',
@@ -722,22 +772,99 @@ class AppStore extends ChangeNotifier {
   FriendSalkamalka? friendSalkamalkaByFriendId(String friendId) =>
       friendSalkamalkaGroups.where((g) => g.friendId == friendId).firstOrNull;
 
+  /// Feed behind 내 친구 탭 > 살까말까. Display-level filtering only — nothing is
+  /// dropped from [sentBaskets], which stays the full archive for 마이페이지.
   List<SalkamalkaFeedEntry> get salkamalkaFeed {
     final mineIds = sentBaskets.map((b) => b.id).toSet();
     final out = <SalkamalkaFeedEntry>[
       for (final b in receivedBaskets)
         SalkamalkaFeedEntry(basket: b, isMine: false),
-      for (final b in sentBaskets) SalkamalkaFeedEntry(basket: b, isMine: true),
+      // Link / KakaoTalk shares never went to an app friend, so they do not
+      // belong in the friends feed.
+      for (final b in sentBaskets)
+        if (b.sharedToFriends) SalkamalkaFeedEntry(basket: b, isMine: true),
     ];
     // Prefer the sent copy when the same id somehow appears in both.
     final byId = <String, SalkamalkaFeedEntry>{};
     for (final e in out) {
+      if (_hiddenFeedIds.contains(e.basket.id)) continue;
       if (mineIds.contains(e.basket.id) && !e.isMine) continue;
       byId[e.basket.id] = e;
     }
     return byId.values.toList()
-      ..sort((a, b) => b.basket.createdAt.compareTo(a.basket.createdAt));
+      ..sort((a, b) => b.basket.sharedAt.compareTo(a.basket.sharedAt));
   }
+
+  bool isHiddenFromSalkamalkaFeed(String id) => _hiddenFeedIds.contains(id);
+
+  /// Hides one entry from the friends feed only. The basket itself is kept, so
+  /// 마이페이지 > 내가 보낸 살까말까 still lists it.
+  Future<void> hideFromSalkamalkaFeed(String id) async {
+    if (!_hiddenFeedIds.add(id)) return;
+    _pendingUnhideIds.remove(id);
+    _pendingHideIds.add(id);
+    notifyListeners();
+    await _persistHiddenFeed();
+    final userId = uid;
+    if (userId == null) return;
+    try {
+      await _repo.hideFeedBaskets(userId, [id]);
+      _pendingHideIds.remove(id);
+      await _persistHiddenFeed();
+    } catch (_) {
+      // Stays queued and is replayed on the next sync.
+    }
+  }
+
+  /// Brings an entry back into the friends feed. Re-sending a basket counts as
+  /// wanting to see it again, so the earlier X is undone.
+  Future<void> unhideFromSalkamalkaFeed(String id) async {
+    if (!_hiddenFeedIds.remove(id)) return;
+    _pendingHideIds.remove(id);
+    _pendingUnhideIds.add(id);
+    notifyListeners();
+    await _persistHiddenFeed();
+    final userId = uid;
+    if (userId == null) return;
+    try {
+      await _repo.unhideFeedBaskets(userId, [id]);
+      _pendingUnhideIds.remove(id);
+      await _persistHiddenFeed();
+    } catch (_) {}
+  }
+
+  Future<void> _persistHiddenFeed() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('${_hiddenFeedKey}_${uid ?? 'guest'}', jsonEncode({
+      'hidden': _hiddenFeedIds.toList(),
+      'pendingHide': _pendingHideIds.toList(),
+      'pendingUnhide': _pendingUnhideIds.toList(),
+    }));
+  }
+
+  Future<void> _restoreHiddenFeedLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('${_hiddenFeedKey}_${uid ?? 'guest'}');
+    if (raw == null) return;
+    try {
+      final decoded = jsonDecode(raw);
+      // Caches written before the pending queues existed were a bare id list.
+      if (decoded is List) {
+        _hiddenFeedIds = {..._hiddenFeedIds, ..._asIdSet(decoded)};
+        return;
+      }
+      final map = Map<String, dynamic>.from(decoded as Map);
+      _hiddenFeedIds = {..._hiddenFeedIds, ..._asIdSet(map['hidden'])};
+      _pendingHideIds = {..._pendingHideIds, ..._asIdSet(map['pendingHide'])};
+      _pendingUnhideIds = {
+        ..._pendingUnhideIds,
+        ..._asIdSet(map['pendingUnhide']),
+      };
+    } catch (_) {}
+  }
+
+  Set<String> _asIdSet(dynamic raw) =>
+      (raw as List? ?? const []).map((e) => e.toString()).toSet();
 
   Future<List<AppUser>> loadFollowers() async {
     final id = uid;
@@ -942,7 +1069,11 @@ class AppStore extends ChangeNotifier {
     if (selected.isEmpty) {
       throw Exception('공유할 상품을 선택해 주세요.');
     }
-    return rememberSentBasket(items: selected, title: '살까말까 공유');
+    return rememberSentBasket(
+      items: selected,
+      title: '살까말까 공유',
+      channels: const [SharedChannel.link],
+    );
   }
 
   List<SharedBasket> get sentBaskets {
@@ -956,7 +1087,9 @@ class AppStore extends ChangeNotifier {
     String title = '살까말까 공유',
     List<String> recipientUids = const [],
     List<String> recipientNames = const [],
+    List<String> channels = const [],
     String? existingId,
+    bool touchSharedAt = false,
   }) async {
     final now = DateTime.now();
     final id = existingId ?? 'sb-${now.millisecondsSinceEpoch}';
@@ -966,6 +1099,11 @@ class AppStore extends ChangeNotifier {
       ...?existing?.recipientNames,
       ...recipientNames,
     }.where((n) => n.isNotEmpty).toList();
+    // Channels accumulate: a link share re-sent to friends counts as both.
+    final mergedChannels = {
+      ...?existing?.channels,
+      ...channels,
+    }.toList();
     final shared = SharedBasket(
       id: id,
       title: title,
@@ -977,6 +1115,10 @@ class AppStore extends ChangeNotifier {
       createdAt: existing?.createdAt ?? now,
       recipientUids: mergedUids,
       recipientNames: mergedNames,
+      channels: mergedChannels,
+      // Re-sending bumps the basket back to the top of the friends feed;
+      // createdAt stays put so 마이페이지 keeps the original date.
+      lastSharedAt: touchSharedAt ? now : existing?.lastSharedAt,
     );
     sharedBaskets[id] = shared;
     await _persistShared();
@@ -1025,13 +1167,18 @@ class AppStore extends ChangeNotifier {
     final names = [
       for (final id in friendIds) friendById(id)?.name ?? '',
     ].where((n) => n.isNotEmpty).toList();
-    await rememberSentBasket(
+    final shared = await rememberSentBasket(
       items: items,
       title: '${currentUser.name}의 살까말까',
       recipientUids: friendIds,
       recipientNames: names,
+      channels: const [SharedChannel.friends],
       existingId: existingId,
+      touchSharedAt: true,
     );
+    // Re-sending a basket that was X-ed out of the friends feed brings it back.
+    // Covers both re-used ids (마이페이지 > 다시 보내기) and freshly minted ones.
+    await unhideFromSalkamalkaFeed(shared.id);
   }
 
   String shareUrlFor(SharedBasket basket) =>
@@ -1084,6 +1231,7 @@ class AppStore extends ChangeNotifier {
         sharedBaskets[basket.id] = basket;
       }
     }
+    await _restoreHiddenFeedLocal();
   }
 
   Future<void> _persistNotificationPrefs() async {
