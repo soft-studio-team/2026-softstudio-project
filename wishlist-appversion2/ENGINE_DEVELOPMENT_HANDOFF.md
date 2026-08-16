@@ -41,7 +41,20 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 - Headless WebView의 `onLoadStop`/`onReceivedError`가 발생하지 않고 `isRunning()`이 곧 false가 되어 추출 JS를 실행하지 못했다. 4~64 전체 감사는 같은 인프라 실패를 반복할 뿐이라 실행하지 않았다
 - 실물 기기 앱/데이터 삭제 없음. 로그인·결제·장바구니 변경 없음
 
-다음 우선순위는 Headless WebView가 로드 콜백을 주고 `evaluateJavascript`가 살아 있는지부터 복구하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
+다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
+
+## 0.1 2026-08-16 WebView 호스트 복구
+
+Headless WebView는 Activity `android.R.id.content`의 첫 자식이 없으면 뷰 계층에 붙지 않는다. 감사 러너는 앱 위젯을 pump하지 않아 이 경로가 깨졌다.
+
+대응:
+
+- `WebViewExtractHost`: 360×640, opacity 0.01 `InAppWebView`를 트리에 붙임
+- `WishlistApp`의 `MaterialApp.builder`와 감사 러너가 호스트를 pump
+- `WebViewScraper.extract`는 호스트가 있으면 그 경로를 사용
+- 단위 테스트 21개, analyze 0 issues
+
+Android 재감사는 SuperDisplay ADB 40이 SDK ADB 41 서버를 다시 교체해 streamed install이 두 번 실패했다. 실물 `SM-S938N`이 연결되어 있었으나 앱/데이터는 삭제하지 않았다. 7개와 64개는 이번에도 Android 미검증이다.
 
 ## 1. 현재 결론
 
@@ -159,14 +172,14 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 ## 6. WebView 안정화 작업 상태
 
-코드 구현과 단위 테스트는 완료했다. Android Headless WebView 런타임이 로드 콜백을 주지 않아 실기기/에뮬레이터 가격 재감사는 미검증이다.
+위젯 호스트 경로는 코드에 반영했다. Android 재감사는 SuperDisplay ADB 40/41 충돌로 설치가 끊겨 미검증이다.
 
 남아 있는 런타임 문제:
 
-- `HeadlessInAppWebView.run()` 이후 `onLoadStart`/`onLoadStop`/`onReceivedError`가 발생하지 않는다
-- `isRunning()`이 곧 false가 되어 추출 JS를 호출하지 않고 `loading_timeout`으로 끝난다
-- 첫 설치에서 ADB daemon 5037 연결이 한 번 끊겼다. SuperDisplay ADB 40 충돌 문구는 이번 세션에서 재현되지 않았다
-- 고정 대기 시간만 늘리는 것으로 이 문제를 덮지 않는다. Headless WebView가 실제로 페이지를 열고 JS를 실행하는지부터 복구해야 한다
+- SuperDisplay가 ADB server 40을 다시 띄워 SDK client 41과 충돌한다. 사용자가 SuperDisplay를 완전히 종료하기 전에는 에뮬레이터 설치 스트림이 끊긴다
+- 가짜 SDK/ADB 프록시는 만들지 않는다
+- 실물 기기 앱 제거·데이터 초기화는 하지 않는다
+- 호스트 경로의 7개/64개 가격 재감사는 아직 실행하지 못했으므로 통과로 보고하면 안 된다
 
 ## 7. ADB 충돌
 

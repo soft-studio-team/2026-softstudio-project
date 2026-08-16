@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:figmadesign/services/webview_extract_host.dart';
 import 'package:figmadesign/services/webview_scraper.dart';
 
 class _FakeClock implements ExtractClock {
@@ -397,5 +399,15 @@ void main() {
     );
 
     expect(result?.failureReason, ExtractFailureReason.unsupportedCurrency);
+  });
+
+  testWidgets('추출 호스트는 트리에 붙으면 인스턴스를 등록한다', (tester) async {
+    expect(WebViewExtractHost.maybeInstance, isNull);
+    await tester.pumpWidget(
+      const MaterialApp(home: WebViewExtractHost(child: SizedBox.shrink())),
+    );
+    expect(WebViewExtractHost.maybeInstance, isNotNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(WebViewExtractHost.maybeInstance, isNull);
   });
 }

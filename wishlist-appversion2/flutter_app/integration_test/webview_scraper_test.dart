@@ -9,9 +9,11 @@
 // 모두 정상이라는 뜻이다.
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'package:figmadesign/services/webview_extract_host.dart';
 import 'package:figmadesign/services/webview_scraper.dart';
 
 void main() {
@@ -35,14 +37,22 @@ void main() {
 
     cases.forEach((label, url) {
       testWidgets('$label 에서 가격 추출', (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: WebViewExtractHost(child: SizedBox.shrink())),
+        );
+        await tester.pump();
         final scraper = WebViewScraper();
-        final result = await scraper.extract(url,
-            maxWait: const Duration(seconds: 20));
+        final result = await scraper.extract(
+          url,
+          maxWait: const Duration(seconds: 20),
+        );
 
-        debugPrint('[$label] name=${result?.name} '
-            'price=${result?.price} '
-            'source=${result?.source} '
-            'hasJsonLd=${result?.hasJsonLd}');
+        debugPrint(
+          '[$label] name=${result?.name} '
+          'price=${result?.price} '
+          'source=${result?.source} '
+          'hasJsonLd=${result?.hasJsonLd}',
+        );
 
         expect(result, isNotNull, reason: '$label 추출 결과가 null 이면 안 됨');
         expect(result!.name, isNotNull, reason: '$label 상품명 필요');

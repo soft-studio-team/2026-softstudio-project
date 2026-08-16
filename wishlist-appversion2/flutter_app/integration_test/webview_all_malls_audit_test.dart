@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'package:figmadesign/services/webview_extract_host.dart';
 import 'package:figmadesign/services/webview_scraper.dart';
 
 class _MallCase {
@@ -198,6 +200,11 @@ void main() {
   const onlyRaw = String.fromEnvironment('WEBVIEW_AUDIT_ONLY');
 
   testWidgets('64개 등록 쇼핑몰 Android WebView 대표 상품 감사', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: WebViewExtractHost(child: SizedBox.shrink())),
+    );
+    await tester.pump();
+    expect(WebViewExtractHost.maybeInstance, isNotNull);
     expect(WebViewScraper.isSupported, isTrue);
     final results = <Map<String, dynamic>>[];
     final onlyIndices = onlyRaw.isEmpty
@@ -214,7 +221,8 @@ void main() {
       final item = _cases[index];
       final stopwatch = Stopwatch()..start();
       var timedOut = false;
-      final extracted = await WebViewScraper()
+      var extractDone = false;
+      final extractFuture = WebViewScraper()
           .extract(item.url, maxWait: const Duration(seconds: 12))
           .timeout(
             const Duration(seconds: 45),
@@ -222,7 +230,12 @@ void main() {
               timedOut = true;
               return null;
             },
-          );
+          )
+          .whenComplete(() => extractDone = true);
+      while (!extractDone) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      final extracted = await extractFuture;
       stopwatch.stop();
 
       final hasPrice = extracted?.price != null && extracted!.price! > 0;

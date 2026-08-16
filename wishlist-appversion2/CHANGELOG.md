@@ -1,5 +1,19 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-16 - WebView 추출을 위젯 트리 PlatformView로 복구
+
+🌟 **쉬운 설명**
+- 안 보이는 Headless WebView가 페이지를 열지 못하던 문제를 피하려고, 앱 안에 거의 보이지 않는 실제 WebView를 붙여 상품 페이지를 읽도록 바꿨습니다.
+- 단위 테스트는 통과했지만, SuperDisplay ADB 40과 SDK ADB 41이 다시 충돌해 Android 에뮬레이터 설치가 끊겨 7개 재감사는 미검증입니다.
+
+🔧 **기술 설명**
+- `WebViewExtractHost`를 `MaterialApp`과 감사 러너에 올리고, `WebViewScraper`는 호스트가 있으면 Headless 대신 트리에 붙은 `InAppWebView`를 사용합니다.
+- Headless 경로는 360×640 `setSize`를 남기되, Activity content 자식이 없으면 뷰 계층에 붙지 못하는 기존 한계를 우회하지 않고 호스트를 우선합니다.
+- 대상 단위 테스트 21개와 관련 Flutter analyze 0 issues를 통과했습니다.
+- Android 재감사는 `adb server version (40) doesn't match this client (41)`로 streamed install이 두 번 실패했습니다. 실물 Galaxy 앱/데이터는 삭제하지 않았고, 가짜 SDK/ADB 프록시도 만들지 않았습니다.
+
+---
+
 ## 2026-08-16 - Flutter WebView 추출 안정화
 
 🌟 **쉬운 설명**

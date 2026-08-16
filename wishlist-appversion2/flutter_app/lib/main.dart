@@ -28,6 +28,7 @@ import 'screens/share/share_intake_screen.dart';
 import 'screens/shared/shared_wishlist_screen.dart';
 import 'screens/wishlist/wishlist_screen.dart';
 import 'services/share_input.dart';
+import 'services/webview_extract_host.dart';
 import 'theme/diary_theme.dart';
 
 Future<void> main() async {
@@ -144,6 +145,9 @@ class _WishlistAppState extends State<WishlistApp> {
         debugShowCheckedModeBanner: false,
         theme: DiaryTheme.light,
         routerConfig: router,
+        builder: (context, child) {
+          return WebViewExtractHost(child: child ?? const SizedBox.shrink());
+        },
       ),
     );
   }

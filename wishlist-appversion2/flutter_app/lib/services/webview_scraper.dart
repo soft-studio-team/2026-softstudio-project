@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show Size;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'product_extract_js.dart';
+import 'webview_extract_host.dart';
 
 /// WebView 추출이 확정 가격을 못 냈을 때 남기는 실패 이유.
 class ExtractFailureReason {
@@ -419,6 +421,14 @@ class WebViewScraper {
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36';
 
+  static final InAppWebViewSettings extractSettings = InAppWebViewSettings(
+    userAgent: _desktopUa,
+    javaScriptEnabled: true,
+    clearCache: false,
+    mediaPlaybackRequiresUserGesture: true,
+    transparentBackground: true,
+  );
+
   final ExtractClock _clock;
 
   static bool get isSupported =>
@@ -433,23 +443,20 @@ class WebViewScraper {
   }) async {
     if (!isSupported) return null;
 
+    final host = WebViewExtractHost.maybeInstance;
+    if (host != null) {
+      return host.extract(url, maxWait: maxWait, clock: _clock);
+    }
+
     InAppWebViewController? controller;
     HeadlessInAppWebView? headless;
-    final keepAlive = InAppWebViewKeepAlive();
     final loop = WebViewExtractLoop(clock: _clock);
 
     try {
       headless = HeadlessInAppWebView(
-        keepAlive: keepAlive,
         initialUrlRequest: URLRequest(url: WebUri(url)),
-        initialSettings: InAppWebViewSettings(
-          userAgent: _desktopUa,
-          javaScriptEnabled: true,
-          clearCache: false,
-          // 상품정보만 필요하므로 미디어 자동재생·팝업은 막아 자원을 아낀다.
-          mediaPlaybackRequiresUserGesture: true,
-          transparentBackground: true,
-        ),
+        initialSize: const Size(360, 640),
+        initialSettings: extractSettings,
         onWebViewCreated: (c) {
           controller = c;
         },
@@ -471,6 +478,7 @@ class WebViewScraper {
         },
       );
       await headless.run();
+      await headless.setSize(const Size(360, 640));
       controller ??= headless.webViewController;
       if (controller == null) {
         return OnDeviceExtract(
