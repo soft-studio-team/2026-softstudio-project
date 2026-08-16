@@ -73,7 +73,8 @@ iOS에서 같은 InAppWebView를 연속 사용하면 이전 몰 DOM이 새어 �
 
 관리 몰 PASS는 `source.price=site-adapter`만 통과로 본다. 전용 규칙 실패 시 가격은 null. 11번가는 비관리 json-ld PASS. 노이아고는 배치 hang 없이 PASS 219000.
 
-결과: `wishlist-appversion2/ios_webview_audit_64_2026-08-16.json`
+몰별 상세: `wishlist-appversion2/IOS_WEBVIEW_AUDIT_64.md`  
+원본 JSON: `wishlist-appversion2/ios_webview_audit_64_2026-08-16.json`
 다음: iOS 연속 추출 시 about:blank 리셋 강화, SSG 차단 재현, Aritzia/Hmall/리바이스/나이키/이랜드몰 규칙, 실패 UX, Python 폴백 결정.
 
 ## 0.3 2026-08-16 실기기 64개 분할 감사
