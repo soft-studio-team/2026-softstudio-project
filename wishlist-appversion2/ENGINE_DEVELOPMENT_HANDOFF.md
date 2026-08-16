@@ -43,6 +43,20 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
 
+## 0.3 2026-08-16 실기기 64개 분할 감사
+
+실물 Galaxy에서 1~64를 나눠 완주했다. SuperDisplay는 끈 상태, `--no-uninstall`.
+
+- PASS 46
+- EXPECTED_ABSTAIN 5: 네이버 쇼핑, Gap, LF몰, NUGU, SHEIN
+- BLOCKED 2: 쿠팡, H&M
+- PARTIAL_MEDIA 1: 반스(가격·이미지 있음, 이름 없음. `recopick:title` 후보는 넣었으나 재감사 전)
+- NO_RESULT 1: 리바이스 `loading_timeout`
+- PARTIAL_NO_PRICE 9: 현대Hmall, 마리떼, 오호라, 육육걸즈, 파르티멘토, Reformation, 나이키(`not_product_page`), ZARA, 이랜드몰(`not_product_page`)
+
+다음: iOS(기기 필요), 반스 이름 재감사, Hmall/리바이스/나이키/이랜드몰 규칙, 실패 UX, Python 폴백 결정.
+검사 후 일반 앱을 `-r`로 복구했다.
+
 ## 0.2 2026-08-16 실기기 생성·로드·JS 복구
 
 구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)

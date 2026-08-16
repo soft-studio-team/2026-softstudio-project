@@ -1,5 +1,22 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-16 - 실기기 64개 WebView 분할 감사 완료
+
+🌟 **쉬운 설명**
+- 실물 Galaxy에서 등록 쇼핑몰 64곳을 나눠 열어 봤습니다. 이름·사진·가격이 같이 나온 곳은 46곳입니다.
+- 막힌 곳, 일부러 가격을 안 적는 곳, 전용 규칙이 안 맞아 가격을 비운 곳은 통과로 세지 않았습니다.
+- 검사가 끝난 뒤에는 일반 앱을 다시 넣었습니다.
+
+🔧 **기술 설명**
+- 실물 `SM-S938N` / Android 16, SuperDisplay Stopped, `--no-uninstall`, SDK ADB 1.0.41. JS probe=`2`.
+- 분할: 1~3, 4~37, 38(노이아고 단독), 39~51, 52~64.
+- 집계: PASS 46, EXPECTED_ABSTAIN 5(네이버·Gap·LF몰·NUGU·SHEIN), BLOCKED 2(쿠팡·H&M), PARTIAL_MEDIA 1(반스 이름), NO_RESULT 1(리바이스 `loading_timeout`), PARTIAL_NO_PRICE 9(현대Hmall·마리떼·오호라·육육걸즈·파르티멘토·Reformation·나이키·ZARA·이랜드몰).
+- 11번가는 hang 없이 PASS. 노이아고는 단독 재실행에서 PASS(219000원).
+- 관리 몰 전용 규칙 실패 시 범용 가격 우회 없음. iOS는 이 환경에 기기 없음.
+- 검사 후 `flutter build apk --debug` + `adb install -r`로 일반 앱을 복구했습니다.
+
+---
+
 ## 2026-08-16 - 실기기 WebView 생성·추출 복구
 
 🌟 **쉬운 설명**
