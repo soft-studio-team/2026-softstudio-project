@@ -585,6 +585,20 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Add several products at once — persists and notifies a single time.
+  Future<void> addManyToBasket(Iterable<Product> products) async {
+    final existing = basket.map((b) => b.product.id).toSet();
+    final added = <BasketItem>[];
+    for (final product in products) {
+      if (!existing.add(product.id)) continue;
+      added.add(BasketItem(product: product));
+    }
+    if (added.isEmpty) return;
+    basket = [...basket, ...added];
+    await _persistBasket();
+    notifyListeners();
+  }
+
   Future<void> toggleBasketSelected(int id) async {
     basket = basket
         .map(

@@ -7,6 +7,7 @@ import '../../data/app_store.dart';
 import '../../models/models.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
+import 'basket_picker_sheet.dart';
 
 class SalkamalkaScreen extends StatelessWidget {
   const SalkamalkaScreen({super.key});
@@ -161,11 +162,16 @@ class SalkamalkaScreen extends StatelessWidget {
 
   Future<void> _openPickFromWishlistSheet(
       BuildContext context, AppStore store) async {
-    await showModalBottomSheet<void>(
+    final picked = await showModalBottomSheet<List<Product>>(
       context: context,
       isScrollControlled: true,
-      builder: (sheetCtx) =>
-          _CategoryPickerSheet(store: store, outerContext: context),
+      builder: (sheetCtx) => BasketPickerSheet(store: store),
+    );
+    if (picked == null || picked.isEmpty) return;
+    await store.addManyToBasket(picked);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${picked.length}개를 담았어요')),
     );
   }
 
@@ -332,114 +338,5 @@ class SalkamalkaScreen extends StatelessWidget {
         SnackBar(content: Text('$e')),
       );
     }
-  }
-}
-
-class _CategoryPickerSheet extends StatelessWidget {
-  const _CategoryPickerSheet({required this.store, required this.outerContext});
-
-  final AppStore store;
-  final BuildContext outerContext;
-
-  Future<void> _addCategory(
-      BuildContext sheetContext, String label, List<Product> products) async {
-    final existingIds = store.basket.map((b) => b.product.id).toSet();
-    final newProducts =
-        products.where((p) => !existingIds.contains(p.id)).toList();
-    for (final product in newProducts) {
-      await store.addToBasket(product);
-    }
-    if (!sheetContext.mounted) return;
-    Navigator.pop(sheetContext);
-    if (!outerContext.mounted) return;
-    final message = newProducts.isEmpty
-        ? '이미 모두 담겨 있어요'
-        : '$label ${newProducts.length}개를 담았어요';
-    ScaffoldMessenger.of(outerContext).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final custom = store.customTabs;
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.3,
-      maxChildSize: 0.85,
-      expand: false,
-      builder: (sheetCtx, scrollController) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text('카테고리에서 담기',
-                        style: DiaryTheme.body(16, weight: FontWeight.w700)),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Expanded(
-                child: custom.isEmpty
-                    ? Center(
-                        child: Text('카테고리가 없어요',
-                            style: DiaryTheme.body(14,
-                                color: DiaryColors.inkMuted)),
-                      )
-                    : ListView.builder(
-                        controller: scrollController,
-                        itemCount: custom.length + 1,
-                        itemBuilder: (context, i) {
-                          final isAll = i == 0;
-                          final label = isAll ? '전체' : custom[i - 1].name;
-                          final color = isAll
-                              ? store.tabColor(store.tabs.first)
-                              : store.tabColor(custom[i - 1]);
-                          final products = isAll
-                              ? store.products
-                              : store.products
-                                  .where((p) => p.listId == custom[i - 1].id)
-                                  .toList();
-                          final count = products.length;
-                          final disabled = count == 0;
-                          return Opacity(
-                            opacity: disabled ? 0.45 : 1,
-                            child: WhiteProductCard(
-                              indexColor: color,
-                              onTap: disabled
-                                  ? null
-                                  : () => _addCategory(context, label, products),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(label,
-                                        style: DiaryTheme.body(14,
-                                            weight: FontWeight.w700)),
-                                  ),
-                                  Text('$count개',
-                                      style: DiaryTheme.body(13,
-                                          color: DiaryColors.inkMuted)),
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.chevron_right, size: 18),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
