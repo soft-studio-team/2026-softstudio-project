@@ -264,6 +264,7 @@ void main() {
         'optionPriceMin': extracted?.optionPriceMin,
         'optionPriceMax': extracted?.optionPriceMax,
         'blocked': extracted?.blocked,
+        'failureReason': extracted?.failureReason,
         'looksLikeProductPage': extracted?.looksLikeProductPage,
         'hasJsonLd': extracted?.hasJsonLd,
         'finalUrl': extracted?.finalUrl,

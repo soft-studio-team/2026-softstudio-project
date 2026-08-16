@@ -1,5 +1,18 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-16 - Flutter WebView 추출 안정화
+
+🌟 **쉬운 설명**
+- 상품 페이지가 리다이렉트나 화면 전환을 끝낸 뒤에만 가격을 읽고, 차단 화면은 바로 멈추며, 실패한 이유를 구분해서 남기도록 WebView 추출기를 바꿨습니다.
+- 고정 대기 시간만 늘리지는 않았습니다. Android 에뮬레이터에서는 Headless WebView가 페이지 로드 콜백을 주지 않아 7개와 1~3번 감사를 가격 통과로 보지 않습니다.
+
+🔧 **기술 설명**
+- `webview_scraper.dart`에 시계/세션 추상화, 마지막 탐색 후 600ms 안정화, `evaluateJavascript` 4초 timeout, 명시적 `blocked` 즉시 종료, 빈 결과 1회 reload, 가격 fingerprint 2회 연속 확인, 실패 이유(`loading_timeout`, `script_timeout`, `access_blocked`, `network_error`, `not_product_page`, `price_ambiguous`, `unsupported_currency`)를 추가했습니다.
+- 대상 단위 테스트 20개와 관련 Flutter analyze 0 issues를 통과했습니다.
+- Pixel 10 / Android 17 에뮬레이터(`emulator-5554`)에서 SuperDisplay는 떠 있지 않았고 SDK ADB 1.0.41만 사용했습니다. 첫 설치는 ADB daemon 5037 연결 실패로 한 번 끊겼고, 재시도 후 `WEBVIEW_AUDIT_ONLY=14,22,24,46,49,53,55`와 `WEBVIEW_AUDIT_START=0 END=3`을 실행했습니다. 두 실행 모두 상품 내용 없이 `loading_timeout`만 나와 가격 추출 성공으로 보지 않습니다. 4~64 전체 감사는 같은 인프라 실패를 반복할 뿐이라 실행하지 않았습니다. 실물 기기 앱/데이터는 삭제하지 않았습니다.
+
+---
+
 ## 2026-08-16 - Android WebView 이미지·가격 안전성 보정
 
 🌟 **쉬운 설명**

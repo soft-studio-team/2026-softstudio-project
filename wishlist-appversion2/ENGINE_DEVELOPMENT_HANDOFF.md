@@ -12,6 +12,37 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 이 문서는 새 대화에서 wishkit 엔진 개발을 즉시 이어가기 위한 기준 문서다. 아래의 "다음 대화 시작 프롬프트"와 함께 이 파일을 읽도록 지시하면 된다.
 
+## 0. 2026-08-16 후속 작업 결과
+
+기준 브랜치: `feat/webview-engine-handoff` (`aaac9ca`, PR #27 미병합)
+
+구현 브랜치: `feat/webview-scraper-stabilize`
+
+`webview_scraper.dart` 안정화는 코드와 단위 테스트까지 반영했다. Android 상품 추출 재감사는 통과로 보지 않는다.
+
+구현한 동작:
+
+- 마지막 `onLoadStart` / `onLoadStop` / `onUpdateVisitedHistory` 이후 600ms 안정화
+- `evaluateJavascript` 호출별 4초 timeout, timeout 후 같은 controller에 중첩 호출하지 않음
+- 명시적 `blocked=true`는 즉시 `access_blocked`로 종료, origin warm-up/reload 없음
+- 빈 결과에만 같은 URL 1회 reload. 차단·품절·가격 충돌·미지원 통화는 재시도하지 않음
+- URL·adapter·price·originalPrice·옵션 범위 fingerprint가 두 번 연속 같으면 확정
+- 실패 이유: `loading_timeout`, `script_timeout`, `access_blocked`, `network_error`, `not_product_page`, `price_ambiguous`, `unsupported_currency`
+- `WebViewExtractLoop` + `ExtractClock`으로 폴링/안정화 단위 테스트
+
+검증:
+
+- `flutter test test/product_extract_js_sync_test.dart test/webview_scraper_result_test.dart` → 20 passed
+- `flutter analyze` 대상 파일 → 0 issues
+- SuperDisplay 프로세스는 없었고 SDK ADB 1.0.41만 사용. Pixel 10 에뮬레이터 `emulator-5554` / Android 17 / API 37
+- 첫 설치는 `adb.exe: cannot connect to daemon at tcp:5037`로 실패. 재시도 후 러너는 완주
+- `WEBVIEW_AUDIT_ONLY=14,22,24,46,49,53,55`: 7/7 `NO_RESULT` + `loading_timeout`, 상품명/이미지/가격 없음. 가격 통과로 보고하면 안 됨
+- `WEBVIEW_AUDIT_START=0 END=3`: 쿠팡 `NO_RESULT`, 네이버는 러너가 `EXPECTED_ABSTAIN`으로 집계했지만 실제로는 같은 `loading_timeout`, 11번가는 hang 없이 `loading_timeout`. 후속 오염은 없었음
+- Headless WebView의 `onLoadStop`/`onReceivedError`가 발생하지 않고 `isRunning()`이 곧 false가 되어 추출 JS를 실행하지 못했다. 4~64 전체 감사는 같은 인프라 실패를 반복할 뿐이라 실행하지 않았다
+- 실물 기기 앱/데이터 삭제 없음. 로그인·결제·장바구니 변경 없음
+
+다음 우선순위는 Headless WebView가 로드 콜백을 주고 `evaluateJavascript`가 살아 있는지부터 복구하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
+
 ## 1. 현재 결론
 
 - Python 파싱 엔진과 Flutter WebView 추출기는 서로 다른 실행 경로다.
@@ -60,16 +91,9 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 ## 3. 현재 작업 트리 상태
 
-작업 트리는 깨끗하지 않으며 다음 변경은 아직 커밋되지 않았다.
+이 후속 작업은 `feat/webview-scraper-stabilize`에서 진행한다. 기존 `feat/webview-engine-handoff`의 커밋된 변경은 그대로 두고, WebView 안정화 파일만 추가/수정한다.
 
-```text
- M CHANGELOG.md
- M flutter_app/lib/services/product_extract_js.dart
- M flutter_app/test/product_extract_js_sync_test.dart
-?? flutter_app/integration_test/webview_all_malls_audit_test.dart
-```
-
-`git reset --hard`, `git checkout --`, `git clean`을 사용하지 않는다. 기존 사용자 변경을 되돌리지 않는다. `git diff`에는 untracked 감사 러너 내용이 나오지 않으므로 `git status --short`와 실제 파일을 함께 확인한다.
+`git reset --hard`, `git checkout --`, `git clean`을 사용하지 않는다. 기존 사용자 변경을 되돌리지 않는다.
 
 `flutter_app/android/local.properties`와 Flutter 전역 Android SDK 설정은 원래 SDK인 `C:\Users\tingo\AppData\Local\Android\sdk`로 복구했다. ADB 우회를 위해 만들었던 임시 SDK/프록시 디렉터리도 삭제했다.
 
@@ -107,6 +131,8 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 ## 5. Android 최종 재검증이 남은 7개
 
+2026-08-16 후속 실행은 러너만 완주했고 상품 추출은 전부 `loading_timeout`이었다. 아래 예상 결과는 여전히 Android 미검증이다.
+
 감사 러너는 `WEBVIEW_AUDIT_ONLY`로 1-based 인덱스를 선택할 수 있게 되어 있다.
 
 ```text
@@ -133,37 +159,14 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 ## 6. WebView 안정화 작업 상태
 
-사용자 요청으로 구현 직전에 중단했다. `flutter_app/lib/services/webview_scraper.dart`는 아직 기존 구현 그대로다.
+코드 구현과 단위 테스트는 완료했다. Android Headless WebView 런타임이 로드 콜백을 주지 않아 실기기/에뮬레이터 가격 재감사는 미검증이다.
 
-현재 구현의 문제:
+남아 있는 런타임 문제:
 
-- 첫 `onLoadStop` 이후 1초 간격으로 단순 폴링
-- 첫 가격이 나오면 즉시 반환하여 렌더링 중간 상태를 확정할 가능성
-- 비어 있거나 차단된 페이지 모두 origin 방문 후 원 URL 재접속을 시도
-- 명시적 차단 화면도 불필요하게 재시도할 수 있음
-- `evaluateJavascript` 자체가 멈추면 내부 timeout이 없어 11번가처럼 외부 45초 timeout까지 대기
-- 리다이렉트와 SPA 주소 변경의 안정화 시점을 추적하지 않음
-- 실패 이유가 `null` 또는 `blocked` 정도로만 구분됨
-
-권장 구현 순서:
-
-1. `onLoadStart`, `onLoadStop`, `onUpdateVisitedHistory`로 마지막 탐색 변경 시간을 기록한다.
-2. 마지막 주소/로드 변경 후 500~800ms 동안 안정된 경우에만 추출 JS를 실행한다.
-3. `evaluateJavascript` 호출마다 약 4초 timeout을 둔다. timeout 후 같은 controller에 호출을 중첩하지 말고 현재 best를 반환하거나 종료한다.
-4. 명시적인 `blocked=true`는 즉시 반환하고 origin warm-up/reload를 하지 않는다.
-5. 빈 결과에만 제한적으로 1회 reload를 허용한다. Access Denied·접속 제한·품절·가격 충돌에는 재시도하지 않는다.
-6. 가격 결과는 URL·adapter·price·originalPrice·옵션 범위 fingerprint가 두 번 연속 같을 때 반환한다. 단, 전체 대기 시간이 끝나면 가장 품질 높은 best 결과를 반환한다.
-7. `OnDeviceExtract` 또는 별도 실행 결과에 실패 이유를 추가한다.
-   - `loading_timeout`
-   - `script_timeout`
-   - `access_blocked`
-   - `network_error`
-   - `not_product_page`
-   - `price_ambiguous`
-   - `unsupported_currency`
-8. `WebViewScraper`의 controller/clock 부분을 추상화해 폴링·안정화 로직을 단위 테스트할 수 있게 한다.
-
-주의: 고정 대기 시간을 무작정 늘리는 것은 안정화가 아니다. 준비 상태 확인, 리다이렉트 안정성, 호출 timeout, 명시적 차단 조기 종료가 핵심이다.
+- `HeadlessInAppWebView.run()` 이후 `onLoadStart`/`onLoadStop`/`onReceivedError`가 발생하지 않는다
+- `isRunning()`이 곧 false가 되어 추출 JS를 호출하지 않고 `loading_timeout`으로 끝난다
+- 첫 설치에서 ADB daemon 5037 연결이 한 번 끊겼다. SuperDisplay ADB 40 충돌 문구는 이번 세션에서 재현되지 않았다
+- 고정 대기 시간만 늘리는 것으로 이 문제를 덮지 않는다. Headless WebView가 실제로 페이지를 열고 JS를 실행하는지부터 복구해야 한다
 
 ## 7. ADB 충돌
 

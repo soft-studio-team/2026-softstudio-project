@@ -6,6 +6,33 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import 'product_extract_js.dart';
 
+/// WebView 추출이 확정 가격을 못 냈을 때 남기는 실패 이유.
+class ExtractFailureReason {
+  static const loadingTimeout = 'loading_timeout';
+  static const scriptTimeout = 'script_timeout';
+  static const accessBlocked = 'access_blocked';
+  static const networkError = 'network_error';
+  static const notProductPage = 'not_product_page';
+  static const priceAmbiguous = 'price_ambiguous';
+  static const unsupportedCurrency = 'unsupported_currency';
+}
+
+/// 폴링·안정화 대기에서 실제 시각을 주입하기 위한 시계.
+abstract class ExtractClock {
+  DateTime now();
+  Future<void> delay(Duration duration);
+}
+
+class SystemExtractClock implements ExtractClock {
+  const SystemExtractClock();
+
+  @override
+  DateTime now() => DateTime.now();
+
+  @override
+  Future<void> delay(Duration duration) => Future<void>.delayed(duration);
+}
+
 /// 단말에서 안 보이는 WebView 로 뽑아낸 상품정보 (Tier 2.5 결과).
 class OnDeviceExtract {
   OnDeviceExtract({
@@ -27,6 +54,7 @@ class OnDeviceExtract {
     this.optionPriceMin,
     this.optionPriceMax,
     this.priceEvidence = const [],
+    this.failureReason,
   });
 
   final String? name;
@@ -47,8 +75,39 @@ class OnDeviceExtract {
   final int? optionPriceMin;
   final int? optionPriceMax;
   final List<Map<String, dynamic>> priceEvidence;
+  final String? failureReason;
 
   bool get hasAnything => name != null || price != null || image != null;
+
+  bool get isSoldOut {
+    final value = availability.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
+    return value == 'soldout' || value == 'outofstock';
+  }
+
+  OnDeviceExtract withFailureReason(String? reason) {
+    if (failureReason == reason) return this;
+    return OnDeviceExtract(
+      name: name,
+      price: price,
+      originalPrice: originalPrice,
+      brand: brand,
+      image: image,
+      siteName: siteName,
+      hasJsonLd: hasJsonLd,
+      looksLikeProductPage: looksLikeProductPage,
+      blocked: blocked,
+      finalUrl: finalUrl,
+      source: source,
+      purchasePriceStatus: purchasePriceStatus,
+      priceConfidence: priceConfidence,
+      availability: availability,
+      optionDependent: optionDependent,
+      optionPriceMin: optionPriceMin,
+      optionPriceMax: optionPriceMax,
+      priceEvidence: priceEvidence,
+      failureReason: reason,
+    );
+  }
 
   static OnDeviceExtract? fromRaw(dynamic raw) {
     if (raw == null) return null;
@@ -82,11 +141,266 @@ class OnDeviceExtract {
                 .map((e) => e.cast<String, dynamic>())
                 .toList() ??
             const [],
+        failureReason: map['failureReason'] as String?,
       );
     } catch (_) {
       return null;
     }
   }
+}
+
+/// 리다이렉트/SPA 안정화, 스크립트 timeout, 차단 조기 종료, 빈 결과 1회 재시도를
+/// WebView 구현과 분리해 단위 테스트할 수 있게 한 추출 루프.
+class WebViewExtractLoop {
+  WebViewExtractLoop({
+    ExtractClock? clock,
+    this.settleWindow = const Duration(milliseconds: 600),
+    this.scriptTimeout = const Duration(seconds: 4),
+    this.pollInterval = const Duration(milliseconds: 200),
+    this.firstLoadTimeout = const Duration(seconds: 15),
+  }) : clock = clock ?? const SystemExtractClock();
+
+  final ExtractClock clock;
+  final Duration settleWindow;
+  final Duration scriptTimeout;
+  final Duration pollInterval;
+  final Duration firstLoadTimeout;
+
+  DateTime? lastNavigationAt;
+  bool loading = false;
+  bool sawFirstLoad = false;
+  bool loadWaitTimedOut = false;
+  bool sawNetworkError = false;
+  bool scriptTimedOut = false;
+  int evaluateCount = 0;
+  int reloadCount = 0;
+
+  bool get isSettled {
+    if (loading || lastNavigationAt == null) return false;
+    return !clock.now().difference(lastNavigationAt!).isNegative &&
+        clock.now().difference(lastNavigationAt!) >= settleWindow;
+  }
+
+  void onLoadStart(String? url) {
+    loading = true;
+    lastNavigationAt = clock.now();
+  }
+
+  void onLoadStop(String? url) {
+    loading = false;
+    sawFirstLoad = true;
+    lastNavigationAt = clock.now();
+  }
+
+  void onHistoryUpdate(String? url) {
+    lastNavigationAt = clock.now();
+  }
+
+  void onNetworkError() {
+    sawNetworkError = true;
+    loading = false;
+    sawFirstLoad = true;
+    lastNavigationAt = clock.now();
+  }
+
+  Future<OnDeviceExtract?> run({
+    required String requestUrl,
+    required Future<dynamic> Function(String source) evaluate,
+    required Future<void> Function(String url) loadUrl,
+    required Duration maxWait,
+    String extractSource = productExtractJs,
+    bool Function()? isAlive,
+  }) async {
+    final loadDeadline = clock.now().add(firstLoadTimeout);
+    while (!sawFirstLoad && clock.now().isBefore(loadDeadline)) {
+      await clock.delay(pollInterval);
+    }
+    if (!sawFirstLoad) {
+      // Headless WebView가 onLoadStop을 안 주는 경우가 있어, 컨트롤러가 있으면
+      // 바로 포기하지 않고 추출을 한 번 시도한다.
+      loadWaitTimedOut = true;
+      loading = false;
+      lastNavigationAt ??= clock.now();
+    }
+
+    final deadline = clock.now().add(maxWait);
+    OnDeviceExtract? best;
+    OnDeviceExtract? lastParsed;
+    String? lastFingerprint;
+    var emptyReloaded = false;
+
+    while (clock.now().isBefore(deadline)) {
+      if (isAlive != null && !isAlive()) {
+        return _finish(best ?? lastParsed, requestUrl);
+      }
+      if (!isSettled) {
+        final wait = _remaining(deadline);
+        if (wait == null) break;
+        await clock.delay(wait < pollInterval ? wait : pollInterval);
+        continue;
+      }
+
+      final parsed = await _evaluateOnce(evaluate, extractSource);
+      if (scriptTimedOut) {
+        return _finish(best ?? lastParsed, requestUrl);
+      }
+      if (parsed != null) lastParsed = parsed;
+
+      if (parsed != null && parsed.blocked) {
+        return parsed.withFailureReason(ExtractFailureReason.accessBlocked);
+      }
+
+      if (_isEmpty(parsed)) {
+        if (!emptyReloaded &&
+            best == null &&
+            !_isNonRetryable(parsed, requestUrl)) {
+          emptyReloaded = true;
+          reloadCount += 1;
+          await loadUrl(requestUrl);
+          continue;
+        }
+      } else if (parsed != null) {
+        best = _prefer(best, parsed);
+        final fingerprint = priceFingerprint(parsed);
+        if (fingerprint != null) {
+          if (fingerprint == lastFingerprint) {
+            return parsed;
+          }
+          lastFingerprint = fingerprint;
+        }
+      }
+
+      final wait = _remaining(deadline);
+      if (wait == null) break;
+      await clock.delay(wait < pollInterval ? wait : pollInterval);
+    }
+
+    return _finish(best ?? lastParsed, requestUrl);
+  }
+
+  Future<OnDeviceExtract?> _evaluateOnce(
+    Future<dynamic> Function(String source) evaluate,
+    String extractSource,
+  ) async {
+    evaluateCount += 1;
+    try {
+      final raw = await evaluate(extractSource).timeout(scriptTimeout);
+      return OnDeviceExtract.fromRaw(raw);
+    } on TimeoutException {
+      scriptTimedOut = true;
+      return null;
+    }
+  }
+
+  Duration? _remaining(DateTime deadline) {
+    final left = deadline.difference(clock.now());
+    if (left <= Duration.zero) return null;
+    return left;
+  }
+
+  OnDeviceExtract? _finish(OnDeviceExtract? best, String requestUrl) {
+    if (best != null && (best.price != null || best.optionPriceMin != null)) {
+      return best;
+    }
+    final reason = _classify(best, requestUrl);
+    if (best != null) return best.withFailureReason(reason);
+    return OnDeviceExtract(failureReason: reason);
+  }
+
+  String _classify(OnDeviceExtract? best, String requestUrl) {
+    if (scriptTimedOut) return ExtractFailureReason.scriptTimeout;
+    if (best?.blocked == true) return ExtractFailureReason.accessBlocked;
+    final hostUrl = best?.finalUrl ?? requestUrl;
+    if (best == null) {
+      if (sawNetworkError) return ExtractFailureReason.networkError;
+      if (loadWaitTimedOut && !sawFirstLoad) {
+        return ExtractFailureReason.loadingTimeout;
+      }
+      if (evaluateCount > 0) return ExtractFailureReason.notProductPage;
+      return ExtractFailureReason.loadingTimeout;
+    }
+    if (!best.looksLikeProductPage) {
+      return ExtractFailureReason.notProductPage;
+    }
+    if (best.price == null) {
+      if (isUnsupportedCurrencyHost(hostUrl)) {
+        return ExtractFailureReason.unsupportedCurrency;
+      }
+      return ExtractFailureReason.priceAmbiguous;
+    }
+    return ExtractFailureReason.loadingTimeout;
+  }
+}
+
+bool _isEmpty(OnDeviceExtract? parsed) =>
+    parsed == null || (!parsed.hasAnything && !parsed.blocked);
+
+bool _isNonRetryable(OnDeviceExtract? parsed, String requestUrl) {
+  if (parsed == null) return false;
+  if (parsed.blocked || parsed.isSoldOut) return true;
+  if (parsed.looksLikeProductPage &&
+      parsed.hasAnything &&
+      parsed.price == null) {
+    return true;
+  }
+  if (isUnsupportedCurrencyHost(parsed.finalUrl ?? requestUrl) &&
+      parsed.price == null) {
+    return true;
+  }
+  return false;
+}
+
+OnDeviceExtract _prefer(OnDeviceExtract? current, OnDeviceExtract next) {
+  if (current == null) return next;
+  return _quality(next) >= _quality(current) ? next : current;
+}
+
+int _quality(OnDeviceExtract value) {
+  if (value.blocked) return -1;
+  var score = 0;
+  if (value.price != null) score += 100;
+  if (value.optionPriceMin != null) score += 20;
+  if (value.name != null) score += 10;
+  if (value.image != null) score += 10;
+  if (value.looksLikeProductPage) score += 5;
+  switch (value.purchasePriceStatus) {
+    case 'confirmed':
+      score += 4;
+    case 'option_dependent':
+      score += 3;
+    case 'provisional':
+      score += 1;
+  }
+  switch (value.priceConfidence) {
+    case 'high':
+      score += 3;
+    case 'medium':
+      score += 2;
+    case 'low':
+      score += 1;
+  }
+  return score;
+}
+
+String? priceFingerprint(OnDeviceExtract value) {
+  if (value.price == null && value.optionPriceMin == null) return null;
+  return [
+    value.finalUrl ?? '',
+    value.source['adapter'] ?? '',
+    value.price?.toString() ?? '',
+    value.originalPrice?.toString() ?? '',
+    value.optionPriceMin?.toString() ?? '',
+    value.optionPriceMax?.toString() ?? '',
+  ].join('|');
+}
+
+bool isUnsupportedCurrencyHost(String url) {
+  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  return host == 'gap.com' ||
+      host.endsWith('.gap.com') ||
+      host == 'nugu.jp' ||
+      host.endsWith('.nugu.jp');
 }
 
 /// Tier 2.5 — 안 보이는 WebView 로 렌더링된 페이지에서 상품정보를 추출한다.
@@ -98,28 +412,35 @@ class OnDeviceExtract {
 /// WebView 가 있는 플랫폼(Android/iOS)에서만 동작한다. 그 외(웹·데스크톱)에서는
 /// [isSupported] 가 false 이며 [extract] 는 null 을 반환해 기존 흐름을 유지한다.
 class WebViewScraper {
+  WebViewScraper({ExtractClock? clock})
+    : _clock = clock ?? const SystemExtractClock();
+
   static const String _desktopUa =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36';
+
+  final ExtractClock _clock;
 
   static bool get isSupported =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS);
 
-  /// [url] 페이지를 열어 상품정보를 추출한다. 실패하면 null.
+  /// [url] 페이지를 열어 상품정보를 추출한다. 실패하면 실패 이유가 있는 결과 또는 null.
   Future<OnDeviceExtract?> extract(
     String url, {
     Duration maxWait = const Duration(seconds: 12),
   }) async {
     if (!isSupported) return null;
 
-    final loaded = Completer<void>();
     InAppWebViewController? controller;
     HeadlessInAppWebView? headless;
+    final keepAlive = InAppWebViewKeepAlive();
+    final loop = WebViewExtractLoop(clock: _clock);
 
     try {
       headless = HeadlessInAppWebView(
+        keepAlive: keepAlive,
         initialUrlRequest: URLRequest(url: WebUri(url)),
         initialSettings: InAppWebViewSettings(
           userAgent: _desktopUa,
@@ -129,68 +450,59 @@ class WebViewScraper {
           mediaPlaybackRequiresUserGesture: true,
           transparentBackground: true,
         ),
-        onLoadStop: (c, _) {
+        onWebViewCreated: (c) {
           controller = c;
-          if (!loaded.isCompleted) loaded.complete();
+        },
+        onLoadStart: (c, uri) {
+          controller = c;
+          loop.onLoadStart(uri?.toString());
+        },
+        onLoadStop: (c, uri) {
+          controller = c;
+          loop.onLoadStop(uri?.toString());
+        },
+        onUpdateVisitedHistory: (c, uri, _) {
+          controller = c;
+          loop.onHistoryUpdate(uri?.toString());
         },
         onReceivedError: (c, _, __) {
           controller = c;
-          if (!loaded.isCompleted) loaded.complete();
+          loop.onNetworkError();
         },
       );
       await headless.run();
-
-      // 첫 로드 완료 대기 (최대 15초)
-      await loaded.future.timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {},
-      );
       controller ??= headless.webViewController;
-      if (controller == null) return null;
-
-      final deadline = DateTime.now().add(maxWait);
-      OnDeviceExtract? best;
-      var warmedUp = false;
-
-      // 상품 정보(특히 가격)는 페이지 로드 후 JS로 늦게 채워진다.
-      // 가격이 보일 때까지 폴링하되, 최대 시간을 넘기면 그때까지의 결과를 쓴다.
-      while (DateTime.now().isBefore(deadline)) {
-        await Future<void>.delayed(const Duration(seconds: 1));
-        final raw = await controller!.evaluateJavascript(
-          source: productExtractJs,
+      if (controller == null) {
+        return OnDeviceExtract(
+          failureReason: ExtractFailureReason.loadingTimeout,
         );
-        final parsed = OnDeviceExtract.fromRaw(raw);
-
-        // 쿠팡처럼 상품 URL 직행을 막는 곳: 홈을 한 번 거친 뒤 재시도(1회).
-        final looksBlocked =
-            parsed == null ||
-            parsed.blocked ||
-            !parsed.looksLikeProductPage ||
-            !parsed.hasAnything;
-        if (looksBlocked && !warmedUp) {
-          warmedUp = true;
-          final origin = Uri.tryParse(url)?.origin;
-          if (origin != null && origin.startsWith('http')) {
-            await controller!.loadUrl(
-              urlRequest: URLRequest(url: WebUri(origin)),
-            );
-            await Future<void>.delayed(const Duration(seconds: 3));
-            await controller!.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
-            await Future<void>.delayed(const Duration(seconds: 2));
-          }
-          continue;
-        }
-
-        if (parsed != null &&
-            parsed.looksLikeProductPage &&
-            parsed.hasAnything) {
-          best = parsed;
-          if (parsed.price != null) return parsed; // 가격까지 확보 → 종료
-        }
       }
-      return best;
+
+      return loop.run(
+        requestUrl: url,
+        maxWait: maxWait,
+        isAlive: () => headless?.isRunning() == true,
+        evaluate: (source) async {
+          final view = headless;
+          final current = view?.webViewController ?? controller;
+          if (view == null || !view.isRunning() || current == null) {
+            throw TimeoutException('webview not running');
+          }
+          return current.evaluateJavascript(source: source);
+        },
+        loadUrl: (target) async {
+          final view = headless;
+          final current = view?.webViewController ?? controller;
+          if (view == null || !view.isRunning() || current == null) return;
+          await current.loadUrl(urlRequest: URLRequest(url: WebUri(target)));
+        },
+      );
     } catch (_) {
-      return null;
+      return OnDeviceExtract(
+        failureReason: loop.sawNetworkError
+            ? ExtractFailureReason.networkError
+            : ExtractFailureReason.loadingTimeout,
+      );
     } finally {
       await headless?.dispose();
     }
