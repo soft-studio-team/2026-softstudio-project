@@ -210,6 +210,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             Expanded(
               child: SpiralNotebook(
                 folderColor: DiaryColors.canvas,
+                border: Border.all(color: DiaryColors.fileCream, width: 3),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: switch (tab) {

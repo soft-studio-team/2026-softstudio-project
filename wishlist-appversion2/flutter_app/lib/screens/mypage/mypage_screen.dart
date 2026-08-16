@@ -187,8 +187,11 @@ class MyPageScreen extends StatelessWidget {
               const SizedBox(height: 8),
               DiaryButton(
                 label: '알림 설정',
-                icon: Icons.notifications_none,
-                onPressed: () => context.push('/notification-settings'),
+                icon: store.notificationsEnabled
+                    ? Icons.notifications
+                    : Icons.notifications_off,
+                onPressed: () =>
+                    store.setNotificationsEnabled(!store.notificationsEnabled),
               ),
               const SizedBox(height: 8),
               DiaryButton(
@@ -668,7 +671,7 @@ class _FolderChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: DiaryColors.ink.withValues(alpha: 0.15)),
         ),
-        child: Text(
+        child: OneLineText(
           label,
           textAlign: TextAlign.center,
           style: DiaryTheme.body(13, weight: FontWeight.w600),
