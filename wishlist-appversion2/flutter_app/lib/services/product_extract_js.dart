@@ -556,10 +556,11 @@ const String productExtractJs = r'''
   }
   var useDomName = !!(dn && ogTitle && !overlaps(ogTitle, dn));
 
+  var vansTitle = hostIs('vans.co.kr') ? metaOne('recopick:title') : null;
   var name;
   if(ld && ld.name) name = ld.name;
   else if(useDomName) name = dn;
-  else name = ogTitle || dn;
+  else name = ogTitle || dn || vansTitle;
 
   // URL만으로 확정할 수 있는 구조화된 기본 판매가를 우선한다. 화면의 쿠폰
   // 예상가나 옵션 선택 후 추가금은 사용자 상태에 따라 달라지므로 저장하지 않는다.
@@ -570,7 +571,7 @@ const String productExtractJs = r'''
   var image = normalizeUrl((ld&&ld.image) || ogImage) || null;
 
   var source={
-    name: (ld&&ld.name)?'json-ld':(useDomName?'dom':(ogTitle?'og':(name?'dom':null))),
+    name: (ld&&ld.name)?'json-ld':(useDomName?'dom':(ogTitle?'og':(vansTitle?'site-adapter':(name?'dom':null)))),
     price:(ld&&ld.price)?'json-ld':(ogPrice?'og':(price?'dom':null)),
     image:(ld&&ld.image)?'json-ld':(ogImage?'og':null),
     brand:(ld&&ld.brand)?'json-ld':null

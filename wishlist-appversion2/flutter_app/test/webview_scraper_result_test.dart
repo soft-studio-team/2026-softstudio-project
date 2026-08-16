@@ -404,7 +404,12 @@ void main() {
   testWidgets('추출 호스트는 트리에 붙으면 인스턴스를 등록한다', (tester) async {
     expect(WebViewExtractHost.maybeInstance, isNull);
     await tester.pumpWidget(
-      const MaterialApp(home: WebViewExtractHost(child: SizedBox.shrink())),
+      const MaterialApp(
+        home: WebViewExtractHost(
+          mountWebView: false,
+          child: SizedBox.shrink(),
+        ),
+      ),
     );
     expect(WebViewExtractHost.maybeInstance, isNotNull);
     await tester.pumpWidget(const SizedBox.shrink());

@@ -427,6 +427,7 @@ class WebViewScraper {
     clearCache: false,
     mediaPlaybackRequiresUserGesture: true,
     transparentBackground: true,
+    useHybridComposition: true,
   );
 
   final ExtractClock _clock;

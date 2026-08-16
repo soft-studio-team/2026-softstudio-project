@@ -16,6 +16,8 @@ class _MallCase {
   final bool expectedAbstain;
 }
 
+// 실기기에서는 반드시 --no-uninstall 을 붙인다. 기본 flutter test 는
+// 종료 시 com.softstudio.wishlist 를 지운다.
 // 서버나 앱 병합 계층을 거치지 않고 Android WebView 추출기만 검증한다.
 // 기존 가격 의미 감사에서 확인한 대표 상품을 우선 사용하며, guard-only 몰은
 // 양수 가격이 아니라 안전한 abstain 여부를 확인한다.
@@ -203,9 +205,32 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(home: WebViewExtractHost(child: SizedBox.shrink())),
     );
-    await tester.pump();
+    var readyWait = 0;
+    while (WebViewExtractHost.maybeInstance?.isReady != true &&
+        readyWait < 50) {
+      await tester.pump(const Duration(milliseconds: 200));
+      readyWait += 1;
+    }
     expect(WebViewExtractHost.maybeInstance, isNotNull);
+    expect(
+      WebViewExtractHost.maybeInstance!.isReady,
+      isTrue,
+      reason: 'InAppWebView 컨트롤러가 생성되어야 감사를 시작한다',
+    );
     expect(WebViewScraper.isSupported, isTrue);
+    Object? jsProbe;
+    try {
+      jsProbe = await WebViewExtractHost.maybeInstance!.probeJavascript();
+    } catch (error) {
+      jsProbe = 'error:$error';
+    }
+    // ignore: avoid_print
+    print('WEBVIEW_JS_PROBE $jsProbe');
+    expect(
+      jsProbe,
+      anyOf(equals(2), equals(2.0), equals('2')),
+      reason: 'evaluateJavascript가 동작해야 몰 감사를 시작한다 (got $jsProbe)',
+    );
     final results = <Map<String, dynamic>>[];
     final onlyIndices = onlyRaw.isEmpty
         ? const <int>{}
@@ -219,6 +244,8 @@ void main() {
     for (var index = startIndex; index < boundedEnd; index++) {
       if (onlyIndices.isNotEmpty && !onlyIndices.contains(index + 1)) continue;
       final item = _cases[index];
+      // ignore: avoid_print
+      print('WEBVIEW_AUDIT_BEGIN ${index + 1} ${item.mall}');
       final stopwatch = Stopwatch()..start();
       var timedOut = false;
       var extractDone = false;

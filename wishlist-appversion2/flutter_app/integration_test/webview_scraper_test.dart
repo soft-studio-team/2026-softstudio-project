@@ -40,7 +40,13 @@ void main() {
         await tester.pumpWidget(
           const MaterialApp(home: WebViewExtractHost(child: SizedBox.shrink())),
         );
-        await tester.pump();
+        var readyWait = 0;
+        while (WebViewExtractHost.maybeInstance?.isReady != true &&
+            readyWait < 50) {
+          await tester.pump(const Duration(milliseconds: 200));
+          readyWait += 1;
+        }
+        expect(WebViewExtractHost.maybeInstance?.isReady, isTrue);
         final scraper = WebViewScraper();
         final result = await scraper.extract(
           url,

@@ -43,6 +43,28 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
 
+## 0.2 2026-08-16 실기기 생성·로드·JS 복구
+
+구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
+
+확인된 것:
+
+- 위젯 트리 `InAppWebView`를 `about:blank`로 항상 마운트하면 실물 Galaxy에서 `onWebViewCreated`와 `evaluateJavascript('1+1')=2`가 된다.
+- 7개와 1~37은 실기기에서 페이지 내용을 읽었다. 가격 PASS로 볼 수 있는 곳은 전용 어댑터 또는 비관리 몰(11번가)에서 양수 가격이 나온 경우다.
+- 오호라·파르티멘토·Reformation은 관리 몰이라 전용 규칙 실패 시 가격을 비웠다(`price_ambiguous`).
+- 11번가는 hang 없이 15.6초에 끝났고 다음 건을 오염시키지 않았다.
+- 반스는 가격/이미지는 되고 이름이 비었다. `recopick:title`을 이름 후보로 넣었다(재감사 전).
+- 추출 사이에 `about:blank`로 비우지 않으면 에뮬레이터에서 이전 상품 DOM이 다음 몰 결과로 새어 나왔다. 호스트에 blank reset을 추가했다.
+
+미완:
+
+- 실기기 38~64(노이아고에서 러너 중단). 이후 실기기 재실행은 준비 단계에서 isolate 종료.
+- iOS 동일 URL: 이 Windows 호스트에 iOS 기기/시뮬레이터 없음.
+- 현대Hmall·리바이스·나이키·이랜드몰 규칙 재검증, 실패 UX, Python 폴백 결정은 다음.
+- 실기기 감사는 반드시 `flutter test ... --no-uninstall`와 `adb install -r`만 사용한다. 기본 `flutter test`는 종료 시 패키지를 지운다.
+
+SuperDisplay는 켜지 않는다.
+
 ## 0.1 2026-08-16 WebView 호스트 복구
 
 Headless WebView는 Activity `android.R.id.content`의 첫 자식이 없으면 뷰 계층에 붙지 않는다. 감사 러너는 앱 위젯을 pump하지 않아 이 경로가 깨졌다.

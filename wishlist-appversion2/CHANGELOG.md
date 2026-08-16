@@ -1,5 +1,25 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-16 - 실기기 WebView 생성·추출 복구
+
+🌟 **쉬운 설명**
+- 상품을 읽기 전에 WebView를 미리 붙여 두고, 같은 WebView를 연속으로 쓸 때 이전 쇼핑몰 페이지가 섞이지 않게 했습니다.
+- 실물 Galaxy에서 1~37번까지는 실제로 페이지를 읽어 가격을 확인했습니다. 38번 이후와 iOS는 이번 실행에서 끝까지 검증하지 못했습니다.
+
+🔧 **기술 설명**
+- `WebViewExtractHost`는 `about:blank`를 항상 마운트하고 `useHybridComposition`을 켭니다. 감사 러너는 `onWebViewCreated`와 `evaluateJavascript('1+1')`이 성공할 때만 몰 감사를 시작합니다.
+- 추출마다 `stopLoading` + `about:blank` 후 대상 URL을 열어, 이전 페이지 load 콜백/DOM이 다음 건을 오염시키지 않게 했습니다.
+- 반스는 가격 어댑터가 이미 확인한 `recopick:title`을 상품명으로 씁니다. 관리 몰 전용 규칙 실패 시 JSON-LD/OG/DOM 가격 우회는 하지 않습니다.
+- 실물 `SM-S938N` / `R3CY10LF2HE` / Android 16, SuperDisplay Stopped, SDK ADB 1.0.41. JS probe=`2`.
+- 7개(`14,22,24,46,49,53,55`): 미쏘·핫핑·SSG·올리브영 PASS, 오호라·파르티멘토·Reformation은 이름/이미지만 있고 전용 가격 규칙 실패로 `price_ambiguous`.
+- 1~3: 쿠팡 `BLOCKED`, 네이버 `EXPECTED_ABSTAIN`, 11번가 PASS(json-ld, hang 없음).
+- 4~37: 무신사~Aritzia까지 실기기 완주. 반스 `PARTIAL_MEDIA`(이름 없음), 현대Hmall 가격 없음, 리바이스 `loading_timeout`, H&M `BLOCKED`, Gap abstain.
+- 4~64는 38 노이아고에서 러너가 끊겼고, 이후 실기기 재실행은 WebView 생성 단계에서 isolate가 종료됐습니다. `flutter test` 기본 동작이 앱을 지워 `--no-uninstall`을 이후부터 사용했습니다. 패키지는 다시 `-r` 설치했습니다.
+- 에뮬레이터 39~51은 JS는 동작했지만 이전 페이지 오염과 `script_timeout`이 많아 가격 통과로 보지 않습니다.
+- 이 Windows 환경에는 iOS 기기가 없습니다. 대상 단위 테스트와 analyze는 통과했습니다.
+
+---
+
 ## 2026-08-16 - WebView 추출을 위젯 트리 PlatformView로 복구
 
 🌟 **쉬운 설명**
