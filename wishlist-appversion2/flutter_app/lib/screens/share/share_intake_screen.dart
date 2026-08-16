@@ -217,10 +217,23 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                     controller: priceCtrl,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      labelText: '가격 (원)',
+                      labelText: '기본 판매가 (쿠폰·옵션 제외, 원)',
                       filled: true,
                       fillColor: DiaryColors.white,
                     ),
+                  ),
+                  if (parsed!.originalPrice != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      '정가 ${formatWon(parsed!.originalPrice!)} · '
+                      '판매가 ${formatWon(parsed!.price)}',
+                      style: DiaryTheme.body(12, color: DiaryColors.inkMuted),
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  Text(
+                    '쿠폰은 제외한 기본 판매가예요. 옵션을 선택하면 가격이 달라질 수 있어요.',
+                    style: DiaryTheme.body(11, color: DiaryColors.inkMuted),
                   ),
                   if (parsed!.missingFields.isNotEmpty) ...[
                     const SizedBox(height: 8),

@@ -16,8 +16,8 @@ import 'webview_scraper.dart';
 /// This file never imports or edits engine Python modules.
 class ParsingBridge {
   ParsingBridge({String? baseUrl, WebViewScraper? webViewScraper})
-      : baseUrl = baseUrl ?? AppConfig.engineBaseUrl,
-        _webView = webViewScraper ?? WebViewScraper();
+    : baseUrl = baseUrl ?? AppConfig.engineBaseUrl,
+      _webView = webViewScraper ?? WebViewScraper();
 
   final String baseUrl;
   final WebViewScraper _webView;
@@ -67,15 +67,16 @@ class ParsingBridge {
     return _heuristicFromUrl(input);
   }
 
-  /// Tier 2.5 — 서버가 가격을 못 채웠을 때만 단말 WebView 로 보완한다.
+  /// Tier 2.5 — 서버가 가격을 못 채웠을 때 단말 WebView 로 보완한다.
   ///
-  /// 이미 가격이 있으면(서버 Tier 1/2 성공) 그대로 두고, WebView 는
-  /// 지원 플랫폼(Android/iOS)에서만 시도한다. 실패해도 원래 결과를 반환하므로
-  /// 저장 흐름은 절대 깨지지 않는다.
+  /// 구조화된 기본 판매가는 옵션 선택 전 기준이므로 그대로 유지한다.
+  /// 실패해도 원래 결과를 반환한다.
   Future<ParsedProductInfo> _fillOnDevice(
-      ParsedProductInfo info, String url) async {
-    final needsPrice = info.price <= 0 || info.missingFields.contains('price');
+    ParsedProductInfo info,
+    String url,
+  ) async {
     final target = info.productUrl.isNotEmpty ? info.productUrl : url;
+    final needsPrice = info.price <= 0 || info.missingFields.contains('price');
     if (!needsPrice || !WebViewScraper.isSupported || target.isEmpty) {
       return info;
     }
@@ -85,8 +86,16 @@ class ParsingBridge {
       return info.mergeOnDevice(
         name: ex.name,
         price: ex.price,
+        originalPrice: ex.originalPrice,
         image: ex.image,
         platform: ex.siteName,
+        purchasePriceStatus: ex.purchasePriceStatus,
+        priceConfidence: ex.priceConfidence,
+        availability: ex.availability,
+        optionDependent: ex.optionDependent,
+        optionPriceMin: ex.optionPriceMin,
+        optionPriceMax: ex.optionPriceMax,
+        priceEvidence: ex.priceEvidence,
       );
     } catch (_) {
       return info;

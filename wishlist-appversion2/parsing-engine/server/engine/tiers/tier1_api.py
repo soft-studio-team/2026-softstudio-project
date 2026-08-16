@@ -2,7 +2,9 @@
 Tier 1 — 공식 오픈 API 연동 (문서 5.2)
 ========================================
 
-대상: 쿠팡(파트너스 API), 네이버(쇼핑 검색 API), 11번가(OpenAPI).
+대상: 쿠팡(파트너스 API), 11번가(OpenAPI).
+네이버 쇼핑 검색 API는 2026-07-31 종료되어 운영 디스패처에서 제외하며,
+과거 응답 파서만 회귀/마이그레이션 참고용으로 보존한다.
 오픈마켓형 플랫폼은 외부 유입 트래픽이 곧 수익이므로 API를 공식 제공한다(문서 3.1).
 
 주의할 설계 포인트 — 이들 API는 대부분 **검색 API**다. "URL을 넣으면 상품이
@@ -37,7 +39,13 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 from typing import Callable, Protocol
 
-from ..models import Product, SourceType, discount_rate_from
+from ..models import (
+    PriceConfidence,
+    Product,
+    PurchasePriceStatus,
+    SourceType,
+    discount_rate_from,
+)
 from ..urltools import UrlInfo
 
 API_TIMEOUT = 8.0
@@ -84,10 +92,12 @@ class ApiCandidate:
     title: str
     image_url: str | None
     price: int | None
-    original_price: int | None = None  # 정가 (네이버 hprice 등)
+    original_price: int | None = None  # 의미가 명시된 할인 전 정가만 허용
     brand: str | None = None
     seller: str | None = None      # 판매자/입점 스토어 (네이버 mallName 등)
     category: str | None = None
+    offer_url: str | None = None   # 옵션(itemId/vendorItemId)을 포함한 API 상품 URL
+    price_field: str = "price"
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +109,7 @@ _TAG_RE = re.compile(r"<[^>]+>")
 # 이름 유사도 매칭의 최소 신뢰 기준. 이보다 낮으면 "다른 상품"으로 보고
 # 잘못된 데이터를 저장하느니 Tier 2로 폴백하는 것을 택한다.
 MIN_TITLE_SIMILARITY = 0.55
+MIN_TITLE_MARGIN = 0.08
 
 
 def strip_html_tags(text: str) -> str:
@@ -134,13 +145,29 @@ def match_candidates(
         return None
     # 1순위: 상품 식별자 일치 — 가장 확실한 매칭
     if product_id:
-        for candidate in candidates:
-            if candidate.product_id and str(candidate.product_id) == str(product_id):
-                return candidate
+        exact = [
+            candidate for candidate in candidates
+            if candidate.product_id and str(candidate.product_id) == str(product_id)
+        ]
+        if exact:
+            signatures = {
+                (strip_html_tags(candidate.title).strip(), candidate.price,
+                 candidate.original_price, candidate.offer_url)
+                for candidate in exact
+            }
+            # 같은 productId가 여러 옵션/판매가를 가리키면 첫 번째를 고르지 않는다.
+            return exact[0] if len(signatures) == 1 else None
     # 2순위: 이름 유사도 — 기준 미달이면 채택하지 않는다
     if keyword:
-        best = max(candidates, key=lambda c: title_similarity(c.title, keyword))
-        if title_similarity(best.title, keyword) >= MIN_TITLE_SIMILARITY:
+        ranked = sorted(
+            ((title_similarity(candidate.title, keyword), candidate)
+             for candidate in candidates),
+            key=lambda pair: pair[0], reverse=True,
+        )
+        best_score, best = ranked[0]
+        runner_up = ranked[1][0] if len(ranked) > 1 else 0.0
+        if (best_score >= MIN_TITLE_SIMILARITY
+                and best_score - runner_up >= MIN_TITLE_MARGIN):
             return best
     return None
 
@@ -165,7 +192,37 @@ def _candidate_to_product(
         platform_label=platform_label,
         source_type=SourceType.API,
         price_trackable=True,  # 공식 API 재조회로 가격 갱신 가능 (문서 6절)
+        purchase_price_status=(
+            PurchasePriceStatus.PROVISIONAL
+            if candidate.price is not None else PurchasePriceStatus.UNKNOWN
+        ),
+        price_confidence=(
+            PriceConfidence.MEDIUM
+            if candidate.price is not None else PriceConfidence.UNKNOWN
+        ),
+        price_evidence=[{
+            "price_role": "purchase_price",
+            "source": "api",
+            "adapter": f"{platform}_api",
+            "field": candidate.price_field,
+        }] if candidate.price is not None else [],
     )
+
+
+def _coupang_option_identity(url: str | None) -> dict[str, str]:
+    """공유 URL/API URL에서 선택 옵션 식별자를 뽑는다.
+
+    쿠팡의 path productId는 상품군 식별자이고 실제 수량·옵션은 itemId 및
+    vendorItemId가 구분하므로, 공유 URL에 존재하는 식별자는 모두 일치해야 한다.
+    """
+    if not url:
+        return {}
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+    return {
+        key: values[0]
+        for key in ("itemId", "vendorItemId")
+        if (values := query.get(key)) and values[0]
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -200,7 +257,9 @@ class OpenApiAdapter:
 class NaverShoppingAdapter(OpenApiAdapter):
     """GET https://openapi.naver.com/v1/search/shop.json?query=...
 
-    검색 전용 API이므로 반드시 매칭 단계를 거친다.
+    2026-07-31 종료된 검색 API의 과거 응답 호환 파서다.
+    운영 default_adapters에는 등록하지 않는다. 검색 결과를 재현하는 테스트에서도
+    반드시 매칭 단계를 거친다.
     응답 항목의 productId 가 URL의 식별자(스마트스토어 products/{id}, nvMid)와
     일치하면 그 항목을, 아니면 이름 유사도로 매칭한다.
     """
@@ -241,18 +300,19 @@ class NaverShoppingAdapter(OpenApiAdapter):
         candidates = []
         for item in items:
             sale = int(item["lprice"]) if str(item.get("lprice") or "").isdigit() else None
-            listed = int(item["hprice"]) if str(item.get("hprice") or "").isdigit() else None
             candidates.append(ApiCandidate(
                 product_id=str(item.get("productId") or "") or None,
                 title=item.get("title") or "",
                 image_url=item.get("image") or None,
                 price=sale,
-                original_price=listed,
+                # hprice는 공식 문서상 '최고가'이며 할인 전 정가가 아니다.
+                original_price=None,
                 brand=item.get("brand") or item.get("maker") or None,
                 seller=item.get("mallName") or None,  # 입점 판매자/스토어 이름
                 category=" > ".join(
                     c for c in (item.get(f"category{i}") for i in range(1, 5)) if c
                 ) or None,
+                price_field="items[].lprice",
             ))
         # title_hint() 이후에는 단축링크(naver.me)가 풀려 식별자가 생겼을 수 있다
         matched = match_candidates(candidates, ctx.url_info.product_id,
@@ -325,6 +385,8 @@ class CoupangPartnersAdapter(OpenApiAdapter):
                 price=item.get("productPrice")
                 if isinstance(item.get("productPrice"), int) else None,
                 category=item.get("categoryName") or None,
+                offer_url=item.get("productUrl") or None,
+                price_field="data.productData[].productPrice",
             )
             for item in product_data
         ]
@@ -333,6 +395,16 @@ class CoupangPartnersAdapter(OpenApiAdapter):
                                    clean_title_for_search(keyword))
         if matched is None:
             raise AdapterError("no confident match in coupang partners results")
+        target_option = _coupang_option_identity(ctx.url_info.url)
+        if target_option:
+            candidate_option = _coupang_option_identity(matched.offer_url)
+            if not candidate_option or any(
+                candidate_option.get(key) != value
+                for key, value in target_option.items()
+            ):
+                raise AdapterError(
+                    "coupang API candidate does not identify the shared item/vendor option"
+                )
         return _candidate_to_product(matched, ctx.url_info.url,
                                      self.platform, self.platform_label)
 
@@ -390,6 +462,7 @@ class ElevenStAdapter(OpenApiAdapter):
                 ),
                 price=int(price_text) if price_text and price_text.isdigit() else None,
                 seller=self._text(product, "SellerNick", "Seller"),  # 입점 판매자
+                price_field="Product.SalePrice",
             ))
         return candidates
 
@@ -400,11 +473,18 @@ class ElevenStAdapter(OpenApiAdapter):
                 {"apiCode": "ProductInfo", "productCode": ctx.url_info.product_id}
             )
             candidates = self._parse_products(root)
-            if candidates and candidates[0].title:
+            exact = [
+                candidate for candidate in candidates
+                if candidate.product_id == ctx.url_info.product_id and candidate.title
+            ]
+            signatures = {(c.title, c.price, c.image_url, c.seller) for c in exact}
+            if len(exact) == 1 or (exact and len(signatures) == 1):
                 return _candidate_to_product(
-                    candidates[0], ctx.url_info.url,
+                    exact[0], ctx.url_info.url,
                     self.platform, self.platform_label,
                 )
+            if candidates:
+                raise AdapterError("11st ProductInfo product id is missing, mismatched, or ambiguous")
         # 2) 키워드 검색 후 매칭
         keyword = ctx.title_hint()
         if not keyword:
@@ -425,7 +505,8 @@ class ElevenStAdapter(OpenApiAdapter):
 def default_adapters(transport: Transport | None = None) -> dict[str, OpenApiAdapter]:
     """플랫폼 코드 → 어댑터 매핑. 파이프라인이 사용한다."""
     adapters = (
-        NaverShoppingAdapter(transport),
+        # 네이버 쇼핑 검색 API는 2026-07-31 종료. 클래스는 과거 응답 회귀
+        # 테스트와 마이그레이션 참고용으로 남기되 운영 디스패처에서는 제외한다.
         CoupangPartnersAdapter(transport),
         ElevenStAdapter(transport),
     )

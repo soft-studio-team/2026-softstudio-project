@@ -26,18 +26,18 @@ class WishlistTab {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'isPublic': isPublic,
-        'color': colorHex,
-      };
+    'id': id,
+    'name': name,
+    'isPublic': isPublic,
+    'color': colorHex,
+  };
 
   factory WishlistTab.fromJson(Map<String, dynamic> json) => WishlistTab(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        isPublic: json['isPublic'] as bool? ?? true,
-        colorHex: json['color'] as String?,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    isPublic: json['isPublic'] as bool? ?? true,
+    colorHex: json['color'] as String?,
+  );
 }
 
 class Product {
@@ -96,32 +96,32 @@ class Product {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'listId': listId,
-        'name': name,
-        'price': price,
-        'image': image,
-        'platform': platform,
-        'originalPrice': originalPrice,
-        'discount': discount,
-        'productUrl': productUrl,
-        'memo': memo,
-        'isPublic': isPublic,
-      };
+    'id': id,
+    'listId': listId,
+    'name': name,
+    'price': price,
+    'image': image,
+    'platform': platform,
+    'originalPrice': originalPrice,
+    'discount': discount,
+    'productUrl': productUrl,
+    'memo': memo,
+    'isPublic': isPublic,
+  };
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
-        id: (json['id'] as num).toInt(),
-        listId: json['listId'] as String,
-        name: json['name'] as String,
-        price: (json['price'] as num?)?.toInt() ?? 0,
-        image: json['image'] as String? ?? '',
-        platform: json['platform'] as String? ?? '',
-        originalPrice: (json['originalPrice'] as num?)?.toInt(),
-        discount: (json['discount'] as num?)?.toInt(),
-        productUrl: json['productUrl'] as String?,
-        memo: json['memo'] as String?,
-        isPublic: json['isPublic'] as bool? ?? false,
-      );
+    id: (json['id'] as num).toInt(),
+    listId: json['listId'] as String,
+    name: json['name'] as String,
+    price: (json['price'] as num?)?.toInt() ?? 0,
+    image: json['image'] as String? ?? '',
+    platform: json['platform'] as String? ?? '',
+    originalPrice: (json['originalPrice'] as num?)?.toInt(),
+    discount: (json['discount'] as num?)?.toInt(),
+    productUrl: json['productUrl'] as String?,
+    memo: json['memo'] as String?,
+    isPublic: json['isPublic'] as bool? ?? false,
+  );
 }
 
 class AppUser {
@@ -164,25 +164,26 @@ class AppUser {
   }
 
   Map<String, dynamic> toJson() => {
-        'uid': uid,
-        'email': email,
-        'name': name,
-        'handle': handle,
-        'avatarUrl': avatarUrl,
-        'followers': followers,
-        'following': following,
-      };
+    'uid': uid,
+    'email': email,
+    'name': name,
+    'handle': handle,
+    'avatarUrl': avatarUrl,
+    'followers': followers,
+    'following': following,
+  };
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
-        uid: json['uid'] as String? ?? '',
-        email: json['email'] as String? ?? '',
-        name: json['name'] as String? ?? '사용자',
-        handle: json['handle'] as String? ?? '@user',
-        avatarUrl: json['avatarUrl'] as String? ??
-            'https://api.dicebear.com/7.x/thumbs/png?seed=user',
-        followers: (json['followers'] as num?)?.toInt() ?? 0,
-        following: (json['following'] as num?)?.toInt() ?? 0,
-      );
+    uid: json['uid'] as String? ?? '',
+    email: json['email'] as String? ?? '',
+    name: json['name'] as String? ?? '사용자',
+    handle: json['handle'] as String? ?? '@user',
+    avatarUrl:
+        json['avatarUrl'] as String? ??
+        'https://api.dicebear.com/7.x/thumbs/png?seed=user',
+    followers: (json['followers'] as num?)?.toInt() ?? 0,
+    following: (json['following'] as num?)?.toInt() ?? 0,
+  );
 }
 
 class Friend {
@@ -374,30 +375,30 @@ class AppNotification {
   final DateTime createdAt;
 
   AppNotification copyWith({bool? read}) => AppNotification(
-        id: id,
-        type: type,
-        fromUid: fromUid,
-        fromName: fromName,
-        fromHandle: fromHandle,
-        fromAvatar: fromAvatar,
-        message: message,
-        relatedId: relatedId,
-        createdAt: createdAt,
-        read: read ?? this.read,
-      );
+    id: id,
+    type: type,
+    fromUid: fromUid,
+    fromName: fromName,
+    fromHandle: fromHandle,
+    fromAvatar: fromAvatar,
+    message: message,
+    relatedId: relatedId,
+    createdAt: createdAt,
+    read: read ?? this.read,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'type': type.name,
-        'fromUid': fromUid,
-        'fromName': fromName,
-        'fromHandle': fromHandle,
-        'fromAvatar': fromAvatar,
-        'message': message,
-        'relatedId': relatedId,
-        'read': read,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'type': type.name,
+    'fromUid': fromUid,
+    'fromName': fromName,
+    'fromHandle': fromHandle,
+    'fromAvatar': fromAvatar,
+    'message': message,
+    'relatedId': relatedId,
+    'read': read,
+    'createdAt': createdAt.toIso8601String(),
+  };
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     final typeRaw = json['type'] as String? ?? 'follow';
@@ -546,55 +547,52 @@ class ProductReview {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'authorUid': authorUid,
-        'authorName': authorName,
-        'authorHandle': authorHandle,
-        'authorAvatar': authorAvatar,
-        'productId': productId,
-        'productName': productName,
-        'productImage': productImage,
-        'productPlatform': productPlatform,
-        'productPrice': productPrice,
-        'productUrl': productUrl,
-        'title': title,
-        'body': body,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-        'mood': mood,
-        'imageUrls': imageUrls,
-      };
+    'id': id,
+    'authorUid': authorUid,
+    'authorName': authorName,
+    'authorHandle': authorHandle,
+    'authorAvatar': authorAvatar,
+    'productId': productId,
+    'productName': productName,
+    'productImage': productImage,
+    'productPlatform': productPlatform,
+    'productPrice': productPrice,
+    'productUrl': productUrl,
+    'title': title,
+    'body': body,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt.toIso8601String(),
+    'mood': mood,
+    'imageUrls': imageUrls,
+  };
 
   factory ProductReview.fromJson(Map<String, dynamic> json) => ProductReview(
-        id: json['id'] as String? ?? '',
-        authorUid: json['authorUid'] as String? ?? '',
-        authorName: json['authorName'] as String? ?? '',
-        authorHandle: json['authorHandle'] as String? ?? '',
-        authorAvatar: json['authorAvatar'] as String? ?? '',
-        productId: (json['productId'] as num?)?.toInt() ?? 0,
-        productName: json['productName'] as String? ?? '',
-        productImage: json['productImage'] as String? ?? '',
-        productPlatform: json['productPlatform'] as String? ?? '',
-        productPrice: (json['productPrice'] as num?)?.toInt() ?? 0,
-        productUrl: json['productUrl'] as String?,
-        title: json['title'] as String? ?? '',
-        body: json['body'] as String? ?? '',
-        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
-            DateTime.now(),
-        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ??
-            DateTime.now(),
-        mood: (json['mood'] as num?)?.toInt() ?? 3,
-        imageUrls: (json['imageUrls'] as List? ?? [])
-            .map((e) => e.toString())
-            .toList(),
-      );
+    id: json['id'] as String? ?? '',
+    authorUid: json['authorUid'] as String? ?? '',
+    authorName: json['authorName'] as String? ?? '',
+    authorHandle: json['authorHandle'] as String? ?? '',
+    authorAvatar: json['authorAvatar'] as String? ?? '',
+    productId: (json['productId'] as num?)?.toInt() ?? 0,
+    productName: json['productName'] as String? ?? '',
+    productImage: json['productImage'] as String? ?? '',
+    productPlatform: json['productPlatform'] as String? ?? '',
+    productPrice: (json['productPrice'] as num?)?.toInt() ?? 0,
+    productUrl: json['productUrl'] as String?,
+    title: json['title'] as String? ?? '',
+    body: json['body'] as String? ?? '',
+    createdAt:
+        DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
+    updatedAt:
+        DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? DateTime.now(),
+    mood: (json['mood'] as num?)?.toInt() ?? 3,
+    imageUrls: (json['imageUrls'] as List? ?? [])
+        .map((e) => e.toString())
+        .toList(),
+  );
 }
 
 class BasketItem {
-  BasketItem({
-    required this.product,
-    this.isSelected = true,
-  });
+  BasketItem({required this.product, this.isSelected = true});
 
   final Product product;
   final bool isSelected;
@@ -621,6 +619,13 @@ class ParsedProductInfo {
     this.resolvedTier,
     this.engineUsed = true,
     this.onDeviceExtracted = false,
+    this.purchasePriceStatus = 'unknown',
+    this.priceConfidence = 'unknown',
+    this.availability = 'unknown',
+    this.optionDependent,
+    this.optionPriceMin,
+    this.optionPriceMax,
+    this.priceEvidence = const [],
   });
 
   final String name;
@@ -633,21 +638,54 @@ class ParsedProductInfo {
   final List<String> missingFields;
   final int? resolvedTier;
   final bool engineUsed;
+  final String purchasePriceStatus;
+  final String priceConfidence;
+  final String availability;
+  final bool? optionDependent;
+  final int? optionPriceMin;
+  final int? optionPriceMax;
+  final List<Map<String, dynamic>> priceEvidence;
+
+  /// Canonical v2 aliases. 기존 UI의 price/originalPrice는 하위 호환용이다.
+  int? get purchasePrice => price > 0 ? price : null;
+  int? get regularPrice => originalPrice;
 
   /// 단말 WebView(Tier 2.5)로 정보를 보완했는지. UI 배지 표시용.
   final bool onDeviceExtracted;
 
   /// 서버가 못 채운 칸을 단말 WebView 추출 결과로 메운다.
-  /// 이미 값이 있는 칸은 서버 값을 존중하고, 비어 있던 칸만 채운다.
+  /// [replacePrice]일 때는 화면에서 검증한 정가·판매가 쌍으로 교체한다.
   ParsedProductInfo mergeOnDevice({
     String? name,
     int? price,
+    int? originalPrice,
     String? image,
     String? platform,
+    bool replacePrice = false,
+    String? purchasePriceStatus,
+    String? priceConfidence,
+    String? availability,
+    bool? optionDependent,
+    int? optionPriceMin,
+    int? optionPriceMax,
+    List<Map<String, dynamic>>? priceEvidence,
   }) {
-    final filledPrice =
-        (this.price <= 0 && price != null && price > 0) ? price : this.price;
-    final filledName = (this.name.isEmpty || this.name == '공유된 상품') &&
+    final hasDevicePrice = price != null && price > 0;
+    final filledPrice = hasDevicePrice && (replacePrice || this.price <= 0)
+        ? price
+        : this.price;
+    final candidateOriginal = hasDevicePrice && replacePrice
+        ? originalPrice
+        : (this.originalPrice ?? originalPrice);
+    final filledOriginal =
+        candidateOriginal != null && candidateOriginal > filledPrice
+        ? candidateOriginal
+        : null;
+    final filledDiscount = filledOriginal != null && filledPrice > 0
+        ? ((filledOriginal - filledPrice) / filledOriginal * 100).round()
+        : null;
+    final filledName =
+        (this.name.isEmpty || this.name == '공유된 상품') &&
             name != null &&
             name.isNotEmpty
         ? name
@@ -657,10 +695,10 @@ class ParsedProductInfo {
         : this.image;
     final filledPlatform =
         (this.platform.isEmpty || this.platform == '쇼핑몰') &&
-                platform != null &&
-                platform.isNotEmpty
-            ? platform
-            : this.platform;
+            platform != null &&
+            platform.isNotEmpty
+        ? platform
+        : this.platform;
 
     final remaining = missingFields.where((f) {
       if (f == 'price') return filledPrice <= 0;
@@ -675,12 +713,33 @@ class ParsedProductInfo {
       platform: filledPlatform,
       image: filledImage,
       productUrl: productUrl,
-      originalPrice: originalPrice,
-      discount: discount,
+      originalPrice: filledOriginal,
+      discount: filledDiscount,
       missingFields: remaining,
       resolvedTier: resolvedTier,
       engineUsed: engineUsed,
       onDeviceExtracted: true,
+      purchasePriceStatus: hasDevicePrice
+          ? (purchasePriceStatus ?? 'provisional')
+          : this.purchasePriceStatus,
+      priceConfidence: hasDevicePrice
+          ? (priceConfidence ?? 'low')
+          : this.priceConfidence,
+      availability: availability ?? this.availability,
+      optionDependent: optionDependent ?? this.optionDependent,
+      optionPriceMin: optionPriceMin ?? this.optionPriceMin,
+      optionPriceMax: optionPriceMax ?? this.optionPriceMax,
+      priceEvidence: hasDevicePrice
+          ? (priceEvidence ??
+                const [
+                  {
+                    'price_role': 'purchase_price',
+                    'source': 'rendered-webview',
+                    'adapter': null,
+                    'field': null,
+                  },
+                ])
+          : this.priceEvidence,
     );
   }
 
@@ -690,7 +749,8 @@ class ParsedProductInfo {
     return ParsedProductInfo.fromEngineProduct(
       product,
       resolvedTier: json['resolved_tier'] as int?,
-      missingFields: (json['missing_fields'] as List?)
+      missingFields:
+          (json['missing_fields'] as List?)
               ?.map((e) => e.toString())
               .toList() ??
           const [],
@@ -703,35 +763,62 @@ class ParsedProductInfo {
     int? resolvedTier,
     List<String> missingFields = const [],
   }) {
+    final pricing = (product['pricing'] as Map?)?.cast<String, dynamic>();
+    final purchasePrice = pricing != null
+        ? (pricing['purchase_price'] as num?)?.toInt()
+        : (product['price'] as num?)?.toInt();
+    final regularPrice = pricing != null
+        ? (pricing['regular_price'] as num?)?.toInt()
+        : (product['original_price'] as num?)?.toInt() ??
+              (product['originalPrice'] as num?)?.toInt();
+    final evidence =
+        (pricing?['evidence'] as List?)
+            ?.whereType<Map>()
+            .map((e) => e.cast<String, dynamic>())
+            .toList() ??
+        const <Map<String, dynamic>>[];
     return ParsedProductInfo(
       name: (product['title'] as String?)?.trim().isNotEmpty == true
           ? product['title'] as String
           : (product['name'] as String? ?? '공유된 상품'),
-      price: (product['price'] as num?)?.toInt() ?? 0,
+      price: purchasePrice ?? 0,
       platform: (product['platform_label'] as String?)?.isNotEmpty == true
           ? product['platform_label'] as String
           : (product['source_platform'] as String? ??
-              product['platform'] as String? ??
-              '쇼핑몰'),
-      image: product['image_url'] as String? ??
-          product['image'] as String? ??
-          '',
-      productUrl: product['original_url'] as String? ??
+                product['platform'] as String? ??
+                '쇼핑몰'),
+      image:
+          product['image_url'] as String? ?? product['image'] as String? ?? '',
+      productUrl:
+          product['original_url'] as String? ??
           product['productUrl'] as String? ??
           product['url'] as String? ??
           '',
-      originalPrice: (product['original_price'] as num?)?.toInt() ??
-          (product['originalPrice'] as num?)?.toInt(),
-      discount: (product['discount_rate'] as num?)?.toInt() ??
+      originalPrice: regularPrice,
+      discount:
+          (product['discount_rate'] as num?)?.toInt() ??
           (product['discount'] as num?)?.toInt(),
       missingFields: missingFields.isNotEmpty
           ? missingFields
           : ((product['missing_fields'] as List?)
-                  ?.map((e) => e.toString())
-                  .toList() ??
-              const []),
+                    ?.map((e) => e.toString())
+                    .toList() ??
+                const []),
       resolvedTier: resolvedTier ?? product['resolved_tier'] as int?,
       engineUsed: true,
+      purchasePriceStatus:
+          pricing?['purchase_price_status'] as String? ??
+          product['purchase_price_status'] as String? ??
+          (purchasePrice == null ? 'unknown' : 'provisional'),
+      priceConfidence:
+          pricing?['confidence'] as String? ??
+          product['price_confidence'] as String? ??
+          'unknown',
+      availability: product['availability'] as String? ?? 'unknown',
+      optionDependent: pricing?['option_dependent'] as bool?,
+      optionPriceMin: (pricing?['option_price_min'] as num?)?.toInt(),
+      optionPriceMax: (pricing?['option_price_max'] as num?)?.toInt(),
+      priceEvidence: evidence,
     );
   }
 
@@ -739,6 +826,9 @@ class ParsedProductInfo {
     // Backward-compatible flat shape.
     if (json.containsKey('product')) {
       return ParsedProductInfo.fromEngineResponse(json);
+    }
+    if (json.containsKey('pricing') || json.containsKey('original_price')) {
+      return ParsedProductInfo.fromEngineProduct(json);
     }
     return ParsedProductInfo(
       name: json['name'] as String? ?? '상품',
