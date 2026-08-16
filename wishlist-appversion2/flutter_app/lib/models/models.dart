@@ -244,7 +244,6 @@ class FriendWishlist {
   final List<Product> items;
 }
 
-/// Snapshot of a basket shared via URL or sent to a friend in-app.
 /// How a [SharedBasket] left the app. A basket can carry more than one
 /// channel — e.g. a link share that was later re-sent to app friends.
 class SharedChannel {
@@ -253,6 +252,7 @@ class SharedChannel {
   static const kakao = 'kakao';
 }
 
+/// Snapshot of a basket shared via URL or sent to a friend in-app.
 class SharedBasket {
   SharedBasket({
     required this.id,
@@ -266,6 +266,7 @@ class SharedBasket {
     this.recipientUids = const [],
     this.recipientNames = const [],
     this.channels = const [],
+    this.lastSharedAt,
   });
 
   final String id;
@@ -280,14 +281,24 @@ class SharedBasket {
   final List<String> recipientNames;
   final List<String> channels;
 
+  /// When the basket was last sent out. Null on records written before this
+  /// existed, and on baskets never re-shared — [sharedAt] falls back to
+  /// [createdAt] in both cases.
+  final DateTime? lastSharedAt;
+
   /// Only friend-sent baskets belong in the 내 친구 탭 feed; link / KakaoTalk
   /// shares stay in 마이페이지 > 내가 보낸 살까말까.
   bool get sharedToFriends => channels.contains(SharedChannel.friends);
+
+  /// Sort key for the friends feed — a re-sent basket rises back to the top.
+  /// 마이페이지 keeps ordering by [createdAt] so the archive stays chronological.
+  DateTime get sharedAt => lastSharedAt ?? createdAt;
 
   SharedBasket copyWith({
     List<String>? recipientUids,
     List<String>? recipientNames,
     List<String>? channels,
+    DateTime? lastSharedAt,
   }) {
     return SharedBasket(
       id: id,
@@ -301,6 +312,7 @@ class SharedBasket {
       recipientUids: recipientUids ?? this.recipientUids,
       recipientNames: recipientNames ?? this.recipientNames,
       channels: channels ?? this.channels,
+      lastSharedAt: lastSharedAt ?? this.lastSharedAt,
     );
   }
 
@@ -316,6 +328,7 @@ class SharedBasket {
         'recipientUids': recipientUids,
         'recipientNames': recipientNames,
         'channels': channels,
+        'lastSharedAt': lastSharedAt?.toIso8601String(),
       };
 
   factory SharedBasket.fromJson(Map<String, dynamic> json) => SharedBasket(
@@ -344,6 +357,7 @@ class SharedBasket {
             ((json['recipientUids'] as List? ?? []).isNotEmpty
                 ? const [SharedChannel.friends]
                 : const [SharedChannel.link]),
+        lastSharedAt: DateTime.tryParse(json['lastSharedAt'] as String? ?? ''),
       );
 }
 

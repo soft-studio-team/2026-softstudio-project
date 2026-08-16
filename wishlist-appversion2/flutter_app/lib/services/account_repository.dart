@@ -418,8 +418,15 @@ class AccountRepository {
 
   /// Basket ids the user hid from the 내 친구 탭 살까말까 feed. Kept on their own
   /// profile doc so the state follows the account onto another device.
+  ///
+  /// Forced to read from the server: this value is treated as the source of
+  /// truth, and the offline SDK cache would hand back a stale set that then
+  /// overwrites newer local edits. Offline this throws, and the caller keeps
+  /// its own cache instead.
   Future<Set<String>> loadHiddenFeedBaskets(String uid) async {
-    final snap = await _userDoc(uid).get();
+    final snap = await _userDoc(uid).get(
+      const GetOptions(source: Source.server),
+    );
     final raw = snap.data()?['hiddenFeedBaskets'] as List? ?? const [];
     return raw.map((e) => e.toString()).toSet();
   }
@@ -429,6 +436,14 @@ class AccountRepository {
     if (ids.isEmpty) return;
     await _userDoc(uid).set({
       'hiddenFeedBaskets': FieldValue.arrayUnion(ids),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> unhideFeedBaskets(String uid, Iterable<String> basketIds) async {
+    final ids = basketIds.toList();
+    if (ids.isEmpty) return;
+    await _userDoc(uid).set({
+      'hiddenFeedBaskets': FieldValue.arrayRemove(ids),
     }, SetOptions(merge: true));
   }
 
