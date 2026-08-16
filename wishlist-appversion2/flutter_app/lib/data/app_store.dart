@@ -731,7 +731,9 @@ class AppStore extends ChangeNotifier {
   SharedBasket? sharedBasketById(String id) {
     final local = sharedBaskets[id];
     if (local != null) return local;
-    return receivedBaskets.where((b) => b.id == id).firstOrNull;
+    return receivedBaskets
+        .where((b) => b.id == id || b.threadId == id || b.commentThreadId == id)
+        .firstOrNull;
   }
 
   int get unreadNotificationCount =>
@@ -1063,7 +1065,9 @@ class AppStore extends ChangeNotifier {
     return _repo.uploadAvatarFile(userId, file);
   }
 
-  Future<SharedBasket> createSharedBasketFromSelection() async {
+  Future<SharedBasket> createSharedBasketFromSelection({
+    String memo = '',
+  }) async {
     final selected = basket
         .where((b) => b.isSelected)
         .map((b) => b.product)
@@ -1074,7 +1078,8 @@ class AppStore extends ChangeNotifier {
     return rememberSentBasket(
       items: selected,
       title: '살까말까 공유',
-      channels: const [SharedChannel.link],
+      channels: const [SharedChannel.friends],
+      memo: memo,
     );
   }
 
@@ -1092,6 +1097,7 @@ class AppStore extends ChangeNotifier {
     List<String> channels = const [],
     String? existingId,
     bool touchSharedAt = false,
+    String memo = '',
   }) async {
     final now = DateTime.now();
     final id = existingId ?? 'sb-${now.millisecondsSinceEpoch}';
@@ -1124,6 +1130,8 @@ class AppStore extends ChangeNotifier {
       publicPageId: existing?.publicPageId,
       publicUrl: existing?.publicUrl,
       publicUrlExpiresAt: existing?.publicUrlExpiresAt,
+      memo: memo.isNotEmpty ? memo : (existing?.memo ?? ''),
+      threadId: existing?.threadId.isNotEmpty == true ? existing!.threadId : id,
     );
     sharedBaskets[id] = shared;
     await _persistShared();
@@ -1137,7 +1145,10 @@ class AppStore extends ChangeNotifier {
     return shared;
   }
 
-  Future<void> sendBasketToFriends(List<String> friendIds) async {
+  Future<void> sendBasketToFriends(
+    List<String> friendIds, {
+    String memo = '',
+  }) async {
     final selected = basket
         .where((b) => b.isSelected)
         .map((b) => b.product)
@@ -1145,13 +1156,18 @@ class AppStore extends ChangeNotifier {
     if (selected.isEmpty) {
       throw Exception('공유할 상품을 선택해 주세요.');
     }
-    await resendBasketToFriends(items: selected, friendIds: friendIds);
+    await resendBasketToFriends(
+      items: selected,
+      friendIds: friendIds,
+      memo: memo,
+    );
   }
 
   Future<void> resendBasketToFriends({
     required List<Product> items,
     required List<String> friendIds,
     String? existingId,
+    String memo = '',
   }) async {
     if (items.isEmpty) {
       throw Exception('공유할 상품을 선택해 주세요.');
@@ -1164,10 +1180,17 @@ class AppStore extends ChangeNotifier {
     if (userId == null) {
       throw Exception('로그인된 계정이 없어요.');
     }
+    final existingBasket =
+        existingId == null ? null : sharedBaskets[existingId];
+    final threadId = existingBasket?.commentThreadId.isNotEmpty == true
+        ? existingBasket!.commentThreadId
+        : (existingId ?? 'sb-${DateTime.now().millisecondsSinceEpoch}');
     await _repo.sendBasketToFriends(
       from: currentUser.copyWith(uid: userId),
       recipientUids: friendIds,
       items: items,
+      threadId: threadId,
+      memo: memo,
     );
     final names = [
       for (final id in friendIds) friendById(id)?.name ?? '',
@@ -1178,12 +1201,54 @@ class AppStore extends ChangeNotifier {
       recipientUids: friendIds,
       recipientNames: names,
       channels: const [SharedChannel.friends],
-      existingId: existingId,
+      existingId: threadId,
       touchSharedAt: true,
+      memo: memo,
     );
     // Re-sending a basket that was X-ed out of the friends feed brings it back.
     // Covers both re-used ids (마이페이지 > 다시 보내기) and freshly minted ones.
     await unhideFromSalkamalkaFeed(shared.id);
+  }
+
+  Stream<List<BasketComment>> watchBasketComments(String threadId) {
+    if (threadId.isEmpty || !_firebaseConfigured || uid == null) {
+      return Stream.value(const []);
+    }
+    return _repo.watchBasketComments(threadId);
+  }
+
+  Future<void> postBasketComment({
+    required SharedBasket basket,
+    required String text,
+    String parentId = '',
+  }) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      throw Exception('댓글을 입력해 주세요.');
+    }
+    final threadId = basket.commentThreadId;
+    if (threadId.isEmpty) {
+      throw Exception('이 살까말까에는 댓글을 달 수 없어요.');
+    }
+    _ensureFirebase();
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    final ownerUid = basket.fromUid.isNotEmpty ? basket.fromUid : userId;
+    await _repo.addBasketComment(
+      threadId: threadId,
+      from: currentUser.copyWith(uid: userId),
+      text: trimmed,
+      parentId: parentId,
+      ownerUid: ownerUid,
+      participantUids: {
+        ownerUid,
+        userId,
+        ...basket.recipientUids,
+      }.toList(),
+      memo: basket.memo,
+    );
   }
 
   /// Hosts an HTML snapshot of [basket] in Storage and returns a public URL.

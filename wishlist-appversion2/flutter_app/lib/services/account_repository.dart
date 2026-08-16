@@ -20,6 +20,8 @@ import '../theme/avatar_presets.dart';
 ///   users/{uid}/sentBaskets/{basketId}
 ///   users/{uid}/reviews/{reviewId}
 ///   sharePages/{pageId}                 hosted 살까말까 HTML expiry metadata
+///   basketThreads/{threadId}            shared memo + participants
+///   basketThreads/{threadId}/comments/{commentId}
 ///
 /// Storage:
 ///   share-pages/{uid}/{pageId}.html     public HTML snapshot for link shares
@@ -78,6 +80,12 @@ class AccountRepository {
 
   CollectionReference<Map<String, dynamic>> get _sharePages =>
       _db.collection('sharePages');
+
+  CollectionReference<Map<String, dynamic>> get _basketThreads =>
+      _db.collection('basketThreads');
+
+  CollectionReference<Map<String, dynamic>> _basketComments(String threadId) =>
+      _basketThreads.doc(threadId).collection('comments');
 
   /// Creates Auth credentials and sends a verification email only.
   /// Firestore profile is created later via [ensureProfile] after verification.
@@ -1022,9 +1030,17 @@ class AccountRepository {
     required AppUser from,
     required List<String> recipientUids,
     required List<Product> items,
+    required String threadId,
+    String memo = '',
   }) async {
-    if (recipientUids.isEmpty || items.isEmpty) return;
+    if (recipientUids.isEmpty || items.isEmpty || threadId.isEmpty) return;
     final now = DateTime.now();
+    await upsertBasketThread(
+      threadId: threadId,
+      ownerUid: from.uid,
+      participantUids: recipientUids,
+      memo: memo,
+    );
     final batch = _db.batch();
     for (final recipientUid in recipientUids) {
       if (recipientUid == from.uid) continue;
@@ -1040,6 +1056,8 @@ class AccountRepository {
         items: items,
         createdAt: now,
         channels: const [SharedChannel.friends],
+        memo: memo,
+        threadId: threadId,
       );
       batch.set(basketRef, {
         ...basket.toJson(),
@@ -1050,7 +1068,133 @@ class AccountRepository {
         from: from,
         type: 'basket',
         message: '${from.name} 님이 살까말까 장바구니를 보냈어요',
-        relatedId: basketId,
+        relatedId: threadId,
+        batch: batch,
+      );
+    }
+    await batch.commit();
+  }
+
+  Future<void> upsertBasketThread({
+    required String threadId,
+    required String ownerUid,
+    required List<String> participantUids,
+    String memo = '',
+  }) async {
+    if (threadId.isEmpty || ownerUid.isEmpty) return;
+    final participants = {ownerUid, ...participantUids}.toList();
+    final ref = _basketThreads.doc(threadId);
+    final snap = await ref.get();
+    if (!snap.exists) {
+      await ref.set({
+        'id': threadId,
+        'ownerUid': ownerUid,
+        'participantUids': participants,
+        'memo': memo,
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+      return;
+    }
+    final existingMemo = snap.data()?['memo'] as String? ?? '';
+    await ref.update({
+      'participantUids': FieldValue.arrayUnion(participants),
+      if (existingMemo.isEmpty && memo.isNotEmpty) 'memo': memo,
+    });
+  }
+
+  Stream<List<BasketComment>> watchBasketComments(String threadId) {
+    if (threadId.isEmpty) {
+      return Stream.value(const []);
+    }
+    return _basketComments(threadId).snapshots().map((snap) {
+      final list = snap.docs.map((d) {
+        final data = Map<String, dynamic>.from(d.data());
+        data['id'] = data['id'] ?? d.id;
+        return BasketComment.fromJson(data);
+      }).toList();
+      list.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      return list;
+    });
+  }
+
+  Future<void> addBasketComment({
+    required String threadId,
+    required AppUser from,
+    required String text,
+    String parentId = '',
+    String ownerUid = '',
+    List<String> participantUids = const [],
+    String memo = '',
+  }) async {
+    final trimmed = text.trim();
+    if (threadId.isEmpty || from.uid.isEmpty || trimmed.isEmpty) return;
+    final threadRef = _basketThreads.doc(threadId);
+    var threadSnap = await threadRef.get();
+    if (!threadSnap.exists) {
+      final owner = ownerUid.isNotEmpty ? ownerUid : from.uid;
+      if (from.uid != owner) {
+        throw Exception('댓글 방을 찾을 수 없어요.');
+      }
+      await upsertBasketThread(
+        threadId: threadId,
+        ownerUid: owner,
+        participantUids: participantUids,
+        memo: memo,
+      );
+      threadSnap = await threadRef.get();
+    }
+    final comments = await _basketComments(threadId).get();
+    final existing = comments.docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = data['id'] ?? d.id;
+      return BasketComment.fromJson(data);
+    }).toList();
+    final resolvedParent = flattenCommentParentId(parentId, existing);
+    final commentRef = _basketComments(threadId).doc();
+    final comment = BasketComment(
+      id: commentRef.id,
+      threadId: threadId,
+      parentId: resolvedParent,
+      authorUid: from.uid,
+      authorName: from.name,
+      authorHandle: from.handle,
+      authorAvatar: from.avatarUrl,
+      text: trimmed,
+      createdAt: DateTime.now(),
+    );
+    await commentRef.set({
+      ...comment.toJson(),
+      'createdAtServer': FieldValue.serverTimestamp(),
+    });
+
+    final thread = threadSnap.data() ?? {};
+    final threadOwner = thread['ownerUid'] as String? ?? ownerUid;
+    final participants = (thread['participantUids'] as List? ?? participantUids)
+        .map((e) => e.toString())
+        .toSet();
+    final notify = <String>{};
+    if (threadOwner.isNotEmpty && threadOwner != from.uid) {
+      notify.add(threadOwner);
+    }
+    if (resolvedParent.isNotEmpty) {
+      final parent = existing.where((c) => c.id == resolvedParent).firstOrNull;
+      if (parent != null && parent.authorUid != from.uid) {
+        notify.add(parent.authorUid);
+      }
+    } else if (from.uid == threadOwner) {
+      notify.addAll(participants.where((uid) => uid != from.uid));
+    }
+    if (notify.isEmpty) return;
+    final batch = _db.batch();
+    for (final recipientUid in notify) {
+      await _writeInboxNotification(
+        recipientUid: recipientUid,
+        from: from,
+        type: 'comment',
+        message: resolvedParent.isEmpty
+            ? '${from.name} 님이 살까말까에 댓글을 남겼어요'
+            : '${from.name} 님이 살까말까 댓글에 답글을 남겼어요',
+        relatedId: threadId,
         batch: batch,
       );
     }

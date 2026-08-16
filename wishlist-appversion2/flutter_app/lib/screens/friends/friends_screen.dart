@@ -639,6 +639,15 @@ class _SalkamalkaFeedPane extends StatelessWidget {
                   ),
                 ],
               ),
+              if (b.memo.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  b.memo.trim(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: DiaryTheme.body(13),
+                ),
+              ],
               if (b.items.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 SizedBox(
@@ -730,7 +739,7 @@ class _SalkamalkaFeedPane extends StatelessWidget {
             : '';
         return '$names$extra에게 보냄  ·  상품 ${b.items.length}개';
       }
-      return '링크 공유  ·  상품 ${b.items.length}개';
+      return '친구에게 보냄  ·  상품 ${b.items.length}개';
     }
     return '${b.ownerName}에게 받음  ·  상품 ${b.items.length}개';
   }

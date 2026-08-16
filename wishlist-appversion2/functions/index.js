@@ -12,6 +12,7 @@ const titles = {
   basket: "살까말까",
   review: "친구 리뷰",
   list: "리스트 공개",
+  comment: "살까말까 댓글",
 };
 
 exports.pushOnInbox = onDocumentCreated(

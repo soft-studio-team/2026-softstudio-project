@@ -65,10 +65,14 @@ void main() {
       publicPageId: 'page-1',
       publicUrl: 'https://example.com/share.html',
       publicUrlExpiresAt: DateTime(2026, 9, 14),
+      memo: '고민 메모',
+      threadId: 'sb-1',
     );
     final decoded = SharedBasket.fromJson(shared.toJson());
     expect(decoded.publicPageId, 'page-1');
     expect(decoded.publicUrl, 'https://example.com/share.html');
     expect(decoded.publicUrlExpiresAt, DateTime(2026, 9, 14));
+    expect(decoded.memo, '고민 메모');
+    expect(decoded.threadId, 'sb-1');
   });
 }
