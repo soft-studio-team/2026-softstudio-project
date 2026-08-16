@@ -19,8 +19,10 @@ class AppStore extends ChangeNotifier {
   static const _sharedKey = 'shared_baskets';
   static const _pendingNameKey = 'pending_register_name';
   static const _pendingHandleKey = 'pending_register_handle';
-  static const _notifyFollowKey = 'notify_follow';
-  static const _notifyBasketKey = 'notify_basket';
+  static const _notificationsEnabledKey = 'notifications_enabled';
+  // Legacy per-type keys, read once to migrate into _notificationsEnabledKey.
+  static const _legacyNotifyFollowKey = 'notify_follow';
+  static const _legacyNotifyBasketKey = 'notify_basket';
   static const _reviewsKey = 'my_reviews';
 
   AppStore({AccountRepository? repository, bool? firebaseConfigured})
@@ -42,9 +44,8 @@ class AppStore extends ChangeNotifier {
   String? _pendingName;
   String? _pendingHandle;
 
-  /// In-app notification preferences (MyPage → 알림 설정).
-  bool notifyOnFollow = true;
-  bool notifyOnBasket = true;
+  /// In-app notification preference (MyPage → 알림 설정).
+  bool notificationsEnabled = true;
 
   List<WishlistTab> tabs = [];
   List<Product> products = [];
@@ -167,9 +168,20 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _reloadNotificationPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    final keySuffix = uid ?? 'guest';
-    notifyOnFollow = prefs.getBool('${_notifyFollowKey}_$keySuffix') ?? true;
-    notifyOnBasket = prefs.getBool('${_notifyBasketKey}_$keySuffix') ?? true;
+    notificationsEnabled = _readNotificationsEnabled(prefs, uid ?? 'guest');
+  }
+
+  /// Reads the single notifications toggle, migrating from the old
+  /// per-type (notify_follow / notify_basket) keys the first time: enabled
+  /// unless both legacy flags were stored as false.
+  bool _readNotificationsEnabled(SharedPreferences prefs, String keySuffix) {
+    final stored = prefs.getBool('${_notificationsEnabledKey}_$keySuffix');
+    if (stored != null) return stored;
+    final legacyFollow =
+        prefs.getBool('${_legacyNotifyFollowKey}_$keySuffix') ?? true;
+    final legacyBasket =
+        prefs.getBool('${_legacyNotifyBasketKey}_$keySuffix') ?? true;
+    return legacyFollow || legacyBasket;
   }
 
   /// Notifications / received baskets need updated Firestore rules.
@@ -673,15 +685,12 @@ class AppStore extends ChangeNotifier {
   int get unreadNotificationCount =>
       visibleNotifications.where((n) => !n.read).length;
 
-  /// Inbox rows filtered by MyPage notification preferences.
+  /// Inbox rows. Review/list notifications aren't part of the inbox;
+  /// everything else is always shown — notificationsEnabled only gates the
+  /// OS banner (see _watchInbox), not the in-app list.
   List<AppNotification> get visibleNotifications => notifications.where((n) {
-    if (n.type == AppNotificationType.review ||
-        n.type == AppNotificationType.list) {
-      return false;
-    }
-    if (n.type == AppNotificationType.follow) return notifyOnFollow;
-    if (n.type == AppNotificationType.basket) return notifyOnBasket;
-    return true;
+    return n.type != AppNotificationType.review &&
+        n.type != AppNotificationType.list;
   }).toList();
 
   List<FriendSalkamalka> get friendSalkamalkaGroups {
@@ -833,14 +842,8 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setNotifyOnFollow(bool value) async {
-    notifyOnFollow = value;
-    await _persistNotificationPrefs();
-    notifyListeners();
-  }
-
-  Future<void> setNotifyOnBasket(bool value) async {
-    notifyOnBasket = value;
+  Future<void> setNotificationsEnabled(bool value) async {
+    notificationsEnabled = value;
     await _persistNotificationPrefs();
     notifyListeners();
   }
@@ -855,7 +858,11 @@ class AppStore extends ChangeNotifier {
           if (!seen.contains(n.id) &&
               n.type != AppNotificationType.review &&
               n.type != AppNotificationType.list) {
-            unawaited(PushNotificationService.instance.showInboxBanner(n));
+            if (notificationsEnabled) {
+              unawaited(
+                PushNotificationService.instance.showInboxBanner(n),
+              );
+            }
           }
         }
       }
@@ -1067,10 +1074,7 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _loadLocalExtras() async {
     final prefs = await SharedPreferences.getInstance();
-    notifyOnFollow =
-        prefs.getBool('${_notifyFollowKey}_${uid ?? 'guest'}') ?? true;
-    notifyOnBasket =
-        prefs.getBool('${_notifyBasketKey}_${uid ?? 'guest'}') ?? true;
+    notificationsEnabled = _readNotificationsEnabled(prefs, uid ?? 'guest');
     final sharedRaw = prefs.getString(_sharedKey);
     if (sharedRaw != null) {
       final list = jsonDecode(sharedRaw) as List;
@@ -1085,8 +1089,10 @@ class AppStore extends ChangeNotifier {
   Future<void> _persistNotificationPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     final keySuffix = uid ?? 'guest';
-    await prefs.setBool('${_notifyFollowKey}_$keySuffix', notifyOnFollow);
-    await prefs.setBool('${_notifyBasketKey}_$keySuffix', notifyOnBasket);
+    await prefs.setBool(
+      '${_notificationsEnabledKey}_$keySuffix',
+      notificationsEnabled,
+    );
   }
 
   Product? findCatalogProduct(int id) {
