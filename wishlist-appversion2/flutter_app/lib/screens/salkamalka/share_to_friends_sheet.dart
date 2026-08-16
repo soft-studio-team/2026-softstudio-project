@@ -62,7 +62,7 @@ Future<({Set<String> friendIds, String memo})?> showShareToFriendsSheet({
                       maxLength: kShareMemoMaxLength,
                       onChanged: (_) => setModalState(() {}),
                       decoration: InputDecoration(
-                        hintText: '예: 지금 사면 너무 충동인가 싶어서 고민 중이에요',
+                        hintText: '사고 싶긴 한데… 내가 진짜 필요한 건지 그냥 갖고 싶은 건지 모르겠어서 고민 중...',
                         filled: true,
                         fillColor: DiaryColors.white,
                         border: OutlineInputBorder(
