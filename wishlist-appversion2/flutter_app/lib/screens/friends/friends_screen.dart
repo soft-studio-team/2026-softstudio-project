@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
+import '../../services/app_error.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 import '../reviews/review_widgets.dart';
@@ -28,6 +29,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
       setState(() => refreshing = true);
       try {
         await store.refreshFriends();
+      } catch (_) {
+        // friendsError banner already surfaces this.
       } finally {
         if (mounted) setState(() => refreshing = false);
       }
@@ -116,6 +119,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             setState(() => refreshing = true);
                             try {
                               await store.refreshFriends();
+                            } catch (_) {
+                              // friendsError banner already surfaces this.
                             } finally {
                               if (mounted) {
                                 setState(() => refreshing = false);
@@ -306,21 +311,21 @@ class _FollowingList extends StatelessWidget {
     try {
       await onToggleFollow(f);
       if (!context.mounted) return;
+      final warning = context.read<AppStore>().takeLastWarning();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            willFollow
-                ? '${f.name} 님을 팔로우했어요'
-                : '${f.name} 님 팔로우를 취소했어요',
+            warning ??
+                (willFollow
+                    ? '${f.name} 님을 팔로우했어요'
+                    : '${f.name} 님 팔로우를 취소했어요'),
           ),
-          duration: const Duration(seconds: 1),
+          duration: Duration(seconds: warning == null ? 1 : 3),
         ),
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('팔로우 실패: $e')),
-      );
+      showAppError(context, e, fallback: '지금은 팔로우하지 못했어요.');
     }
   }
 }
@@ -407,9 +412,7 @@ class _FollowersList extends StatelessWidget {
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('삭제 실패: $e')),
-      );
+      showAppError(context, e, fallback: '지금은 삭제하지 못했어요.');
     }
   }
 }
@@ -472,7 +475,7 @@ class _FriendWishlistsPane extends StatelessWidget {
     if (wishlists.isEmpty) {
       return Center(
         child: Text(
-          '공개된 친구 위시리스트가 없어요',
+          '공개된 위시리스트가 없어요',
           style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
         ),
       );

@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
+import '../../services/app_error.dart';
 import '../../theme/diary_theme.dart';
+import '../../widgets/app_status_view.dart';
 import '../../widgets/diary_widgets.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -21,8 +23,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final store = context.read<AppStore>();
       if (!store.isLoggedIn) return;
-      await store.refreshNotifications();
-      await store.markAllNotificationsRead();
+      try {
+        await store.refreshNotifications();
+        await store.markAllNotificationsRead();
+      } catch (_) {
+        // inboxError status view already surfaces this.
+      }
     });
   }
 
@@ -45,7 +51,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           style: DiaryTheme.ui(18, weight: FontWeight.w700),
         ),
       ),
-      body: items.isEmpty
+      body: store.inboxError != null && items.isEmpty
+          ? AppStatusView(
+              title: '목록을 불러오지 못했어요',
+              message: store.inboxError,
+              actionLabel: '다시 시도',
+              onAction: () => runAppAction(context, store.refreshNotifications),
+            )
+          : items.isEmpty
           ? Center(
               child: Text(
                 '아직 알림이 없어요',

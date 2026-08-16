@@ -117,8 +117,7 @@ class ParsingBridge {
       name: '공유된 상품',
       price: 0,
       platform: platform,
-      image:
-          'https://images.unsplash.com/photo-1524275406383-49f669cf763a?w=400&h=400&fit=crop',
+      image: '',
       productUrl: url,
       missingFields: const ['title', 'price', 'image_url'],
       resolvedTier: 3,

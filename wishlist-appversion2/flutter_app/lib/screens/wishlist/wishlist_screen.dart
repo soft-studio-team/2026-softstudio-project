@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
+import '../../services/app_error.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 
@@ -78,7 +79,12 @@ class _WishlistScreenState extends State<WishlistScreen> {
                           if (tab.id != 'all')
                             _PrivacyBanner(
                               isPublic: tab.isPublic,
-                              onToggle: () => store.toggleTabPublic(tab.id),
+                              onToggle: () => runAppAction(
+                                context,
+                                () => store.toggleTabPublic(tab.id),
+                                fallback:
+                                    '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
+                              ),
                             ),
                           Expanded(
                             child: products.isEmpty
@@ -108,7 +114,12 @@ class _WishlistScreenState extends State<WishlistScreen> {
                                         onOpen: () =>
                                             context.push('/product/${p.id}'),
                                         onDelete: () =>
-                                            store.removeProduct(p.id),
+                                            runAppAction(
+                                              context,
+                                              () => store.removeProduct(p.id),
+                                              fallback:
+                                                  '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
+                                            ),
                                       );
                                       return LayoutBuilder(
                                         builder: (context, constraints) {
@@ -168,9 +179,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       await store.moveProduct(product.id, tab.id);
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('이동에 실패했어요: $e')),
-      );
+      showAppError(context, e, fallback: '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.');
     }
   }
 
@@ -228,7 +237,11 @@ class _WishlistScreenState extends State<WishlistScreen> {
                   value: !latest.isPublic,
                   activeThumbColor: DiaryColors.fileTaupe,
                   onChanged: (_) {
-                    store.toggleTabPublic(latest.id);
+                    runAppAction(
+                      context,
+                      () => store.toggleTabPublic(latest.id),
+                      fallback: '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
+                    );
                     Navigator.pop(ctx);
                   },
                 ),
@@ -258,7 +271,11 @@ class _WishlistScreenState extends State<WishlistScreen> {
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
-                    store.deleteTab(latest.id);
+                    runAppAction(
+                      context,
+                      () => store.deleteTab(latest.id),
+                      fallback: '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
+                    );
                   },
                 ),
               ],
@@ -307,8 +324,12 @@ class _WishlistScreenState extends State<WishlistScreen> {
         ],
       ),
     );
-    if (name != null && name.isNotEmpty) {
-      await store.renameTab(tab.id, name);
+    if (name != null && name.isNotEmpty && context.mounted) {
+      await runAppAction(
+        context,
+        () => store.renameTab(tab.id, name),
+        fallback: '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
+      );
     }
   }
 
@@ -363,8 +384,12 @@ class _WishlistScreenState extends State<WishlistScreen> {
         ),
       ),
     );
-    if (ok == true && controller.text.trim().isNotEmpty) {
-      await store.addTab(controller.text.trim(), isPublic: isPublic);
+    if (ok == true && controller.text.trim().isNotEmpty && context.mounted) {
+      await runAppAction(
+        context,
+        () => store.addTab(controller.text.trim(), isPublic: isPublic),
+        fallback: '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
+      );
     }
   }
 }

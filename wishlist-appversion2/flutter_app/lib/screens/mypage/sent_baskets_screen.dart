@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
+import '../../services/app_error.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 
@@ -159,7 +160,7 @@ Future<void> showSentBasketShareSheet(
                   if (sheetCtx.mounted) Navigator.pop(sheetCtx);
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('링크 복사됨 · $url')),
+                    const SnackBar(content: Text('링크를 복사했어요.')),
                   );
                 },
               ),
@@ -265,13 +266,13 @@ Future<void> _resendToFriends(
       existingId: basket.id,
     );
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${selected.length}명의 친구에게 다시 보냈어요')),
+    final warning = store.takeLastWarning();
+    showAppMessage(
+      context,
+      warning ?? '${selected.length}명의 친구에게 다시 보냈어요',
     );
   } catch (e) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-    );
+    showAppError(context, e, fallback: '보내지 못했어요. 잠시 후 다시 시도해 주세요.');
   }
 }

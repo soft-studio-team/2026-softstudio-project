@@ -88,6 +88,24 @@ void main() {
     expect(review.imageUrls, isEmpty);
   });
 
+  test('unknown product id is missing, not replaced with another item', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    store.products = [
+      Product(
+        id: 1,
+        listId: 'all',
+        name: '첫 상품',
+        price: 1000,
+        image: 'https://example.com/a.png',
+        platform: '테스트',
+      ),
+    ];
+    expect(store.findCatalogProduct(1)?.name, '첫 상품');
+    expect(store.findCatalogProduct(999), isNull);
+  });
+
   test('Product json round-trips list privacy', () {
     final product = Product(
       id: 3,

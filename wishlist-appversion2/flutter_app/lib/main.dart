@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +10,9 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'data/app_store.dart';
 import 'firebase_options.dart';
+import 'services/app_error.dart';
 import 'services/push_notification_service.dart';
+import 'widgets/app_status_view.dart';
 import 'screens/auth/account_recovery_screen.dart';
 import 'screens/auth/email_verification_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -34,6 +37,21 @@ import 'widgets/diary_widgets.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    return true;
+  };
+  ErrorWidget.builder = (details) {
+    return const Material(
+      color: Color(0xFFECECEA),
+      child: AppStatusView(
+        title: '화면을 표시하지 못했어요',
+        message: '예상치 못한 오류가 났어요. 뒤로 가거나 다시 열어 주세요.',
+      ),
+    );
+  };
   if (isFirebaseConfigured) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -183,6 +201,12 @@ GoRouter _buildRouter(AppStore store) {
       }
       return null;
     },
+    errorBuilder: (context, state) => AppStatusScaffold(
+      title: '페이지를 찾을 수 없어요',
+      message: '주소가 잘못되었거나 더 이상 없는 화면이에요.',
+      actionLabel: '홈으로',
+      onAction: () => context.go('/'),
+    ),
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(
@@ -204,15 +228,29 @@ GoRouter _buildRouter(AppStore store) {
       ),
       GoRoute(
         path: '/product/:id',
-        builder: (context, state) => ProductDetailScreen(
-          productId: int.parse(state.pathParameters['id']!),
-        ),
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '');
+          if (id == null) {
+            return const AppStatusScaffold(
+              title: '이 상품은 없거나 삭제됐어요',
+              message: '주소가 올바르지 않아요.',
+            );
+          }
+          return ProductDetailScreen(productId: id);
+        },
       ),
       GoRoute(
         path: '/catalog-product/:id',
-        builder: (context, state) => ProductDetailScreen(
-          productId: int.parse(state.pathParameters['id']!),
-        ),
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '');
+          if (id == null) {
+            return const AppStatusScaffold(
+              title: '이 상품은 없거나 삭제됐어요',
+              message: '주소가 올바르지 않아요.',
+            );
+          }
+          return ProductDetailScreen(productId: id);
+        },
       ),
       GoRoute(
         path: '/friend-wishlist/:id',
@@ -221,14 +259,9 @@ GoRouter _buildRouter(AppStore store) {
           final store = context.read<AppStore>();
           final list = store.friendWishlistById(id);
           if (list == null) {
-            return Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.pop(),
-                ),
-              ),
-              body: const Center(child: Text('위시리스트를 찾을 수 없어요')),
+            return const AppStatusScaffold(
+              title: '공개된 위시리스트가 없어요',
+              message: '비공개이거나 더 이상 없는 리스트예요.',
             );
           }
           return SharedWishlistScreen(
@@ -283,14 +316,9 @@ GoRouter _buildRouter(AppStore store) {
           final store = context.read<AppStore>();
           final group = store.friendSalkamalkaByFriendId(friendId);
           if (group == null) {
-            return Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.pop(),
-                ),
-              ),
-              body: const Center(child: Text('받은 살까말까를 찾을 수 없어요')),
+            return const AppStatusScaffold(
+              title: '공유 링크를 찾을 수 없어요',
+              message: '링크가 만료되었거나 잘못된 주소예요.',
             );
           }
           return SharedWishlistScreen(
@@ -309,14 +337,9 @@ GoRouter _buildRouter(AppStore store) {
           final store = context.read<AppStore>();
           final shared = store.sharedBasketById(id);
           if (shared == null) {
-            return Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.pop(),
-                ),
-              ),
-              body: const Center(child: Text('공유 링크를 찾을 수 없어요')),
+            return const AppStatusScaffold(
+              title: '공유 링크를 찾을 수 없어요',
+              message: '링크가 만료되었거나 잘못된 주소예요.',
             );
           }
           return SharedWishlistScreen(
@@ -383,7 +406,26 @@ class HomeShell extends StatelessWidget {
         navigationShell.currentIndex == 1 && store.friendsTab == 4;
 
     return Scaffold(
-      body: navigationShell,
+      body: Column(
+        children: [
+          if (store.sessionError != null)
+            AppErrorBanner(
+              message: store.sessionError!,
+              onRetry: () => runAppAction(context, store.retrySession),
+            )
+          else if (store.inboxError != null)
+            AppErrorBanner(
+              message: store.inboxError!,
+              onRetry: () => runAppAction(context, store.refreshNotifications),
+            )
+          else if (store.friendsError != null)
+            AppErrorBanner(
+              message: store.friendsError!,
+              onRetry: () => runAppAction(context, store.refreshFriends),
+            ),
+          Expanded(child: navigationShell),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: DiaryColors.white,

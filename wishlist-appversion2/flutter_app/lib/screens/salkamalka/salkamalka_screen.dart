@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
+import '../../services/app_error.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 import 'basket_picker_sheet.dart';
@@ -233,7 +234,7 @@ class SalkamalkaScreen extends StatelessWidget {
                   Navigator.pop(sheetCtx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('링크 복사됨 · $url'),
+                      content: const Text('링크를 복사했어요.'),
                       action: SnackBarAction(
                         label: '미리보기',
                         onPressed: () => context.push('/shared/${shared.id}'),
@@ -343,16 +344,14 @@ class SalkamalkaScreen extends StatelessWidget {
     try {
       await store.sendBasketToFriends(selected.toList());
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${selected.length}명의 친구에게 살까말까를 보냈어요'),
-        ),
+      final warning = store.takeLastWarning();
+      showAppMessage(
+        context,
+        warning ?? '${selected.length}명의 친구에게 살까말까를 보냈어요',
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e')),
-      );
+      showAppError(context, e, fallback: '보내지 못했어요. 잠시 후 다시 시도해 주세요.');
     }
   }
 }

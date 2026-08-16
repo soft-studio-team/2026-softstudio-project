@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
+import '../../services/app_error.dart';
 import '../../theme/diary_theme.dart';
+import '../../widgets/app_status_view.dart';
 import '../../widgets/diary_widgets.dart';
 
 enum FollowListKind { followers, following }
@@ -50,7 +52,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = '$e';
+        _error = userFacingMessage(e);
         _loading = false;
       });
     }
@@ -60,7 +62,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
   Widget build(BuildContext context) {
     final isFollowers = widget.kind == FollowListKind.followers;
     final title = isFollowers ? '팔로워' : '팔로잉';
-    final emptyText = isFollowers ? '팔로워가 없습니다' : '팔로우하고 있는 사람이 없습니다';
+    final emptyText = isFollowers ? '아직 팔로워가 없어요' : '아직 팔로잉한 친구가 없어요';
 
     return Scaffold(
       backgroundColor: DiaryColors.canvas,
@@ -77,11 +79,11 @@ class _FollowListScreenState extends State<FollowListScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-                ? Center(
-                    child: Text(
-                      _error!,
-                      style: DiaryTheme.body(14, color: DiaryColors.pin),
-                    ),
+                ? AppStatusView(
+                    title: '목록을 불러오지 못했어요',
+                    message: _error,
+                    actionLabel: '다시 시도',
+                    onAction: _reload,
                   )
                 : (_users == null || _users!.isEmpty)
                     ? Center(
@@ -167,9 +169,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('삭제 실패: $e')),
-      );
+      showAppError(context, e, fallback: '지금은 삭제하지 못했어요.');
     }
   }
 }

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
+import '../../services/app_error.dart';
 import '../../services/parsing_bridge.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
@@ -61,11 +62,30 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
       final info = input.contains('http') && !input.trim().contains(' ')
           ? await bridge.parseProductUrl(input)
           : await bridge.scrapShareInput(input);
-      titleCtrl.text = info.name;
+      titleCtrl.text = info.isPlaceholder ? '' : info.name;
       priceCtrl.text = info.price > 0 ? '${info.price}' : '';
-      setState(() => parsed = info);
+      setState(() {
+        parsed = info;
+        if (info.isPlaceholder) {
+          error = '상품 정보를 읽지 못했어요. 이름과 가격을 직접 적어 주세요.';
+        }
+      });
     } catch (e) {
-      setState(() => error = '상품 정보를 읽지 못했어요');
+      titleCtrl.text = '';
+      priceCtrl.text = '';
+      setState(() {
+        parsed = ParsedProductInfo(
+          name: '',
+          price: 0,
+          platform: '쇼핑몰',
+          image: '',
+          productUrl: input.contains('http') ? input : '',
+          missingFields: const ['title', 'price', 'image_url'],
+          resolvedTier: 3,
+          engineUsed: false,
+        );
+        error = '상품 정보를 읽지 못했어요. 이름과 가격을 직접 적어 주세요.';
+      });
     } finally {
       setState(() => loading = false);
     }
@@ -73,7 +93,11 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
 
   Future<void> _save() async {
     if (parsed == null || selectedListId == null) return;
-    final name = titleCtrl.text.trim().isEmpty ? parsed!.name : titleCtrl.text.trim();
+    final name = titleCtrl.text.trim();
+    if (name.isEmpty) {
+      showAppMessage(context, '상품 이름을 입력해 주세요.');
+      return;
+    }
     final price = int.tryParse(priceCtrl.text.replaceAll(RegExp(r'[^0-9]'), '')) ??
         parsed!.price;
 
@@ -94,16 +118,21 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
     );
 
     final store = context.read<AppStore>();
-    final product = await store.addParsedProduct(
-      info,
-      listId: selectedListId!,
-    );
-    store.setPendingShareUrl(null);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product.name} 을(를) 저장했어요')),
+    try {
+      final product = await store.addParsedProduct(
+        info,
+        listId: selectedListId!,
+      );
+      store.setPendingShareUrl(null);
+      if (!mounted) return;
+      final warning = store.takeLastWarning();
+      showAppMessage(
+        context,
+        warning ?? '${product.name} 을(를) 저장했어요',
       );
       context.go('/');
+    } catch (e) {
+      if (mounted) showAppError(context, e, fallback: kSaveFailedMessage);
     }
   }
 

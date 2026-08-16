@@ -1,10 +1,11 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
+import '../../services/app_error.dart';
 import '../../theme/diary_theme.dart';
+import '../../widgets/app_status_view.dart';
 import '../../widgets/diary_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -52,33 +53,10 @@ class _LoginScreenState extends State<LoginScreen> {
           password: passwordCtrl.text,
         );
       }
-    } on FirebaseAuthException catch (e) {
-      setState(() => error = _mapAuthError(e));
     } catch (e) {
-      setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => error = userFacingMessage(e));
     } finally {
       if (mounted) setState(() => loading = false);
-    }
-  }
-
-  String _mapAuthError(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'email-already-in-use':
-        return '이미 가입된 이메일이에요. 로그인으로 전환해 보세요.';
-      case 'invalid-email':
-        return '이메일 형식이 올바르지 않아요.';
-      case 'weak-password':
-        return '비밀번호가 너무 짧아요 (6자 이상).';
-      case 'user-not-found':
-      case 'wrong-password':
-      case 'invalid-credential':
-        return '이메일 또는 비밀번호가 맞지 않아요.';
-      case 'network-request-failed':
-        return '네트워크 연결을 확인해 주세요.';
-      case 'too-many-requests':
-        return '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.';
-      default:
-        return e.message ?? '인증에 실패했어요 (${e.code})';
     }
   }
 
@@ -120,17 +98,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       if (!store.firebaseReady) ...[
                         const SizedBox(height: 14),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: DiaryColors.folderYellow.withValues(alpha: 0.45),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            store.firebaseError ??
-                                'Firebase 앱 등록이 필요해요. 프로젝트 루트의 FIREBASE_SETUP.md 를 확인하세요.',
-                            style: DiaryTheme.body(12),
-                          ),
+                        AppErrorBanner(
+                          message: store.firebaseError ??
+                              'Firebase 앱 등록이 필요해요. 프로젝트 루트의 FIREBASE_SETUP.md 를 확인하세요.',
+                        ),
+                      ] else if (store.sessionError != null) ...[
+                        const SizedBox(height: 14),
+                        AppErrorBanner(
+                          message: store.sessionError!,
+                          onRetry: () => runAppAction(context, store.retrySession),
                         ),
                       ],
                       const SizedBox(height: 24),

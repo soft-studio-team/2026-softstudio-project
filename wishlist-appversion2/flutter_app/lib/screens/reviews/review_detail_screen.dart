@@ -3,8 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
+import '../../services/app_error.dart';
 import '../../theme/avatar_presets.dart';
 import '../../theme/diary_theme.dart';
+import '../../widgets/app_status_view.dart';
 import '../../widgets/diary_widgets.dart';
 import 'review_widgets.dart';
 
@@ -18,14 +20,9 @@ class ReviewDetailScreen extends StatelessWidget {
     final store = context.watch<AppStore>();
     final review = store.reviewById(reviewId);
     if (review == null) {
-      return Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => context.pop(),
-          ),
-        ),
-        body: const Center(child: Text('리뷰를 찾을 수 없어요')),
+      return const AppStatusScaffold(
+        title: '리뷰를 찾을 수 없어요',
+        message: '삭제되었거나 잘못된 주소예요.',
       );
     }
     final isMine = review.authorUid == store.uid;
@@ -210,8 +207,14 @@ class ReviewDetailScreen extends StatelessWidget {
       ),
     );
     if (ok != true || !context.mounted) return;
-    await store.deleteReview(id);
-    if (!context.mounted) return;
-    context.pop();
+    try {
+      await store.deleteReview(id);
+      if (!context.mounted) return;
+      context.pop();
+    } catch (e) {
+      if (context.mounted) {
+        showAppError(context, e, fallback: '지금은 삭제하지 못했어요.');
+      }
+    }
   }
 }

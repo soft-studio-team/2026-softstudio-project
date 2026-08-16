@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
+import '../../services/app_error.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 
@@ -55,27 +56,21 @@ class _AccountRecoveryScreenState extends State<AccountRecoveryScreen> {
         }
       }
     } on FirebaseAuthException catch (e) {
-      setState(() => error = _mapAuthError(e));
+      setState(() {
+        error = e.code == 'user-not-found'
+            ? '해당 이메일로 가입된 계정을 찾지 못했어요.'
+            : userFacingMessage(
+                e,
+                fallback: '메일을 보내지 못했어요. 잠시 후 다시 시도해 주세요.',
+              );
+      });
     } catch (e) {
-      setState(() => error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => error = userFacingMessage(
+            e,
+            fallback: '메일을 보내지 못했어요. 잠시 후 다시 시도해 주세요.',
+          ));
     } finally {
       if (mounted) setState(() => loading = false);
-    }
-  }
-
-  String _mapAuthError(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'invalid-email':
-        return '이메일 형식이 올바르지 않아요.';
-      case 'user-not-found':
-        // Firebase often hides this; keep a gentle message.
-        return '해당 이메일로 가입된 계정을 찾지 못했어요.';
-      case 'too-many-requests':
-        return '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.';
-      case 'network-request-failed':
-        return '네트워크 연결을 확인해 주세요.';
-      default:
-        return e.message ?? '요청에 실패했어요 (${e.code})';
     }
   }
 

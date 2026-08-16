@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
+import '../../services/app_error.dart';
 import '../../theme/avatar_presets.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
@@ -162,8 +163,13 @@ class MyPageScreen extends StatelessWidget {
                               ],
                             ),
                           );
-                          if (name != null && name.isNotEmpty) {
-                            await store.addTab(name);
+                          if (name != null && name.isNotEmpty && context.mounted) {
+                            await runAppAction(
+                              context,
+                              () => store.addTab(name),
+                              fallback:
+                                  '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
+                            );
                           }
                         },
                       ),
@@ -359,11 +365,7 @@ class MyPageScreen extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-          ),
-        );
+        showAppError(context, e, fallback: kGenericMessage);
       }
     }
   }
@@ -453,11 +455,7 @@ class MyPageScreen extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-          ),
-        );
+        showAppError(context, e, fallback: kGenericMessage);
       }
     }
   }
@@ -556,18 +554,27 @@ class MyPageScreen extends StatelessWidget {
                       onPressed: saving
                           ? null
                           : () async {
-                              final picker = ImagePicker();
-                              final picked = await picker.pickImage(
-                                source: ImageSource.gallery,
-                                maxWidth: 1024,
-                                maxHeight: 1024,
-                                imageQuality: 85,
-                              );
-                              if (picked == null) return;
-                              setLocal(() {
-                                pendingUpload = File(picked.path);
-                                localError = null;
-                              });
+                              try {
+                                final picker = ImagePicker();
+                                final picked = await picker.pickImage(
+                                  source: ImageSource.gallery,
+                                  maxWidth: 1024,
+                                  maxHeight: 1024,
+                                  imageQuality: 85,
+                                );
+                                if (picked == null) return;
+                                setLocal(() {
+                                  pendingUpload = File(picked.path);
+                                  localError = null;
+                                });
+                              } catch (e) {
+                                setLocal(() {
+                                  localError = userFacingMessage(
+                                    e,
+                                    fallback: '사진 접근을 허용해야 넣을 수 있어요.',
+                                  );
+                                });
+                              }
                             },
                       icon: const Icon(Icons.photo_library_outlined, size: 18),
                       label: Text(
@@ -619,9 +626,7 @@ class MyPageScreen extends StatelessWidget {
                           } catch (e) {
                             setLocal(() {
                               saving = false;
-                              localError = e
-                                  .toString()
-                                  .replaceFirst('Exception: ', '');
+                              localError = userFacingMessage(e);
                             });
                           }
                         },
