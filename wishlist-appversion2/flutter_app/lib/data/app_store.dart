@@ -213,9 +213,9 @@ class AppStore extends ChangeNotifier {
     }
     try {
       final sent = await _repo.loadSentBaskets(userId);
-      for (final b in sent) {
-        sharedBaskets[b.id] = b;
-      }
+      sharedBaskets
+        ..clear()
+        ..addEntries(sent.map((b) => MapEntry(b.id, b)));
       await _persistShared();
     } catch (_) {}
     await _syncHiddenFeed(userId);
@@ -290,6 +290,7 @@ class AppStore extends ChangeNotifier {
     _hiddenFeedIds = {};
     _pendingHideIds = {};
     _pendingUnhideIds = {};
+    sharedBaskets.clear();
     currentUser = AppUser(
       name: '게스트',
       handle: '@guest',
@@ -779,24 +780,32 @@ class AppStore extends ChangeNotifier {
   /// Feed behind 내 친구 탭 > 살까말까. Display-level filtering only — nothing is
   /// dropped from [sentBaskets], which stays the full archive for 마이페이지.
   List<SalkamalkaFeedEntry> get salkamalkaFeed {
-    final mineIds = sentBaskets.map((b) => b.id).toSet();
+    final myUid = uid ?? '';
     final out = <SalkamalkaFeedEntry>[
       for (final b in receivedBaskets)
-        SalkamalkaFeedEntry(basket: b, isMine: false),
+        if (!_isSentByMe(b, myUid))
+          SalkamalkaFeedEntry(basket: b, isMine: false),
       // Link / KakaoTalk shares never went to an app friend, so they do not
       // belong in the friends feed.
       for (final b in sentBaskets)
-        if (b.sharedToFriends) SalkamalkaFeedEntry(basket: b, isMine: true),
+        if (b.sharedToFriends && _isSentByMe(b, myUid))
+          SalkamalkaFeedEntry(basket: b, isMine: true),
     ];
     // Prefer the sent copy when the same id somehow appears in both.
     final byId = <String, SalkamalkaFeedEntry>{};
     for (final e in out) {
       if (_hiddenFeedIds.contains(e.basket.id)) continue;
-      if (mineIds.contains(e.basket.id) && !e.isMine) continue;
+      if (_hiddenFeedIds.contains(e.basket.commentThreadId)) continue;
       byId[e.basket.id] = e;
     }
     return byId.values.toList()
       ..sort((a, b) => b.basket.sharedAt.compareTo(a.basket.sharedAt));
+  }
+
+  bool _isSentByMe(SharedBasket basket, String myUid) {
+    if (myUid.isEmpty) return false;
+    if (basket.fromUid.isNotEmpty) return basket.fromUid == myUid;
+    return sharedBaskets.containsKey(basket.id);
   }
 
   bool isHiddenFromSalkamalkaFeed(String id) => _hiddenFeedIds.contains(id);
@@ -1293,8 +1302,9 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _persistShared() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sharedKey);
     await prefs.setString(
-      _sharedKey,
+      '${_sharedKey}_${uid ?? 'guest'}',
       jsonEncode(sharedBaskets.values.map((s) => s.toJson()).toList()),
     );
   }
@@ -1329,13 +1339,21 @@ class AppStore extends ChangeNotifier {
   Future<void> _loadLocalExtras() async {
     final prefs = await SharedPreferences.getInstance();
     notificationsEnabled = _readNotificationsEnabled(prefs, uid ?? 'guest');
-    final sharedRaw = prefs.getString(_sharedKey);
-    if (sharedRaw != null) {
-      final list = jsonDecode(sharedRaw) as List;
-      for (final e in list) {
-        final map = Map<String, dynamic>.from(e as Map);
-        final basket = SharedBasket.fromJson(map);
-        sharedBaskets[basket.id] = basket;
+    if (sharedBaskets.isEmpty) {
+      final sharedRaw =
+          prefs.getString('${_sharedKey}_${uid ?? 'guest'}');
+      if (sharedRaw != null) {
+        final list = jsonDecode(sharedRaw) as List;
+        for (final e in list) {
+          final map = Map<String, dynamic>.from(e as Map);
+          final basket = SharedBasket.fromJson(map);
+          if (uid != null &&
+              basket.fromUid.isNotEmpty &&
+              basket.fromUid != uid) {
+            continue;
+          }
+          sharedBaskets[basket.id] = basket;
+        }
       }
     }
     await _restoreHiddenFeedLocal();

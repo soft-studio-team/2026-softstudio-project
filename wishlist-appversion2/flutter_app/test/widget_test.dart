@@ -194,4 +194,44 @@ void main() {
     expect(grouped.first.root.id, 'c1');
     expect(grouped.first.replies.map((c) => c.id), ['c2']);
   });
+
+  test('salkamalka feed does not show another account sent basket as mine', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    store.currentUser = AppUser(
+      uid: 'account-b',
+      name: '지은B',
+      handle: '@b',
+      avatarUrl: 'https://example.com/b.png',
+    );
+    store.sharedBaskets['sb-from-a'] = SharedBasket(
+      id: 'sb-from-a',
+      title: '지은A의 살까말까',
+      ownerName: '지은A',
+      fromUid: 'account-a',
+      createdAt: DateTime(2026, 8, 17),
+      items: const [],
+      recipientUids: const ['account-b'],
+      recipientNames: const ['지은B'],
+      channels: const [SharedChannel.friends],
+    );
+    store.receivedBaskets = [
+      SharedBasket(
+        id: 'recv-1',
+        title: '지은A의 살까말까',
+        ownerName: '지은A',
+        fromUid: 'account-a',
+        createdAt: DateTime(2026, 8, 17),
+        items: const [],
+        channels: const [SharedChannel.friends],
+        threadId: 'sb-from-a',
+      ),
+    ];
+
+    final feed = store.salkamalkaFeed;
+    expect(feed, hasLength(1));
+    expect(feed.first.isMine, isFalse);
+    expect(feed.first.basket.fromUid, 'account-a');
+  });
 }
