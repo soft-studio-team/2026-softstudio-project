@@ -416,6 +416,22 @@ class AccountRepository {
     }, SetOptions(merge: true));
   }
 
+  /// Basket ids the user hid from the 내 친구 탭 살까말까 feed. Kept on their own
+  /// profile doc so the state follows the account onto another device.
+  Future<Set<String>> loadHiddenFeedBaskets(String uid) async {
+    final snap = await _userDoc(uid).get();
+    final raw = snap.data()?['hiddenFeedBaskets'] as List? ?? const [];
+    return raw.map((e) => e.toString()).toSet();
+  }
+
+  Future<void> hideFeedBaskets(String uid, Iterable<String> basketIds) async {
+    final ids = basketIds.toList();
+    if (ids.isEmpty) return;
+    await _userDoc(uid).set({
+      'hiddenFeedBaskets': FieldValue.arrayUnion(ids),
+    }, SetOptions(merge: true));
+  }
+
   Future<void> removeFcmToken(String uid, String token) async {
     if (token.isEmpty) return;
     await _userDoc(uid).update({
@@ -960,6 +976,7 @@ class AccountRepository {
         fromAvatar: from.avatarUrl,
         items: items,
         createdAt: now,
+        channels: const [SharedChannel.friends],
       );
       batch.set(basketRef, {
         ...basket.toJson(),

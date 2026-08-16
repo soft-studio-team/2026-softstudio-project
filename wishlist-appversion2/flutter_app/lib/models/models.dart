@@ -244,6 +244,14 @@ class FriendWishlist {
 }
 
 /// Snapshot of a basket shared via URL or sent to a friend in-app.
+/// How a [SharedBasket] left the app. A basket can carry more than one
+/// channel — e.g. a link share that was later re-sent to app friends.
+class SharedChannel {
+  static const friends = 'friends';
+  static const link = 'link';
+  static const kakao = 'kakao';
+}
+
 class SharedBasket {
   SharedBasket({
     required this.id,
@@ -256,6 +264,7 @@ class SharedBasket {
     this.fromAvatar = '',
     this.recipientUids = const [],
     this.recipientNames = const [],
+    this.channels = const [],
   });
 
   final String id;
@@ -268,10 +277,16 @@ class SharedBasket {
   final String fromAvatar;
   final List<String> recipientUids;
   final List<String> recipientNames;
+  final List<String> channels;
+
+  /// Only friend-sent baskets belong in the 내 친구 탭 feed; link / KakaoTalk
+  /// shares stay in 마이페이지 > 내가 보낸 살까말까.
+  bool get sharedToFriends => channels.contains(SharedChannel.friends);
 
   SharedBasket copyWith({
     List<String>? recipientUids,
     List<String>? recipientNames,
+    List<String>? channels,
   }) {
     return SharedBasket(
       id: id,
@@ -284,6 +299,7 @@ class SharedBasket {
       fromAvatar: fromAvatar,
       recipientUids: recipientUids ?? this.recipientUids,
       recipientNames: recipientNames ?? this.recipientNames,
+      channels: channels ?? this.channels,
     );
   }
 
@@ -298,6 +314,7 @@ class SharedBasket {
         'items': items.map((p) => p.toJson()).toList(),
         'recipientUids': recipientUids,
         'recipientNames': recipientNames,
+        'channels': channels,
       };
 
   factory SharedBasket.fromJson(Map<String, dynamic> json) => SharedBasket(
@@ -318,6 +335,14 @@ class SharedBasket {
         recipientNames: (json['recipientNames'] as List? ?? [])
             .map((e) => e.toString())
             .toList(),
+        // Records written before channels existed: a basket with recipients
+        // went out to app friends, anything else was a link share.
+        channels: (json['channels'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            ((json['recipientUids'] as List? ?? []).isNotEmpty
+                ? const [SharedChannel.friends]
+                : const [SharedChannel.link]),
       );
 }
 

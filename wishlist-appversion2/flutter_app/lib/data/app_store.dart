@@ -22,6 +22,7 @@ class AppStore extends ChangeNotifier {
   static const _notifyFollowKey = 'notify_follow';
   static const _notifyBasketKey = 'notify_basket';
   static const _reviewsKey = 'my_reviews';
+  static const _hiddenFeedKey = 'hidden_feed_baskets';
 
   AppStore({AccountRepository? repository})
       : _repo = repository ?? AccountRepository();
@@ -55,6 +56,10 @@ class AppStore extends ChangeNotifier {
   List<ProductReview> myReviews = [];
   List<ProductReview> friendReviews = [];
   final Map<String, SharedBasket> sharedBaskets = {};
+
+  /// Baskets the user swiped away from the 내 친구 탭 feed. Cached locally so the
+  /// list does not flash them back while the cloud copy loads.
+  Set<String> _hiddenFeedIds = {};
 
   String selectedTabId = 'all';
   int friendsTab = 0;
@@ -190,6 +195,24 @@ class AppStore extends ChangeNotifier {
       }
       await _persistShared();
     } catch (_) {}
+    await _syncHiddenFeed(userId);
+  }
+
+  /// Local cache first (so nothing flashes), then reconcile with the profile
+  /// doc: pull down what other devices hid, push up what we hid offline.
+  Future<void> _syncHiddenFeed(String userId) async {
+    await _restoreHiddenFeedLocal();
+    try {
+      final remote = await _repo.loadHiddenFeedBaskets(userId);
+      final pending = _hiddenFeedIds.difference(remote);
+      if (remote.difference(_hiddenFeedIds).isNotEmpty) {
+        _hiddenFeedIds = {..._hiddenFeedIds, ...remote};
+        await _persistHiddenFeed();
+      }
+      if (pending.isNotEmpty) {
+        await _repo.hideFeedBaskets(userId, pending);
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadReviewsSafely(String userId) async {
@@ -224,6 +247,7 @@ class AppStore extends ChangeNotifier {
     receivedBaskets = [];
     myReviews = [];
     friendReviews = [];
+    _hiddenFeedIds = {};
     currentUser = AppUser(
       name: '게스트',
       handle: '@guest',
@@ -714,21 +738,64 @@ class AppStore extends ChangeNotifier {
   FriendSalkamalka? friendSalkamalkaByFriendId(String friendId) =>
       friendSalkamalkaGroups.where((g) => g.friendId == friendId).firstOrNull;
 
+  /// Feed behind 내 친구 탭 > 살까말까. Display-level filtering only — nothing is
+  /// dropped from [sentBaskets], which stays the full archive for 마이페이지.
   List<SalkamalkaFeedEntry> get salkamalkaFeed {
     final mineIds = sentBaskets.map((b) => b.id).toSet();
     final out = <SalkamalkaFeedEntry>[
       for (final b in receivedBaskets)
         SalkamalkaFeedEntry(basket: b, isMine: false),
-      for (final b in sentBaskets) SalkamalkaFeedEntry(basket: b, isMine: true),
+      // Link / KakaoTalk shares never went to an app friend, so they do not
+      // belong in the friends feed.
+      for (final b in sentBaskets)
+        if (b.sharedToFriends) SalkamalkaFeedEntry(basket: b, isMine: true),
     ];
     // Prefer the sent copy when the same id somehow appears in both.
     final byId = <String, SalkamalkaFeedEntry>{};
     for (final e in out) {
+      if (_hiddenFeedIds.contains(e.basket.id)) continue;
       if (mineIds.contains(e.basket.id) && !e.isMine) continue;
       byId[e.basket.id] = e;
     }
     return byId.values.toList()
       ..sort((a, b) => b.basket.createdAt.compareTo(a.basket.createdAt));
+  }
+
+  bool isHiddenFromSalkamalkaFeed(String id) => _hiddenFeedIds.contains(id);
+
+  /// Hides one entry from the friends feed only. The basket itself is kept, so
+  /// 마이페이지 > 내가 보낸 살까말까 still lists it.
+  Future<void> hideFromSalkamalkaFeed(String id) async {
+    if (!_hiddenFeedIds.add(id)) return;
+    notifyListeners();
+    await _persistHiddenFeed();
+    final userId = uid;
+    if (userId == null) return;
+    try {
+      await _repo.hideFeedBaskets(userId, [id]);
+    } catch (_) {
+      // Stays in the local cache and is pushed up on the next sync.
+    }
+  }
+
+  Future<void> _persistHiddenFeed() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      '${_hiddenFeedKey}_${uid ?? 'guest'}',
+      jsonEncode(_hiddenFeedIds.toList()),
+    );
+  }
+
+  Future<void> _restoreHiddenFeedLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('${_hiddenFeedKey}_${uid ?? 'guest'}');
+    if (raw == null) return;
+    try {
+      _hiddenFeedIds = {
+        ..._hiddenFeedIds,
+        ...(jsonDecode(raw) as List).map((e) => e.toString()),
+      };
+    } catch (_) {}
   }
 
   Future<List<AppUser>> loadFollowers() async {
@@ -941,6 +1008,7 @@ class AppStore extends ChangeNotifier {
     return rememberSentBasket(
       items: selected,
       title: '살까말까 공유',
+      channels: const [SharedChannel.link],
     );
   }
 
@@ -955,6 +1023,7 @@ class AppStore extends ChangeNotifier {
     String title = '살까말까 공유',
     List<String> recipientUids = const [],
     List<String> recipientNames = const [],
+    List<String> channels = const [],
     String? existingId,
   }) async {
     final now = DateTime.now();
@@ -968,6 +1037,11 @@ class AppStore extends ChangeNotifier {
       ...?existing?.recipientNames,
       ...recipientNames,
     }.where((n) => n.isNotEmpty).toList();
+    // Channels accumulate: a link share re-sent to friends counts as both.
+    final mergedChannels = {
+      ...?existing?.channels,
+      ...channels,
+    }.toList();
     final shared = SharedBasket(
       id: id,
       title: title,
@@ -979,6 +1053,7 @@ class AppStore extends ChangeNotifier {
       createdAt: existing?.createdAt ?? now,
       recipientUids: mergedUids,
       recipientNames: mergedNames,
+      channels: mergedChannels,
     );
     sharedBaskets[id] = shared;
     await _persistShared();
@@ -1033,6 +1108,7 @@ class AppStore extends ChangeNotifier {
       title: '${currentUser.name}의 살까말까',
       recipientUids: friendIds,
       recipientNames: names,
+      channels: const [SharedChannel.friends],
       existingId: existingId,
     );
   }
@@ -1088,6 +1164,7 @@ class AppStore extends ChangeNotifier {
         sharedBaskets[basket.id] = basket;
       }
     }
+    await _restoreHiddenFeedLocal();
   }
 
   Future<void> _persistNotificationPrefs() async {
