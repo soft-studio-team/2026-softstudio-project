@@ -680,7 +680,7 @@ class _FolderChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: DiaryColors.ink.withValues(alpha: 0.15)),
         ),
-        child: Text(
+        child: OneLineText(
           label,
           textAlign: TextAlign.center,
           style: DiaryTheme.body(13, weight: FontWeight.w600),

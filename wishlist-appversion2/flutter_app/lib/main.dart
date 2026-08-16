@@ -28,7 +28,9 @@ import 'screens/share/share_intake_screen.dart';
 import 'screens/shared/shared_wishlist_screen.dart';
 import 'screens/wishlist/wishlist_screen.dart';
 import 'services/share_input.dart';
+import 'theme/diary_scale.dart';
 import 'theme/diary_theme.dart';
+import 'widgets/diary_widgets.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -144,6 +146,8 @@ class _WishlistAppState extends State<WishlistApp> {
         debugShowCheckedModeBanner: false,
         theme: DiaryTheme.light,
         routerConfig: router,
+        builder: (context, child) =>
+            DiaryScale.wrap(context, child ?? const SizedBox.shrink()),
       ),
     );
   }
@@ -478,14 +482,18 @@ class _NavItem extends StatelessWidget {
                   : DiaryColors.ink.withValues(alpha: 0.35),
             ),
             const SizedBox(height: 2),
-            Text(
-              label,
-              style: DiaryTheme.body(
-                11,
-                weight: active ? FontWeight.w700 : FontWeight.w400,
-                color: active
-                    ? DiaryColors.ink
-                    : DiaryColors.ink.withValues(alpha: 0.4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: OneLineText(
+                label,
+                textAlign: TextAlign.center,
+                style: DiaryTheme.body(
+                  11,
+                  weight: active ? FontWeight.w700 : FontWeight.w400,
+                  color: active
+                      ? DiaryColors.ink
+                      : DiaryColors.ink.withValues(alpha: 0.4),
+                ),
               ),
             ),
           ],

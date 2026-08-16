@@ -42,9 +42,18 @@ class SalkamalkaScreen extends StatelessWidget {
                       Expanded(
                         child: store.basket.isEmpty
                             ? Center(
-                                child: Text('고민중인 상품을 담아 친구와 공유해보세요',
-                                    style: DiaryTheme.body(14,
-                                        color: DiaryColors.inkMuted)),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16),
+                                  child: OneLineText(
+                                    '고민중인 상품을 담아 친구와 공유해보세요',
+                                    textAlign: TextAlign.center,
+                                    style: DiaryTheme.body(
+                                      14,
+                                      color: DiaryColors.inkMuted,
+                                    ),
+                                  ),
+                                ),
                               )
                             : ListView.builder(
                                 itemCount: store.basket.length,
@@ -87,11 +96,16 @@ class SalkamalkaScreen extends StatelessWidget {
                                                           11,
                                                           color: DiaryColors
                                                               .inkMuted)),
-                                                  Text(item.product.name,
-                                                      style: DiaryTheme.body(
-                                                          14,
-                                                          weight: FontWeight
-                                                              .w700)),
+                                                  Text(
+                                                    item.product.name,
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: DiaryTheme.body(
+                                                      14,
+                                                      weight: FontWeight.w700,
+                                                    ),
+                                                  ),
                                                   Text(
                                                       formatWon(
                                                           item.product.price),
