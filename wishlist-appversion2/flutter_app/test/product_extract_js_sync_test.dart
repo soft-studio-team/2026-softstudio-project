@@ -91,5 +91,48 @@ void main() {
       contains('structuredPrice=sitePricing?sitePricing.price:'),
     );
     expect(productExtractJs, contains('(managedSite?null:domPrices.price)'));
+    expect(productExtractJs, isNot(contains('price = ld.price*100')));
+  });
+
+  test('대표 이미지 URL의 중복 스킴·HTML entity·상대경로를 정규화한다', () {
+    expect(productExtractJs, contains('function normalizeUrl(value)'));
+    expect(productExtractJs, contains("replace(/&amp;/gi,'&')"));
+    expect(productExtractJs, contains("new URL(s,location.href)"));
+    expect(
+      productExtractJs,
+      contains("location.protocol==='https:'&&/^http:\\/\\//i.test(s)"),
+    );
+  });
+
+  test('상품 범위의 구매 가능 증거만 가격 확인에 사용한다', () {
+    expect(productExtractJs, contains('var lookActions=Array.from'));
+    expect(
+      productExtractJs,
+      contains('if(!lookActions.length||lookSoldOut)return null'),
+    );
+    expect(
+      productExtractJs,
+      isNot(
+        contains(
+          "if(/품절/.test(document.body?document.body.innerText:''))return null",
+        ),
+      ),
+    );
+    expect(
+      productExtractJs,
+      contains('no.every(function(o){return !o.availability;})'),
+    );
+    expect(
+      productExtractJs,
+      contains("scriptPrice('product_price',raw)===sale"),
+    );
+    expect(productExtractJs, contains("'mixxo.com':['mixxo','구매하기']"));
+    expect(productExtractJs, contains("return result('hotping',hlo,null"));
+    expect(
+      productExtractJs,
+      contains("var visibleName=longest.replace(/_/g,' ')"),
+    );
+    expect(productExtractJs, contains('접속이 잠시 제한되었습니다'));
+    expect(productExtractJs, contains('잠시만 기다려 주세요'));
   });
 }

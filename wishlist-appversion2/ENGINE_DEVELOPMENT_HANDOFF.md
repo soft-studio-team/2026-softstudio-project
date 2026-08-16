@@ -1,0 +1,280 @@
+# wishkit 파싱 엔진 개발 인수인계서
+
+작성 기준일: 2026-08-16
+
+작업 디렉터리: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project\wishlist-appversion2`
+
+Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
+
+작업 브랜치: `feat/webview-engine-handoff`
+
+기준 원격 브랜치: `origin/main` (`69a5bf2`까지 확인 후 rebase)
+
+이 문서는 새 대화에서 wishkit 엔진 개발을 즉시 이어가기 위한 기준 문서다. 아래의 "다음 대화 시작 프롬프트"와 함께 이 파일을 읽도록 지시하면 된다.
+
+## 1. 현재 결론
+
+- Python 파싱 엔진과 Flutter WebView 추출기는 서로 다른 실행 경로다.
+- Python 엔진은 서버에서 HTTP/내부 데이터 규칙으로 동작하며, WebView 추출기는 Android/iOS 앱 안에서 렌더링된 페이지를 읽는다.
+- 현재 서버를 끈 Android WebView 단독 64개 대표 URL 감사에서 완전 PASS가 확인된 곳은 43개다.
+- 반스는 가격과 이미지는 추출했으나 상품명이 누락되어 `PARTIAL_MEDIA` 1개다.
+- 의도적으로 가격을 비우는 곳은 네이버 쇼핑, Gap, LF몰, NUGU, SHEIN 5개다.
+- 명시적 차단은 쿠팡과 H&M이었으며 SSG·올리브영도 실제로는 한국어 접근 제한 화면이다. 현재 코드에는 이 두 한국어 차단 문구 감지가 추가되어 있다.
+- 현대Hmall·리바이스·나이키·이랜드몰은 Android 실행에서 완전 결과가 없었고 11번가는 WebView timeout이었다.
+- WebView만으로 100% 자동 추출은 현실적으로 어렵다. 목표 구조는 WebView 우선, 실패 시 URL·상품명·이미지 저장과 가격 수동 입력, 필요할 때만 Python/API 폴백이다.
+
+## 2. 이번 작업에서 이미 반영한 변경
+
+핵심 파일: `flutter_app/lib/services/product_extract_js.dart`
+
+- 대표 이미지 URL 정규화
+  - `https:https://` 중복 스킴 교정
+  - `&amp;` 디코딩
+  - 상대경로를 상품 URL 기준 절대경로로 변환
+  - HTTPS 상품 페이지의 HTTP 이미지를 HTTPS로 우선 변환
+- ZARA의 검증되지 않은 `ld.price * 100` provisional 후처리 제거
+  - ZARA 전용 규칙이 성립하지 않으면 관리 도메인 원칙대로 가격을 비운다.
+- 룩핀
+  - 페이지 전체의 `품절` 문구를 보던 오류 제거
+  - 주상품의 활성 `장바구니 담기/구매하기`와 비활성 품절 버튼을 확인
+- 낫포유
+  - Product JSON-LD에 availability가 없더라도 판매 옵션, 표시 판매가, `product_price`, Product offer가 모두 일치할 때만 medium confidence로 확정
+- 미쏘
+  - 현재 구매 버튼 문구 `구매하기` 반영
+- 핫핑
+  - `product:retailer_item_id`, KRW 메타 판매가, `product_price`, Product live offer를 교차 검증
+  - 대표 상품 `29570`은 옵션에 따라 24,800~25,800원이므로 option-dependent로 반환
+- 파르티멘토
+  - JSON-LD 상품명의 `_`와 화면 공백 차이를 정규화
+- 오호라
+  - 추천/숨김 영역의 `재입고 알림` 때문에 정상 상품까지 차단하던 전역 검사를 제거
+  - 화면에 실제로 보이는 주상품 `장바구니/바로 구매` 동작을 확인
+- 접근 제한 감지
+  - `접속이 잠시 제한되었습니다`
+  - `잠시만 기다려 주세요`
+
+관련 테스트: `flutter_app/test/product_extract_js_sync_test.dart`
+
+- 대상 단위 테스트 7개 통과
+- 관련 Flutter analyze 0 issues
+
+## 3. 현재 작업 트리 상태
+
+작업 트리는 깨끗하지 않으며 다음 변경은 아직 커밋되지 않았다.
+
+```text
+ M CHANGELOG.md
+ M flutter_app/lib/services/product_extract_js.dart
+ M flutter_app/test/product_extract_js_sync_test.dart
+?? flutter_app/integration_test/webview_all_malls_audit_test.dart
+```
+
+`git reset --hard`, `git checkout --`, `git clean`을 사용하지 않는다. 기존 사용자 변경을 되돌리지 않는다. `git diff`에는 untracked 감사 러너 내용이 나오지 않으므로 `git status --short`와 실제 파일을 함께 확인한다.
+
+`flutter_app/android/local.properties`와 Flutter 전역 Android SDK 설정은 원래 SDK인 `C:\Users\tingo\AppData\Local\Android\sdk`로 복구했다. ADB 우회를 위해 만들었던 임시 SDK/프록시 디렉터리도 삭제했다.
+
+## 4. Android 전체 감사 결과
+
+환경:
+
+- Pixel 10 에뮬레이터
+- Android 17 / API 37
+- Python 서버 미사용
+- 로그인·결제·장바구니 변경 없음
+
+64개 재감사 집계:
+
+| 분류 | 수 | 의미 |
+|---|---:|---|
+| PASS | 43 | 상품명·이미지·확정 가격 반환 |
+| PARTIAL_MEDIA | 1 | 반스: 가격·이미지 정상, 상품명 누락 |
+| EXPECTED_ABSTAIN | 5 | 네이버, Gap, LF몰, NUGU, SHEIN |
+| PARTIAL_NO_PRICE | 8 | 당시 전용 규칙 미통과 또는 접근 제한 |
+| NO_RESULT | 4 | 현대Hmall, 리바이스, 나이키, 이랜드몰 |
+| BLOCKED | 2 | 쿠팡, H&M |
+| TIMEOUT | 1 | 11번가 |
+
+이 실행에서 새 표본으로 정상 통과한 주요 항목:
+
+- 룩핀 `3083865`: 28,900원 / 정가 54,900원
+- 무인양품 `1005531`: 9,900원
+- 리 `14252`: 79,200원 / 정가 99,000원
+- 낫포유 `261`: 15,900원 / 소비자가 17,900원
+- 인사일런스 `7481`: 59,000원
+- 게스 `45471`: 39,000원 / 정가 49,000원
+- Aritzia `133550?color=35023`: 88,900원
+- ZARA `05063701`: 상품명·이미지만 반환하고 검증되지 않은 가격은 안전하게 제거
+
+## 5. Android 최종 재검증이 남은 7개
+
+감사 러너는 `WEBVIEW_AUDIT_ONLY`로 1-based 인덱스를 선택할 수 있게 되어 있다.
+
+```text
+14 미쏘
+22 핫핑
+24 SSG
+46 오호라
+49 파르티멘토
+53 Reformation
+55 올리브영
+```
+
+현재 대표 URL:
+
+- 미쏘: `https://mixxo.com/product/detail.html?product_no=12455`
+- 핫핑: `https://hotping.co.kr/product/detail.html?product_no=29570`
+- SSG: `https://www.ssg.com/item/itemView.ssg?itemId=1000571660298`
+- 오호라: `https://ohora.kr/product/detail.html?product_no=2275`
+- 파르티멘토: `https://partimento.com/product/detail.html?product_no=16516`
+- Reformation: `https://www.thereformation.com/products/delia-dress/1317591.html`
+- 올리브영: `https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000260600`
+
+예상 결과는 미쏘·핫핑·오호라·파르티멘토·Reformation의 가격 정상 추출, SSG·올리브영의 `BLOCKED` 분류다. 그러나 이 예상은 수정 후 Android에서 아직 검증되지 않았으므로 통과로 보고하면 안 된다.
+
+## 6. WebView 안정화 작업 상태
+
+사용자 요청으로 구현 직전에 중단했다. `flutter_app/lib/services/webview_scraper.dart`는 아직 기존 구현 그대로다.
+
+현재 구현의 문제:
+
+- 첫 `onLoadStop` 이후 1초 간격으로 단순 폴링
+- 첫 가격이 나오면 즉시 반환하여 렌더링 중간 상태를 확정할 가능성
+- 비어 있거나 차단된 페이지 모두 origin 방문 후 원 URL 재접속을 시도
+- 명시적 차단 화면도 불필요하게 재시도할 수 있음
+- `evaluateJavascript` 자체가 멈추면 내부 timeout이 없어 11번가처럼 외부 45초 timeout까지 대기
+- 리다이렉트와 SPA 주소 변경의 안정화 시점을 추적하지 않음
+- 실패 이유가 `null` 또는 `blocked` 정도로만 구분됨
+
+권장 구현 순서:
+
+1. `onLoadStart`, `onLoadStop`, `onUpdateVisitedHistory`로 마지막 탐색 변경 시간을 기록한다.
+2. 마지막 주소/로드 변경 후 500~800ms 동안 안정된 경우에만 추출 JS를 실행한다.
+3. `evaluateJavascript` 호출마다 약 4초 timeout을 둔다. timeout 후 같은 controller에 호출을 중첩하지 말고 현재 best를 반환하거나 종료한다.
+4. 명시적인 `blocked=true`는 즉시 반환하고 origin warm-up/reload를 하지 않는다.
+5. 빈 결과에만 제한적으로 1회 reload를 허용한다. Access Denied·접속 제한·품절·가격 충돌에는 재시도하지 않는다.
+6. 가격 결과는 URL·adapter·price·originalPrice·옵션 범위 fingerprint가 두 번 연속 같을 때 반환한다. 단, 전체 대기 시간이 끝나면 가장 품질 높은 best 결과를 반환한다.
+7. `OnDeviceExtract` 또는 별도 실행 결과에 실패 이유를 추가한다.
+   - `loading_timeout`
+   - `script_timeout`
+   - `access_blocked`
+   - `network_error`
+   - `not_product_page`
+   - `price_ambiguous`
+   - `unsupported_currency`
+8. `WebViewScraper`의 controller/clock 부분을 추상화해 폴링·안정화 로직을 단위 테스트할 수 있게 한다.
+
+주의: 고정 대기 시간을 무작정 늘리는 것은 안정화가 아니다. 준비 상태 확인, 리다이렉트 안정성, 호출 timeout, 명시적 차단 조기 종료가 핵심이다.
+
+## 7. ADB 충돌
+
+PC의 SuperDisplay 서비스가 ADB server version 40을 자동으로 실행하고 Android SDK의 ADB client/server version 41과 충돌한다.
+
+대표 오류:
+
+```text
+adb server version (40) doesn't match this client (41)
+error: protocol fault / connection reset
+```
+
+이 때문에 마지막 Android 7건 설치 스트림이 끊겼다. 실물 Galaxy 앱이나 사용자 데이터는 삭제하지 않았다. 에뮬레이터 테스트 앱만 Flutter 재설치 과정에서 제거됐다.
+
+다음 실행 전 권장 조치:
+
+- 사용자가 SuperDisplay를 완전히 종료하거나 관리자 권한으로 해당 서비스를 일시 중지
+- SDK ADB만 실행되는지 `adb version`, `adb devices -l` 확인
+- 실물 기기 대신 Pixel 10 에뮬레이터를 사용
+- 테스트 종료 후 SuperDisplay가 필요하면 다시 시작
+
+서비스 중지 권한이 없다면 임시 ADB 프록시/가짜 SDK를 다시 만들지 말고 사용자가 직접 SuperDisplay를 종료하도록 안내하는 편이 안전하다.
+
+## 8. 테스트 명령
+
+Flutter 작업 디렉터리:
+
+```powershell
+cd C:\0.My_Project\17.SoftStudio\2026-softstudio-project\wishlist-appversion2\flutter_app
+```
+
+단위 테스트와 정적 분석:
+
+```powershell
+flutter test test/product_extract_js_sync_test.dart test/webview_scraper_result_test.dart
+flutter analyze lib/services/product_extract_js.dart lib/services/webview_scraper.dart integration_test/webview_all_malls_audit_test.dart test/product_extract_js_sync_test.dart
+```
+
+수정 대상 7개만 실행:
+
+```powershell
+flutter test integration_test/webview_all_malls_audit_test.dart -d emulator-5556 --dart-define=WEBVIEW_AUDIT_ONLY=14,22,24,46,49,53,55
+```
+
+전체 감사는 11번가의 네이티브 WebView hang이 후속 테스트를 오염시킬 수 있으므로 나눈다.
+
+```powershell
+flutter test integration_test/webview_all_malls_audit_test.dart -d emulator-5556 --dart-define=WEBVIEW_AUDIT_START=0 --dart-define=WEBVIEW_AUDIT_END=3
+flutter test integration_test/webview_all_malls_audit_test.dart -d emulator-5556 --dart-define=WEBVIEW_AUDIT_START=3 --dart-define=WEBVIEW_AUDIT_END=64
+```
+
+Python 엔진의 마지막 기록된 전체 검증:
+
+- 비통합 테스트 261개 통과
+- 실네트워크 통합 테스트 2개 통과
+
+Python 엔진을 변경하면 현재 Windows Python/프로젝트 의존성으로 다시 검증하고, 실행하지 않은 테스트를 통과했다고 보고하지 않는다.
+
+## 9. WebView 안정화 다음에 남는 엔진 단계
+
+1. Android WebView 안정화 및 64개 재감사
+2. iOS 실물 기기에서 동일 대표 URL 감사
+3. Android와 iOS 차이를 반영한 공통/플랫폼별 로딩 정책
+4. 반스 상품명 누락 수정
+5. 현대Hmall·리바이스·나이키·이랜드몰 NO_RESULT 원인 분리
+6. 11번가 script/native timeout 격리
+7. 다중 통화 모델 추가
+   - 통화 코드
+   - 소수 가격 보존
+   - Gap/NUGU 지원 재검토
+8. LF몰 렌더링 옵션·재고 데이터 지원 여부 결정
+9. SHEIN 조건부 가격을 안전하게 분리할 수 있는지 재조사
+10. 실패 시 앱 UX 구현
+    - 상품명·이미지·URL은 저장
+    - 가격만 사용자 입력
+    - 차단/지원 통화/품절/불명확 사유 표시
+11. Python 서버를 선택적 폴백으로 유지할지, 완전 서버리스로 출시할지 최종 결정
+12. 최종적으로 `product_extract_js.dart`와 Python 쇼핑몰 규칙의 자동 동기화/대조 테스트 강화
+
+## 10. 기록 파일
+
+- 전체 프로젝트 개요: `C:\0.My_Project\17.SoftStudio\PROJECT_OVERVIEW.md`
+- 가격 스키마: `parsing-engine/server/PRICE_SCHEMA.md`
+- 쇼핑몰 상세 조사: `C:\0.My_Project\17.SoftStudio\0.EngineTest\data\MALL_ADAPTER_PROGRESS.md`
+- Android 최초 원본 결과: `C:\0.My_Project\17.SoftStudio\0.EngineTest\data\webview_android_audit_64_2026-08-16.json`
+- 변경 이력: `CHANGELOG.md`
+- WebView 가격 규칙: `flutter_app/lib/services/product_extract_js.dart`
+- WebView 실행기: `flutter_app/lib/services/webview_scraper.dart`
+- Android 64개 감사 러너: `flutter_app/integration_test/webview_all_malls_audit_test.dart`
+
+## 11. 안전 규칙
+
+- 로그인·결제·사용자 데이터 삭제 금지
+- 사용자가 담은 장바구니 상품을 구분할 수 없으면 삭제하지 않음
+- 실물 기기 앱 제거 또는 데이터 초기화 금지
+- `git reset --hard`, `git checkout --`, `git clean` 금지
+- dirty/untracked 파일을 기존 작업으로 간주하고 보존
+- 관리 쇼핑몰 전용 가격 규칙 실패 시 범용 JSON-LD/OG/DOM 가격으로 우회하지 않음
+- 틀린 가격보다 `null`이 안전함
+- 차단 사이트를 우회하거나 로그인 세션을 자동으로 만들지 않음
+
+## 12. 다음 대화 시작 프롬프트
+
+아래 내용을 새 대화에 그대로 붙여 넣으면 된다.
+
+```text
+GitHub의 `feat/webview-engine-handoff` 브랜치를 checkout한 뒤 C:\0.My_Project\17.SoftStudio\2026-softstudio-project\wishlist-appversion2\ENGINE_DEVELOPMENT_HANDOFF.md를 먼저 끝까지 읽고 wishkit 엔진 개발을 이어서 진행해줘.
+
+현재 우선순위는 Flutter WebView 안정화다. webview_scraper.dart에 리다이렉트/SPA 안정 대기, evaluateJavascript timeout, 명시적 차단 조기 종료, 빈 결과 1회 재시도, 동일 가격 fingerprint 2회 확인, 실패 이유 분류를 보수적으로 구현해줘. 단순히 대기 시간만 늘리지는 마.
+
+구현 후 단위 테스트와 analyze를 실행하고, SuperDisplay ADB 충돌이 해소된 경우 Android 에뮬레이터에서 WEBVIEW_AUDIT_ONLY=14,22,24,46,49,53,55를 먼저 검증한 다음 64개 전체 감사를 진행해줘. ADB 충돌이 계속되면 실물 기기의 앱이나 데이터를 삭제하지 말고 정확히 미검증으로 기록해줘.
+
+현재 작업 트리는 dirty 상태이므로 reset/checkout/clean을 하지 말고 기존 변경을 보존해줘. 로그인·결제·사용자 데이터 삭제·장바구니 전체 삭제는 하지 마.
+```

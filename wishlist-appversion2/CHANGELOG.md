@@ -1,5 +1,37 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-16 - Android WebView 이미지·가격 안전성 보정
+
+🌟 **쉬운 설명**
+- 깨진 대표 이미지 주소를 앱에서 자동으로 정상화하고, ZARA처럼 전용 규칙이 확인되지 않은 관리 쇼핑몰은 화면 숫자를 임의 가격으로 저장하지 않게 했습니다.
+- 오래된 품절 감사 상품을 현재 판매 상품으로 바꾸고 룩핀·낫포유 등 실제 Android 누락 원인을 보완했습니다.
+
+🔧 **기술 설명**
+- 이미지 URL의 중복 스킴(`https:https://`), HTML entity(`&amp;`), 상대경로, HTTPS 페이지의 HTTP 이미지를 정규화합니다.
+- 룩핀과 오호라는 페이지 전체의 추천상품/숨김 UI에 있는 `품절·재입고` 문구 대신 주상품의 활성 구매 동작만 사용합니다. 낫포유는 JSON-LD에 availability가 없을 때 판매 옵션, 표시 판매가, `product_price`, Product offer가 모두 일치해야만 확정합니다.
+- 미쏘 구매 버튼 문구, 파르티멘토의 밑줄 상품명, 핫핑 옵션별 24,800~25,800원 범위를 현재 렌더링 구조에 맞췄습니다. SSG·올리브영의 한국어 접근 제한 화면은 `BLOCKED`로 분류합니다.
+- Android 17 에뮬레이터 64개 1차 재감사는 PASS 43, 가격은 확인됐으나 이름 누락 1, 의도적 abstain 5, 가격 없음 8, 완전 결과 없음 4, 접근 차단 2, timeout 1이었습니다. 이 실행에서 룩핀·무인양품·리·낫포유·인사일런스·게스·Aritzia가 새 판매 표본으로 정상 통과했고 ZARA provisional 가격은 제거됐습니다.
+- 이후 미쏘·핫핑·오호라·파르티멘토·Reformation 표본/규칙과 SSG·올리브영 차단 분류를 보완했습니다. 대상 단위 테스트 7개와 정적 분석(0 issues)은 통과했지만, 마지막 Android 7건 재실행은 SuperDisplay ADB 40이 SDK ADB 41 서버를 반복 교체해 설치 스트림이 끊겨 완료하지 못했습니다. 이 7건은 Android 통과로 보고하지 않습니다.
+- 로그인·결제·실물 기기 앱 삭제는 하지 않았습니다.
+
+---
+
+## 2026-08-16 - Android WebView 64개 쇼핑몰 대표 상품 감사
+
+🌟 **쉬운 설명**
+- Python 서버를 사용하지 않고 Pixel 10 Android 에뮬레이터에서 등록 쇼핑몰 64곳을 한 건씩 직접 열어 상품명·이미지·가격 추출 여부를 확인했습니다.
+- 37곳은 쇼핑몰 전용 규칙으로 조건 없는 구매 가격까지 확정했고, Gap·LF몰·NUGU·SHEIN·네이버 쇼핑 5곳은 설계대로 잘못된 양수 가격을 만들지 않았습니다.
+- 나머지는 접근 차단, 판매 종료 표본, 최신 페이지 구조와 규칙 불일치로 확인되어 WebView 규칙 보정과 판매 중 URL 재검증이 필요합니다.
+
+🔧 **기술 설명**
+- `integration_test/webview_all_malls_audit_test.dart`에 서버를 거치지 않는 64개 URL 배치 러너, 쇼핑몰별 45초 격리 제한, JSON line 결과 출력을 추가했습니다.
+- Android 17/API 37 에뮬레이터 결과는 confirmed 37, expected abstain 5, provisional 1, partial-no-price 14, no-result 4, blocked 2, timeout 1입니다.
+- 쿠팡과 H&M은 Access Denied, 11번가는 네이티브 WebView timeout, SSG는 접속 제한 화면이었습니다. ZARA는 숫자를 얻었지만 전용 규칙이 아닌 provisional 폴백이어서 confirmed로 세지 않았습니다.
+- 이미지 결과는 정상 HTTPS 45, 누락 11, 중복 스킴 3, HTML entity가 남은 쿼리 2, HTTP 2, 상대 경로 1입니다. 결과 원본은 `0.EngineTest/data/webview_android_audit_64_2026-08-16.json`에 기록했습니다.
+- 로그인·결제·장바구니 변경은 하지 않았습니다. Galaxy 실물 기기 실행은 PC의 구형/신형 ADB 충돌로 시작되지 않아 이번 수치에 포함하지 않았습니다.
+
+---
+
 ## 2026-08-16 - 패션 플랫폼 선택 확장 9곳
 
 🌟 **쉬운 설명**
