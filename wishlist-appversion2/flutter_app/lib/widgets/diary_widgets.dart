@@ -9,12 +9,14 @@ class DiaryGridPaper extends StatelessWidget {
     this.color = DiaryColors.paper,
     this.padding = const EdgeInsets.all(12),
     this.borderRadius = 16,
+    this.border,
   });
 
   final Widget child;
   final Color color;
   final EdgeInsets padding;
   final double borderRadius;
+  final BoxBorder? border;
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +24,7 @@ class DiaryGridPaper extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(borderRadius),
+        border: border,
       ),
       child: CustomPaint(
         painter: _GridPainter(color: DiaryColors.grid.withValues(alpha: 0.45)),
@@ -58,52 +61,28 @@ class SpiralNotebook extends StatelessWidget {
     super.key,
     required this.child,
     this.folderColor = DiaryColors.folderBlue,
+    this.border,
   });
 
   final Widget child;
   final Color folderColor;
+  final BoxBorder? border;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: folderColor,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 18,
-            child: CustomPaint(painter: _SpiralPainter()),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(0, 8, 10, 8),
-              child: DiaryGridPaper(
-                borderRadius: 12,
-                padding: EdgeInsets.zero,
-                child: child,
-              ),
-            ),
-          ),
-        ],
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        child: DiaryGridPaper(
+          borderRadius: 12,
+          padding: EdgeInsets.zero,
+          border: border,
+          child: child,
+        ),
       ),
     );
   }
-}
-
-class _SpiralPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF555555)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    for (double y = 16; y < size.height - 8; y += 22) {
-      canvas.drawCircle(Offset(size.width / 2, y), 4.5, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class MineBadge extends StatelessWidget {
