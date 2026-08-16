@@ -54,16 +54,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                 onMoveProduct: (p, t) => _handleMoveProduct(context, store, p, t),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '스와이프: 스크롤 · 더블탭: 편집 · 꾹 눌러 드래그: 탭 순서 변경 · 아이템 이동',
-                  style: DiaryTheme.ui(11, color: DiaryColors.inkMuted),
-                ),
-              ),
-            ),
+            const SizedBox(height: 10),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
