@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,6 +19,10 @@ import '../theme/avatar_presets.dart';
 ///   users/{uid}/receivedBaskets/{basketId}
 ///   users/{uid}/sentBaskets/{basketId}
 ///   users/{uid}/reviews/{reviewId}
+///   sharePages/{pageId}                 hosted 살까말까 HTML expiry metadata
+///
+/// Storage:
+///   share-pages/{uid}/{pageId}.html     public HTML snapshot for link shares
 class AccountRepository {
   AccountRepository({
     FirebaseAuth? auth,
@@ -69,6 +75,9 @@ class AccountRepository {
 
   CollectionReference<Map<String, dynamic>> _reviews(String uid) =>
       _userDoc(uid).collection('reviews');
+
+  CollectionReference<Map<String, dynamic>> get _sharePages =>
+      _db.collection('sharePages');
 
   /// Creates Auth credentials and sends a verification email only.
   /// Firestore profile is created later via [ensureProfile] after verification.
@@ -585,6 +594,45 @@ class AccountRepository {
       SettableMetadata(contentType: contentType),
     );
     return ref.getDownloadURL();
+  }
+
+  /// Uploads a public HTML snapshot and records its 28-day expiry.
+  ///
+  /// The returned URL is the unauthenticated Storage media URL so anyone who
+  /// receives the link can open it in a browser without signing in.
+  Future<String> uploadSharePage({
+    required String uid,
+    required String pageId,
+    required String basketId,
+    required String html,
+    required DateTime expiresAt,
+  }) async {
+    final path = 'share-pages/$uid/$pageId.html';
+    final ref = _storage.ref(path);
+    await ref.putData(
+      Uint8List.fromList(utf8.encode(html)),
+      SettableMetadata(
+        contentType: 'text/html; charset=utf-8',
+        contentDisposition: 'inline; filename="salkamalka.html"',
+        cacheControl: 'public, max-age=300',
+        customMetadata: {
+          'uid': uid,
+          'expiresAt': expiresAt.toUtc().toIso8601String(),
+        },
+      ),
+    );
+    final encoded = Uri.encodeComponent(path);
+    final url =
+        'https://firebasestorage.googleapis.com/v0/b/${ref.bucket}/o/$encoded?alt=media';
+    await _sharePages.doc(pageId).set({
+      'uid': uid,
+      'basketId': basketId,
+      'storagePath': path,
+      'downloadUrl': url,
+      'createdAt': FieldValue.serverTimestamp(),
+      'expiresAt': Timestamp.fromDate(expiresAt.toUtc()),
+    });
+    return url;
   }
 
   Future<List<WishlistTab>> loadTabs(String uid) async {

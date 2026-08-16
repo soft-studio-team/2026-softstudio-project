@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
 import '../../models/models.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
+import '../share/copy_public_share_link.dart';
 import 'basket_picker_sheet.dart';
 
 class SalkamalkaScreen extends StatelessWidget {
@@ -235,22 +234,28 @@ class SalkamalkaScreen extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.link),
                 title: const Text('링크 복사'),
-                subtitle: const Text('링크를 열면 위시리스트처럼 보여요'),
+                subtitle: const Text('바구니 화면과 같은 페이지가 28일 동안 열려요'),
                 onTap: () async {
-                  final shared = await store.createSharedBasketFromSelection();
-                  final url = store.shareUrlFor(shared);
-                  await Clipboard.setData(ClipboardData(text: url));
-                  if (!context.mounted) return;
                   Navigator.pop(sheetCtx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('링크 복사됨 · $url'),
-                      action: SnackBarAction(
-                        label: '미리보기',
-                        onPressed: () => context.push('/shared/${shared.id}'),
+                  try {
+                    final shared =
+                        await store.createSharedBasketFromSelection();
+                    if (!context.mounted) return;
+                    await copyPublishedShareLink(
+                      context: context,
+                      store: store,
+                      basket: shared,
+                    );
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceFirst('Exception: ', ''),
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  }
                 },
               ),
             ],

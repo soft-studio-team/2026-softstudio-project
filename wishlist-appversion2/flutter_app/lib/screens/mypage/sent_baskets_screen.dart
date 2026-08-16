@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +6,7 @@ import '../../data/app_store.dart';
 import '../../models/models.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
+import '../share/copy_public_share_link.dart';
 
 class SentBasketsScreen extends StatelessWidget {
   const SentBasketsScreen({super.key});
@@ -35,7 +35,7 @@ class SentBasketsScreen extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  '아직 보낸 살까말까가 없어요.\n살까말까 탭에서 친구에게 보내거나 링크를 만들면 여기에 쌓여요',
+                  '아직 보낸 살까말까가 없어요.\n살까말까 탭에서 친구에게 보내거나 링크를 만들면 여기에 쌓여요.\n링크 페이지는 28일 뒤에 사라져요.',
                   textAlign: TextAlign.center,
                   style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
                 ),
@@ -153,13 +153,16 @@ Future<void> showSentBasketShareSheet(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.link),
                 title: Text('링크 복사', style: DiaryTheme.body(14)),
+                subtitle: Text(
+                  '바구니 화면과 같은 페이지가 28일 동안 열려요',
+                  style: DiaryTheme.body(12, color: DiaryColors.inkMuted),
+                ),
                 onTap: () async {
-                  final url = store.shareUrlFor(basket);
-                  await Clipboard.setData(ClipboardData(text: url));
-                  if (sheetCtx.mounted) Navigator.pop(sheetCtx);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('링크 복사됨 · $url')),
+                  Navigator.pop(sheetCtx);
+                  await copyPublishedShareLink(
+                    context: context,
+                    store: store,
+                    basket: basket,
                   );
                 },
               ),

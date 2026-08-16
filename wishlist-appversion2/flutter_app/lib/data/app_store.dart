@@ -7,11 +7,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 import '../firebase_options.dart';
 import '../models/models.dart';
 import '../services/account_repository.dart';
 import '../services/push_notification_service.dart';
+import '../services/share_page_html.dart';
 import '../theme/diary_theme.dart';
 
 class AppStore extends ChangeNotifier {
@@ -1119,6 +1121,9 @@ class AppStore extends ChangeNotifier {
       // Re-sending bumps the basket back to the top of the friends feed;
       // createdAt stays put so 마이페이지 keeps the original date.
       lastSharedAt: touchSharedAt ? now : existing?.lastSharedAt,
+      publicPageId: existing?.publicPageId,
+      publicUrl: existing?.publicUrl,
+      publicUrlExpiresAt: existing?.publicUrlExpiresAt,
     );
     sharedBaskets[id] = shared;
     await _persistShared();
@@ -1181,8 +1186,45 @@ class AppStore extends ChangeNotifier {
     await unhideFromSalkamalkaFeed(shared.id);
   }
 
+  /// Hosts an HTML snapshot of [basket] in Storage and returns a public URL.
+  /// Re-publishing the same basket overwrites the page and restarts the 28-day
+  /// clock so an actively re-shared link stays alive.
+  Future<String> publishSharePage(SharedBasket basket) async {
+    _ensureFirebase();
+    final userId = uid;
+    if (userId == null || !isLoggedIn) {
+      throw Exception('로그인하면 링크로 공유할 수 있어요.');
+    }
+    final pageId = (basket.publicPageId != null && basket.publicPageId!.isNotEmpty)
+        ? basket.publicPageId!
+        : const Uuid().v4();
+    final expiresAt = DateTime.now().add(kSharePageTtl);
+    final html = buildSharePageHtml(basket: basket, expiresAt: expiresAt);
+    final url = await _repo.uploadSharePage(
+      uid: userId,
+      pageId: pageId,
+      basketId: basket.id,
+      html: html,
+      expiresAt: expiresAt,
+    );
+    final updated = basket.copyWith(
+      publicPageId: pageId,
+      publicUrl: url,
+      publicUrlExpiresAt: expiresAt,
+      channels: {...basket.channels, SharedChannel.link}.toList(),
+      lastSharedAt: DateTime.now(),
+    );
+    sharedBaskets[basket.id] = updated;
+    await _persistShared();
+    try {
+      await _repo.upsertSentBasket(userId, updated);
+    } catch (_) {}
+    notifyListeners();
+    return url;
+  }
+
   String shareUrlFor(SharedBasket basket) =>
-      'https://wishlist.app/shared/${basket.id}';
+      basket.publicUrl ?? 'https://wishlist.app/shared/${basket.id}';
 
   Future<void> _persistShared() async {
     final prefs = await SharedPreferences.getInstance();

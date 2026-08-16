@@ -267,6 +267,9 @@ class SharedBasket {
     this.recipientNames = const [],
     this.channels = const [],
     this.lastSharedAt,
+    this.publicPageId,
+    this.publicUrl,
+    this.publicUrlExpiresAt,
   });
 
   final String id;
@@ -286,6 +289,15 @@ class SharedBasket {
   /// [createdAt] in both cases.
   final DateTime? lastSharedAt;
 
+  /// Stable id for the hosted HTML snapshot in Storage (`share-pages/...`).
+  final String? publicPageId;
+
+  /// Public Firebase Storage URL for the HTML page. Empty until a link share.
+  final String? publicUrl;
+
+  /// When the hosted HTML is due to be deleted. Link copy refreshes this.
+  final DateTime? publicUrlExpiresAt;
+
   /// Only friend-sent baskets belong in the 내 친구 탭 feed; link / KakaoTalk
   /// shares stay in 마이페이지 > 내가 보낸 살까말까.
   bool get sharedToFriends => channels.contains(SharedChannel.friends);
@@ -299,6 +311,9 @@ class SharedBasket {
     List<String>? recipientNames,
     List<String>? channels,
     DateTime? lastSharedAt,
+    String? publicPageId,
+    String? publicUrl,
+    DateTime? publicUrlExpiresAt,
   }) {
     return SharedBasket(
       id: id,
@@ -313,6 +328,9 @@ class SharedBasket {
       recipientNames: recipientNames ?? this.recipientNames,
       channels: channels ?? this.channels,
       lastSharedAt: lastSharedAt ?? this.lastSharedAt,
+      publicPageId: publicPageId ?? this.publicPageId,
+      publicUrl: publicUrl ?? this.publicUrl,
+      publicUrlExpiresAt: publicUrlExpiresAt ?? this.publicUrlExpiresAt,
     );
   }
 
@@ -329,6 +347,9 @@ class SharedBasket {
         'recipientNames': recipientNames,
         'channels': channels,
         'lastSharedAt': lastSharedAt?.toIso8601String(),
+        'publicPageId': publicPageId,
+        'publicUrl': publicUrl,
+        'publicUrlExpiresAt': publicUrlExpiresAt?.toIso8601String(),
       };
 
   factory SharedBasket.fromJson(Map<String, dynamic> json) => SharedBasket(
@@ -358,6 +379,10 @@ class SharedBasket {
                 ? const [SharedChannel.friends]
                 : const [SharedChannel.link]),
         lastSharedAt: DateTime.tryParse(json['lastSharedAt'] as String? ?? ''),
+        publicPageId: json['publicPageId'] as String?,
+        publicUrl: json['publicUrl'] as String?,
+        publicUrlExpiresAt:
+            DateTime.tryParse(json['publicUrlExpiresAt'] as String? ?? ''),
       );
 }
 

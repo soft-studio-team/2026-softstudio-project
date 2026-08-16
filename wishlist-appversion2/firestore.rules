@@ -115,6 +115,16 @@ service cloud.firestore {
       }
     }
 
+    // Hosted 살까말까 HTML metadata. The page itself lives in Storage;
+    // this doc is so a scheduled function can expire it after 28 days.
+    match /sharePages/{pageId} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow create, update: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasAll(['uid', 'storagePath', 'expiresAt']);
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+
     // Unique wishkit ids (@handle). One doc per id, owned by a single uid.
     // Orphan / same-email rows can be reclaimed after Auth-only Console deletes.
     match /handles/{handleId} {
