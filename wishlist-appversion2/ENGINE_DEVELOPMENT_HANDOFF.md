@@ -43,6 +43,40 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
 
+## 0.4 2026-08-16 iOS 시뮬레이터 64개 분할 감사
+
+iPhone 17 Pro 시뮬레이터에서 Android와 같은 URL을 나눠 완주했다. JS probe=`2.0`, `--no-uninstall`. 실물 iPhone `지으닝`은 무선으로 보였으나 장시간 분할 감사에는 시뮬레이터를 썼다.
+
+집계(오염된 배치 PASS는 1몰 단독 재실행으로 덮어씀):
+
+- PASS 46
+- EXPECTED_ABSTAIN 5: 네이버 쇼핑, Gap, LF몰, NUGU, SHEIN
+- BLOCKED 3: 쿠팡, H&M, SSG
+- NO_RESULT 1: 리바이스 `loading_timeout`
+- PARTIAL_NO_PRICE 9: 현대Hmall, 오호라, 육육걸즈, 파르티멘토, Reformation, 나이키(`script_timeout`), ZARA, 이랜드몰(`not_product_page`), Aritzia(`price_ambiguous`)
+
+Android와 다른 분류:
+
+- SSG: 스모크에서는 site-adapter PASS였으나 이후 배치/단독에서 `접속이 잠시 제한되었습니다` → BLOCKED. 우회하지 않음.
+- 반스: iOS PASS 57000, 이름 `올드스쿨` (`recopick`). Android는 PARTIAL_MEDIA(이름 없음).
+- 마리떼: iOS PASS 49000 site-adapter. Android는 PARTIAL_NO_PRICE.
+- Aritzia: iOS PARTIAL_NO_PRICE(이름·이미지, 가격 null). Android는 PASS 88900.
+- 나이키: 문구 `찾으시는 상품은 더 이상 구매할 수 없습니다.`, `script_timeout`. finalUrl은 상품 URL 유지.
+- SHEIN 단독: captcha `risk/challenge` → EXPECTED_ABSTAIN `not_product_page`.
+
+iOS에서 같은 InAppWebView를 연속 사용하면 이전 몰 DOM이 새어 나왔다. 확정 오염과 단독 결과:
+
+- 무인양품←탑텐 → 단독 PASS 9900 `muji`
+- 후아유←코드그라피 → 단독 PASS 19900 `whoau`
+- 퀸잇 이후 브랜디·NUGU·CJ온스타일·4910·SSF샵·ZARA·SHEIN이 퀸잇 상품으로 오염 → 단독에서 브랜디/CJ온스타일/4910/SSF샵 PASS, NUGU abstain, ZARA 가격 없음, SHEIN abstain
+- 낫포유·인사일런스는 배치에서 실패했으나 단독 PASS(15900 / 59000)
+
+관리 몰 PASS는 `source.price=site-adapter`만 통과로 본다. 전용 규칙 실패 시 가격은 null. 11번가는 비관리 json-ld PASS. 노이아고는 배치 hang 없이 PASS 219000.
+
+몰별 상세: `wishlist-appversion2/IOS_WEBVIEW_AUDIT_64.md`  
+원본 JSON: `wishlist-appversion2/ios_webview_audit_64_2026-08-16.json`
+다음: iOS 연속 추출 시 about:blank 리셋 강화, SSG 차단 재현, Aritzia/Hmall/리바이스/나이키/이랜드몰 규칙, 실패 UX, Python 폴백 결정.
+
 ## 0.3 2026-08-16 실기기 64개 분할 감사
 
 실물 Galaxy에서 1~64를 나눠 완주했다. SuperDisplay는 끈 상태, `--no-uninstall`.
@@ -54,7 +88,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 - NO_RESULT 1: 리바이스 `loading_timeout`
 - PARTIAL_NO_PRICE 9: 현대Hmall, 마리떼, 오호라, 육육걸즈, 파르티멘토, Reformation, 나이키(`not_product_page`), ZARA, 이랜드몰(`not_product_page`)
 
-다음: iOS(기기 필요), 반스 이름 재감사, Hmall/리바이스/나이키/이랜드몰 규칙, 실패 UX, Python 폴백 결정.
+iOS 시뮬레이터 감사는 섹션 0.4. 남은 것: 연속 WebView 오염, Hmall/리바이스/나이키/이랜드몰 규칙, 실패 UX, Python 폴백 결정.
 검사 후 일반 앱을 `-r`로 복구했다.
 iOS 작업자용 시작 프롬프트: `wishlist-appversion2/IOS_WEBVIEW_AUDIT_PROMPT.md`
 
