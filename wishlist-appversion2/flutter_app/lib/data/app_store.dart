@@ -73,6 +73,11 @@ class AppStore extends ChangeNotifier {
     }
     tabs = await _repo.loadTabs(user.uid);
     products = await _repo.loadProducts(user.uid);
+    products = await _repo.syncProductPublicFlags(
+      uid: user.uid,
+      tabs: tabs,
+      products: products,
+    );
     final following = (await _repo.followingIds(user.uid)).toSet();
     friends = await _repo.loadDirectory(myUid: user.uid, following: following);
     friendWishlists = await _repo.loadFriendWishlists(friends);
@@ -260,8 +265,25 @@ class AppStore extends ChangeNotifier {
     tabs = tabs
         .map((t) => t.id == id ? t.copyWith(isPublic: !t.isPublic) : t)
         .toList();
+    final tab = tabs.where((t) => t.id == id).firstOrNull;
     await _persistTabs();
+    final userId = uid;
+    if (userId != null && tab != null) {
+      products = [
+        for (final p in products)
+          if (p.listId == id) p.copyWith(isPublic: tab.isPublic) else p,
+      ];
+      await _repo.setProductsPublicForTab(
+        uid: userId,
+        tabId: id,
+        isPublic: tab.isPublic,
+      );
+    }
     notifyListeners();
+  }
+
+  bool _isPublicForList(String listId) {
+    return tabs.where((t) => t.id == listId).firstOrNull?.isPublic ?? false;
   }
 
   Future<void> removeProduct(int id) async {
@@ -276,8 +298,11 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> moveProduct(int id, String listId) async {
+    final isPublic = _isPublicForList(listId);
     products = products
-        .map((p) => p.id == id ? p.copyWith(listId: listId) : p)
+        .map((p) => p.id == id
+            ? p.copyWith(listId: listId, isPublic: isPublic)
+            : p)
         .toList();
     final userId = uid;
     final product = productById(id);
@@ -338,6 +363,7 @@ class AppStore extends ChangeNotifier {
       originalPrice: info.originalPrice,
       discount: info.discount,
       productUrl: info.productUrl,
+      isPublic: _isPublicForList(listId),
     );
     products = [...products, product];
     final userId = uid;

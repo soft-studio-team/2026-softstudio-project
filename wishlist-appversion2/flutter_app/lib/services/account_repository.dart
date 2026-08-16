@@ -158,8 +158,68 @@ class AccountRepository {
       ..sort((a, b) => a.id.compareTo(b.id));
   }
 
+  Future<List<Product>> loadPublicProducts(String uid) async {
+    final snap = await _products(uid).where('isPublic', isEqualTo: true).get();
+    return snap.docs.map((d) {
+      final data = Map<String, dynamic>.from(d.data());
+      data['id'] = data['id'] ?? int.tryParse(d.id) ?? d.id.hashCode;
+      return Product.fromJson(data);
+    }).toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
+  }
+
   Future<void> upsertProduct(String uid, Product product) async {
     await _products(uid).doc('${product.id}').set(product.toJson());
+  }
+
+  /// Keep product.isPublic in sync with the parent tab (needed for rules).
+  Future<void> setProductsPublicForTab({
+    required String uid,
+    required String tabId,
+    required bool isPublic,
+  }) async {
+    final snap = await _products(uid).where('listId', isEqualTo: tabId).get();
+    if (snap.docs.isEmpty) return;
+    final batch = _db.batch();
+    for (final doc in snap.docs) {
+      batch.update(doc.reference, {'isPublic': isPublic});
+    }
+    await batch.commit();
+  }
+
+  /// Backfill missing/stale isPublic on the owner's own products after login.
+  Future<List<Product>> syncProductPublicFlags({
+    required String uid,
+    required List<WishlistTab> tabs,
+    required List<Product> products,
+  }) async {
+    final tabPublic = {for (final t in tabs) t.id: t.isPublic};
+    final updated = <Product>[];
+    WriteBatch? batch;
+    var ops = 0;
+
+    Future<void> flush() async {
+      if (batch == null || ops == 0) return;
+      await batch!.commit();
+      batch = null;
+      ops = 0;
+    }
+
+    for (final product in products) {
+      final expected = tabPublic[product.listId] ?? false;
+      if (product.isPublic == expected) {
+        updated.add(product);
+        continue;
+      }
+      final next = product.copyWith(isPublic: expected);
+      updated.add(next);
+      batch ??= _db.batch();
+      batch!.set(_products(uid).doc('${next.id}'), next.toJson());
+      ops += 1;
+      if (ops >= 400) await flush();
+    }
+    await flush();
+    return updated;
   }
 
   Future<void> deleteProduct(String uid, int productId) async {
@@ -195,22 +255,17 @@ class AccountRepository {
     return out;
   }
 
-  /// Counts only public lists. Must query `isPublic == true` so Firestore
-  /// rules that hide private tabs don't reject the whole collection read.
+  /// Counts only public lists/items. Queries must filter `isPublic == true`
+  /// so Firestore rules that hide private docs don't reject the read.
   Future<(int, int)> _wishlistCounts(String uid) async {
     final tabs = await _tabs(uid).where('isPublic', isEqualTo: true).get();
-    final publicTabIds = tabs.docs
-        .map((d) => d.id)
-        .where((id) => id != 'all')
-        .toSet();
-    if (publicTabIds.isEmpty) return (0, 0);
+    final publicLists =
+        tabs.docs.where((d) => d.id != 'all').length;
+    if (publicLists == 0) return (0, 0);
 
-    final products = await _products(uid).get();
-    final publicItemCount = products.docs.where((d) {
-      final listId = d.data()['listId'] as String?;
-      return listId != null && publicTabIds.contains(listId);
-    }).length;
-    return (publicTabIds.length, publicItemCount);
+    final products =
+        await _products(uid).where('isPublic', isEqualTo: true).get();
+    return (publicLists, products.docs.length);
   }
 
   Future<void> setFollowing({
@@ -248,15 +303,10 @@ class AccountRepository {
   ) async {
     final result = <FriendWishlist>[];
     for (final friend in followingFriends.where((f) => f.isFollowing)) {
-      // Rules only allow non-owners to list public tabs.
+      // Rules only allow non-owners to list public tabs/products.
       final tabsSnap =
           await _tabs(friend.id).where('isPublic', isEqualTo: true).get();
-      final productsSnap = await _products(friend.id).get();
-      final products = productsSnap.docs.map((d) {
-        final data = Map<String, dynamic>.from(d.data());
-        data['id'] = data['id'] ?? int.tryParse(d.id) ?? d.id.hashCode;
-        return Product.fromJson(data);
-      }).toList();
+      final products = await loadPublicProducts(friend.id);
 
       for (final tabDoc in tabsSnap.docs) {
         final tab = WishlistTab.fromJson(tabDoc.data());

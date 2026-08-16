@@ -18,13 +18,9 @@ service cloud.firestore {
 
     function userEmailMatchesAuth(userId) {
       return exists(/databases/$(database)/documents/users/$(userId))
-        && emailMatchesAuth(
-          get(/databases/$(database)/documents/users/$(userId)).data
-        );
+        && emailMatchesAuth(get(/databases/$(database)/documents/users/$(userId)).data);
     }
 
-    // A signed-in user may bump someone else's follower count by exactly one
-    // when they follow/unfollow them — nothing else on the doc may change.
     function isFollowerCountStep() {
       return signedIn()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followers'])
@@ -34,7 +30,6 @@ service cloud.firestore {
         );
     }
 
-    // Same idea when removing a follower: bump their following count by ±1.
     function isFollowingCountStep() {
       return signedIn()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['following'])
@@ -45,14 +40,9 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      // Profiles are public so friend discovery and id-based
-      // account recovery (masked email in the app) can work.
       allow read: if true;
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId)
-        || isFollowerCountStep()
-        || isFollowingCountStep();
-      // Same-email delete lets a re-registered Auth user clear Console leftovers.
+      allow update: if isOwner(userId) || isFollowerCountStep() || isFollowingCountStep();
       allow delete: if isOwner(userId) || emailMatchesAuth(resource.data);
 
       function isPublicDoc() {
@@ -60,18 +50,13 @@ service cloud.firestore {
       }
 
       match /tabs/{tabId} {
-        // Collection queries from non-owners MUST filter isPublic == true
-        // (see AccountRepository public tab reads).
         allow read: if isOwner(userId) || (signedIn() && isPublicDoc());
         allow create, update: if isOwner(userId);
         allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
 
       match /products/{productId} {
-        // Products do not store isPublic; list privacy lives on tabs.
-        // Friend discovery / shared wishlists need signed-in collection reads,
-        // then the app only surfaces items whose listId is a public tab.
-        allow read: if isOwner(userId) || signedIn();
+        allow read: if isOwner(userId) || (signedIn() && isPublicDoc());
         allow create, update: if isOwner(userId);
         allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
@@ -79,30 +64,24 @@ service cloud.firestore {
       match /following/{targetId} {
         allow read: if signedIn();
         allow create, update: if isOwner(userId);
-        allow delete: if isOwner(userId)
-          || (signedIn() && request.auth.uid == targetId)
-          || userEmailMatchesAuth(userId);
+        allow delete: if isOwner(userId) || (signedIn() && request.auth.uid == targetId) || userEmailMatchesAuth(userId);
       }
 
       match /followers/{followerId} {
         allow read: if signedIn();
         allow create, update: if signedIn() && request.auth.uid == followerId;
-        allow delete: if (signedIn() && request.auth.uid == followerId)
-          || isOwner(userId)
-          || userEmailMatchesAuth(userId);
+        allow delete: if (signedIn() && request.auth.uid == followerId) || isOwner(userId) || userEmailMatchesAuth(userId);
       }
 
       match /notifications/{notifId} {
         allow read, update: if isOwner(userId);
-        allow create: if signedIn()
-          && request.resource.data.fromUid == request.auth.uid;
+        allow create: if signedIn() && request.resource.data.fromUid == request.auth.uid;
         allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
 
       match /receivedBaskets/{basketId} {
         allow read: if isOwner(userId);
-        allow create: if signedIn()
-          && request.resource.data.fromUid == request.auth.uid;
+        allow create: if signedIn() && request.resource.data.fromUid == request.auth.uid;
         allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
 
@@ -118,8 +97,6 @@ service cloud.firestore {
       }
     }
 
-    // Unique wishkit ids (@handle). One doc per id, owned by a single uid.
-    // Orphan / same-email rows can be reclaimed after Auth-only Console deletes.
     match /handles/{handleId} {
       function handleOwnerAlive() {
         return exists(/databases/$(database)/documents/users/$(resource.data.uid));
@@ -127,27 +104,13 @@ service cloud.firestore {
 
       function handleOwnerEmailMatchesAuth() {
         return handleOwnerAlive()
-          && emailMatchesAuth(
-            get(/databases/$(database)/documents/users/$(resource.data.uid)).data
-          );
+          && emailMatchesAuth(get(/databases/$(database)/documents/users/$(resource.data.uid)).data);
       }
 
       allow read: if true;
-      allow create: if signedIn()
-        && request.resource.data.uid == request.auth.uid;
-      allow update: if signedIn()
-        && request.resource.data.uid == request.auth.uid
-        && (
-          resource.data.uid == request.auth.uid
-          || !handleOwnerAlive()
-          || handleOwnerEmailMatchesAuth()
-        );
-      allow delete: if signedIn()
-        && (
-          resource.data.uid == request.auth.uid
-          || !handleOwnerAlive()
-          || handleOwnerEmailMatchesAuth()
-        );
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn() && request.resource.data.uid == request.auth.uid && (resource.data.uid == request.auth.uid || !handleOwnerAlive() || handleOwnerEmailMatchesAuth());
+      allow delete: if signedIn() && (resource.data.uid == request.auth.uid || !handleOwnerAlive() || handleOwnerEmailMatchesAuth());
     }
   }
 }
