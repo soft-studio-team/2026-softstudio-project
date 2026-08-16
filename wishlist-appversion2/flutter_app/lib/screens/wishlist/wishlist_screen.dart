@@ -32,7 +32,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
             Text(
               'wishkit',
               style: DiaryTheme.display(34, weight: FontWeight.w700),
