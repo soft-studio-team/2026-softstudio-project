@@ -1,5 +1,25 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-16 - iOS 시뮬레이터 64개 WebView 분할 감사 완료
+
+🌟 **쉬운 설명**
+- 같은 상품 주소를 iPhone 시뮬레이터에서 나눠 열어 봤습니다. 이름·사진·가격이 같이 나온 곳은 46곳입니다.
+- Android와 숫자가 같아 보여도 구성은 다릅니다. SSG는 막혔고, 반스·마리떼는 iOS에서 통과했습니다.
+- 긴 검사 중에 이전 쇼핑몰 화면이 다음 결과로 섞이는 경우가 있어, 섞인 곳은 하나씩 다시 열었습니다.
+
+🔧 **기술 설명**
+- 기기: iPhone 17 Pro 시뮬레이터 `53D6E81D-B9AC-48B0-8175-7F12FECF1041` / iOS 26.5. JS probe=`2.0`. `--no-uninstall`.
+- 분할: 스모크 `14,22,24,46,49,53,55`, 1~3, 4~20, 21~38, 39~51, 52~64. 오염·의심 건은 START/END 1몰 단독 재실행.
+- 집계(단독 재실행으로 오염 PASS를 덮어씀): PASS 46, EXPECTED_ABSTAIN 5(네이버·Gap·LF몰·NUGU·SHEIN), BLOCKED 3(쿠팡·H&M·SSG), NO_RESULT 1(리바이스 `loading_timeout`), PARTIAL_NO_PRICE 9(현대Hmall·오호라·육육걸즈·파르티멘토·Reformation·나이키·ZARA·이랜드몰·Aritzia).
+- Android와 다른 분류: SSG는 스모크 PASS 후 배치/단독에서 `접속이 잠시 제한되었습니다` → BLOCKED(`access_blocked`, 우회 없음). 반스는 `recopick` 이름으로 PASS(57000, Android는 이름 없음). 마리떼 PASS(49000, Android는 가격 없음). Aritzia는 이름·이미지만 있고 전용 가격 실패 → `price_ambiguous`(Android는 PASS). 나이키 `script_timeout`, 상품 문구 `찾으시는 상품은 더 이상 구매할 수 없습니다.`, finalUrl 유지. SHEIN 단독은 captcha challenge → EXPECTED_ABSTAIN(`not_product_page`).
+- 연속 WebView 오염: 무인양품←탑텐, 후아유←코드그라피, 퀸잇 이후 브랜디·NUGU·CJ온스타일·4910·SSF샵·ZARA·SHEIN. 단독 재실행에서 무인양품·후아유·브랜디·CJ온스타일·4910·SSF샵 PASS, NUGU abstain, ZARA 가격 없음, SHEIN abstain. 낫포유·인사일런스도 배치 실패 후 단독 PASS.
+- 관리 몰 PASS는 `source.price=site-adapter`. 전용 규칙 실패 시 가격 null, JSON-LD/OG/DOM 우회 없음. 11번가는 비관리 json-ld PASS(12000). 노이아고는 배치에서 hang 없이 PASS(219000).
+- 결과 JSON: `wishlist-appversion2/ios_webview_audit_64_2026-08-16.json`.
+- iOS 빌드에 CocoaPods가 필요해 `Podfile`/`Podfile.lock`과 xcconfig include를 추가했습니다. `flutter_inappwebview_ios`·`receive_sharing_intent`는 SPM 미지원.
+- 검사 후 `flutter build ios --debug --simulator`와 `simctl install`(기존 앱 위에 덮어씀). `flutter test`만 `--no-uninstall`. 앱 uninstall·로그인·결제·장바구니 변경 없음.
+
+---
+
 ## 2026-08-16 - 실기기 64개 WebView 분할 감사 완료
 
 🌟 **쉬운 설명**
