@@ -111,7 +111,7 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      sessionError = '로그인 세션이 없어요. 다시 로그인해 주세요.';
+      sessionError = kSessionExpiredMessage;
       notifyListeners();
       throw Exception(sessionError);
     }
@@ -344,7 +344,7 @@ class AppStore extends ChangeNotifier {
     _ensureFirebase();
     final user = await _repo.reloadUser();
     if (user == null) {
-      throw Exception('로그인 세션이 없어요. 다시 로그인해 주세요.');
+      throw Exception(kSessionExpiredMessage);
     }
     if (!user.emailVerified) return false;
     await _hydrateSession(user);
@@ -395,7 +395,7 @@ class AppStore extends ChangeNotifier {
         case 'requires-recent-login':
           throw Exception('보안을 위해 다시 로그인한 뒤 탈퇴해 주세요.');
         default:
-          throw Exception(e.message ?? '탈퇴에 실패했어요 (${e.code})');
+          rethrow;
       }
     }
     await _clearPendingProfileDraft();
@@ -448,7 +448,7 @@ class AppStore extends ChangeNotifier {
         case 'requires-recent-login':
           throw Exception('보안을 위해 다시 로그인한 뒤 변경해 주세요.');
         default:
-          throw Exception(e.message ?? '비밀번호 변경에 실패했어요 (${e.code})');
+          rethrow;
       }
     }
   }
@@ -872,7 +872,7 @@ class AppStore extends ChangeNotifier {
       }
       friendsError = null;
     } catch (e) {
-      friendsError = userFacingMessage(e);
+      friendsError = userFacingMessage(e, fallback: kListLoadFailedMessage);
       rethrow;
     } finally {
       notifyListeners();
@@ -886,7 +886,7 @@ class AppStore extends ChangeNotifier {
       notifications = await _repo.loadNotifications(userId);
       inboxError = null;
     } catch (e) {
-      inboxError = userFacingMessage(e);
+      inboxError = userFacingMessage(e, fallback: kListLoadFailedMessage);
       rethrow;
     } finally {
       notifyListeners();
@@ -978,14 +978,14 @@ class AppStore extends ChangeNotifier {
       notifications = list;
       notifyListeners();
     }, onError: (e, _) {
-      inboxError = userFacingMessage(e);
+      inboxError = userFacingMessage(e, fallback: kListLoadFailedMessage);
       notifyListeners();
     });
     _receivedBasketSub = _repo.watchReceivedBaskets(userId).listen((list) {
       receivedBaskets = list;
       notifyListeners();
     }, onError: (e, _) {
-      inboxError = userFacingMessage(e);
+      inboxError = userFacingMessage(e, fallback: kListLoadFailedMessage);
       notifyListeners();
     });
   }

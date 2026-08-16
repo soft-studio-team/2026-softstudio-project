@@ -212,7 +212,9 @@ class ReviewDetailScreen extends StatelessWidget {
       if (!context.mounted) return;
       context.pop();
     } catch (e) {
-      if (context.mounted) showAppError(context, e);
+      if (context.mounted) {
+        showAppError(context, e, fallback: '지금은 삭제하지 못했어요.');
+      }
     }
   }
 }

@@ -62,7 +62,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
   Widget build(BuildContext context) {
     final isFollowers = widget.kind == FollowListKind.followers;
     final title = isFollowers ? '팔로워' : '팔로잉';
-    final emptyText = isFollowers ? '팔로워가 없습니다' : '팔로우하고 있는 사람이 없습니다';
+    final emptyText = isFollowers ? '아직 팔로워가 없어요' : '아직 팔로잉한 친구가 없어요';
 
     return Scaffold(
       backgroundColor: DiaryColors.canvas,
@@ -169,7 +169,7 @@ class _FollowListScreenState extends State<FollowListScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      showAppError(context, e);
+      showAppError(context, e, fallback: '지금은 삭제하지 못했어요.');
     }
   }
 }

@@ -119,27 +119,32 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
     );
     if (source == null || !mounted) return;
 
-    final picker = ImagePicker();
-    if (source == ImageSource.gallery) {
-      final remaining = _maxPhotos - _photoCount;
-      final picked = await picker.pickMultiImage(
-        maxWidth: 1600,
-        imageQuality: 85,
-      );
-      if (picked.isEmpty) return;
-      setState(() {
-        newPhotos.addAll(
-          picked.take(remaining).map((x) => File(x.path)),
+    try {
+      final picker = ImagePicker();
+      if (source == ImageSource.gallery) {
+        final remaining = _maxPhotos - _photoCount;
+        final picked = await picker.pickMultiImage(
+          maxWidth: 1600,
+          imageQuality: 85,
         );
-      });
-    } else {
-      final shot = await picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1600,
-        imageQuality: 85,
-      );
-      if (shot == null) return;
-      setState(() => newPhotos.add(File(shot.path)));
+        if (picked.isEmpty) return;
+        setState(() {
+          newPhotos.addAll(
+            picked.take(remaining).map((x) => File(x.path)),
+          );
+        });
+      } else {
+        final shot = await picker.pickImage(
+          source: ImageSource.camera,
+          maxWidth: 1600,
+          imageQuality: 85,
+        );
+        if (shot == null) return;
+        setState(() => newPhotos.add(File(shot.path)));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      showAppError(context, e, fallback: kPhotoPermissionMessage);
     }
   }
 
@@ -170,7 +175,7 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
       context.pushReplacement('/reviews/${review.id}');
     } catch (e) {
       if (!mounted) return;
-      showAppError(context, e);
+      showAppError(context, e, fallback: '리뷰를 올리지 못했어요. 잠시 후 다시 시도해 주세요.');
     } finally {
       if (mounted) setState(() => saving = false);
     }

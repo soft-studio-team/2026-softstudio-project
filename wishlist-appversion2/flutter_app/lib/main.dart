@@ -232,7 +232,7 @@ GoRouter _buildRouter(AppStore store) {
           final id = int.tryParse(state.pathParameters['id'] ?? '');
           if (id == null) {
             return const AppStatusScaffold(
-              title: '상품을 찾을 수 없어요',
+              title: '이 상품은 없거나 삭제됐어요',
               message: '주소가 올바르지 않아요.',
             );
           }
@@ -245,7 +245,7 @@ GoRouter _buildRouter(AppStore store) {
           final id = int.tryParse(state.pathParameters['id'] ?? '');
           if (id == null) {
             return const AppStatusScaffold(
-              title: '상품을 찾을 수 없어요',
+              title: '이 상품은 없거나 삭제됐어요',
               message: '주소가 올바르지 않아요.',
             );
           }
@@ -260,8 +260,8 @@ GoRouter _buildRouter(AppStore store) {
           final list = store.friendWishlistById(id);
           if (list == null) {
             return const AppStatusScaffold(
-              title: '위시리스트를 찾을 수 없어요',
-              message: '공개되지 않았거나 더 이상 없는 리스트예요.',
+              title: '공개된 위시리스트가 없어요',
+              message: '비공개이거나 더 이상 없는 리스트예요.',
             );
           }
           return SharedWishlistScreen(
@@ -317,7 +317,7 @@ GoRouter _buildRouter(AppStore store) {
           final group = store.friendSalkamalkaByFriendId(friendId);
           if (group == null) {
             return const AppStatusScaffold(
-              title: '받은 살까말까를 찾을 수 없어요',
+              title: '공유 링크를 찾을 수 없어요',
               message: '링크가 만료되었거나 잘못된 주소예요.',
             );
           }

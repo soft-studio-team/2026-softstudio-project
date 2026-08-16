@@ -164,7 +164,12 @@ class MyPageScreen extends StatelessWidget {
                             ),
                           );
                           if (name != null && name.isNotEmpty && context.mounted) {
-                            await runAppAction(context, () => store.addTab(name));
+                            await runAppAction(
+                              context,
+                              () => store.addTab(name),
+                              fallback:
+                                  '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
+                            );
                           }
                         },
                       ),
@@ -360,7 +365,7 @@ class MyPageScreen extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        showAppError(context, e);
+        showAppError(context, e, fallback: kGenericMessage);
       }
     }
   }
@@ -450,7 +455,7 @@ class MyPageScreen extends StatelessWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        showAppError(context, e);
+        showAppError(context, e, fallback: kGenericMessage);
       }
     }
   }
@@ -549,18 +554,27 @@ class MyPageScreen extends StatelessWidget {
                       onPressed: saving
                           ? null
                           : () async {
-                              final picker = ImagePicker();
-                              final picked = await picker.pickImage(
-                                source: ImageSource.gallery,
-                                maxWidth: 1024,
-                                maxHeight: 1024,
-                                imageQuality: 85,
-                              );
-                              if (picked == null) return;
-                              setLocal(() {
-                                pendingUpload = File(picked.path);
-                                localError = null;
-                              });
+                              try {
+                                final picker = ImagePicker();
+                                final picked = await picker.pickImage(
+                                  source: ImageSource.gallery,
+                                  maxWidth: 1024,
+                                  maxHeight: 1024,
+                                  imageQuality: 85,
+                                );
+                                if (picked == null) return;
+                                setLocal(() {
+                                  pendingUpload = File(picked.path);
+                                  localError = null;
+                                });
+                              } catch (e) {
+                                setLocal(() {
+                                  localError = userFacingMessage(
+                                    e,
+                                    fallback: '사진 접근을 허용해야 넣을 수 있어요.',
+                                  );
+                                });
+                              }
                             },
                       icon: const Icon(Icons.photo_library_outlined, size: 18),
                       label: Text(

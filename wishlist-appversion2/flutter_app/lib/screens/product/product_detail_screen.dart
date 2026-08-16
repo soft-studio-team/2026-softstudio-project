@@ -41,8 +41,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final product = store.findCatalogProduct(widget.productId);
     if (product == null) {
       return const AppStatusScaffold(
-        title: '상품을 찾을 수 없어요',
-        message: '삭제되었거나 잘못된 주소예요.',
+        title: '이 상품은 없거나 삭제됐어요',
+        message: '다른 상품을 열어 보거나 홈으로 돌아가 주세요.',
       );
     }
     final isOwn = store.productById(product.id) != null;
@@ -172,6 +172,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       runAppAction(
                                         context,
                                         () => store.updateMemo(product.id, v),
+                                        fallback: kSaveFailedMessage,
                                       ),
                                 )
                               else
@@ -223,6 +224,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   context,
                                   () => store.addToBasket(product),
                                   success: '살까말까 바구니에 담았어요',
+                                  fallback: kSaveFailedMessage,
                                 ),
                               ),
                             ),
@@ -251,7 +253,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       showAppMessage(context, '링크를 열지 못했어요.');
                                     }
                                   } catch (e) {
-                                    if (context.mounted) showAppError(context, e);
+                                    if (context.mounted) {
+                                      showAppError(
+                                        context,
+                                        e,
+                                        fallback: '링크를 열지 못했어요.',
+                                      );
+                                    }
                                   }
                                 },
                               ),

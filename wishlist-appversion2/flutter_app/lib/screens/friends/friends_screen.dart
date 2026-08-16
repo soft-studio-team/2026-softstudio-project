@@ -29,8 +29,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
       setState(() => refreshing = true);
       try {
         await store.refreshFriends();
-      } catch (e) {
-        if (context.mounted) showAppError(context, e);
+      } catch (_) {
+        // friendsError banner already surfaces this.
       } finally {
         if (mounted) setState(() => refreshing = false);
       }
@@ -119,8 +119,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                             setState(() => refreshing = true);
                             try {
                               await store.refreshFriends();
-                            } catch (e) {
-                              if (context.mounted) showAppError(context, e);
+                            } catch (_) {
+                              // friendsError banner already surfaces this.
                             } finally {
                               if (mounted) {
                                 setState(() => refreshing = false);
@@ -325,7 +325,7 @@ class _FollowingList extends StatelessWidget {
       );
     } catch (e) {
       if (!context.mounted) return;
-      showAppError(context, e);
+      showAppError(context, e, fallback: '지금은 팔로우하지 못했어요.');
     }
   }
 }
@@ -412,7 +412,7 @@ class _FollowersList extends StatelessWidget {
       );
     } catch (e) {
       if (!context.mounted) return;
-      showAppError(context, e);
+      showAppError(context, e, fallback: '지금은 삭제하지 못했어요.');
     }
   }
 }
@@ -475,7 +475,7 @@ class _FriendWishlistsPane extends StatelessWidget {
     if (wishlists.isEmpty) {
       return Center(
         child: Text(
-          '공개된 친구 위시리스트가 없어요',
+          '공개된 위시리스트가 없어요',
           style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
         ),
       );

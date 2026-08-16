@@ -26,8 +26,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       try {
         await store.refreshNotifications();
         await store.markAllNotificationsRead();
-      } catch (e) {
-        if (mounted) showAppError(context, e);
+      } catch (_) {
+        // inboxError status view already surfaces this.
       }
     });
   }
@@ -53,7 +53,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: store.inboxError != null && items.isEmpty
           ? AppStatusView(
-              title: '알림을 불러오지 못했어요',
+              title: '목록을 불러오지 못했어요',
               message: store.inboxError,
               actionLabel: '다시 시도',
               onAction: () => runAppAction(context, store.refreshNotifications),

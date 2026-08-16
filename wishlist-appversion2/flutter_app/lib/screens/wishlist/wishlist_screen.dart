@@ -82,6 +82,8 @@ class _WishlistScreenState extends State<WishlistScreen> {
                               onToggle: () => runAppAction(
                                 context,
                                 () => store.toggleTabPublic(tab.id),
+                                fallback:
+                                    '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
                               ),
                             ),
                           Expanded(
@@ -115,6 +117,8 @@ class _WishlistScreenState extends State<WishlistScreen> {
                                             runAppAction(
                                               context,
                                               () => store.removeProduct(p.id),
+                                              fallback:
+                                                  '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
                                             ),
                                       );
                                       return LayoutBuilder(
@@ -175,7 +179,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       await store.moveProduct(product.id, tab.id);
     } catch (e) {
       if (!context.mounted) return;
-      showAppError(context, e);
+      showAppError(context, e, fallback: '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.');
     }
   }
 
@@ -236,6 +240,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                     runAppAction(
                       context,
                       () => store.toggleTabPublic(latest.id),
+                      fallback: '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
                     );
                     Navigator.pop(ctx);
                   },
@@ -266,7 +271,11 @@ class _WishlistScreenState extends State<WishlistScreen> {
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
-                    runAppAction(context, () => store.deleteTab(latest.id));
+                    runAppAction(
+                      context,
+                      () => store.deleteTab(latest.id),
+                      fallback: '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
+                    );
                   },
                 ),
               ],
@@ -316,7 +325,11 @@ class _WishlistScreenState extends State<WishlistScreen> {
       ),
     );
     if (name != null && name.isNotEmpty && context.mounted) {
-      await runAppAction(context, () => store.renameTab(tab.id, name));
+      await runAppAction(
+        context,
+        () => store.renameTab(tab.id, name),
+        fallback: '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
+      );
     }
   }
 
@@ -375,6 +388,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       await runAppAction(
         context,
         () => store.addTab(controller.text.trim(), isPublic: isPublic),
+        fallback: '지금은 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
       );
     }
   }

@@ -160,7 +160,7 @@ Future<void> showSentBasketShareSheet(
                   if (sheetCtx.mounted) Navigator.pop(sheetCtx);
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('링크 복사됨 · $url')),
+                    const SnackBar(content: Text('링크를 복사했어요.')),
                   );
                 },
               ),
@@ -273,6 +273,6 @@ Future<void> _resendToFriends(
     );
   } catch (e) {
     if (!context.mounted) return;
-    showAppError(context, e);
+    showAppError(context, e, fallback: '보내지 못했어요. 잠시 후 다시 시도해 주세요.');
   }
 }

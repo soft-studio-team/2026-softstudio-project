@@ -234,7 +234,7 @@ class SalkamalkaScreen extends StatelessWidget {
                   Navigator.pop(sheetCtx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('링크 복사됨 · $url'),
+                      content: const Text('링크를 복사했어요.'),
                       action: SnackBarAction(
                         label: '미리보기',
                         onPressed: () => context.push('/shared/${shared.id}'),
@@ -351,7 +351,7 @@ class SalkamalkaScreen extends StatelessWidget {
       );
     } catch (e) {
       if (!context.mounted) return;
-      showAppError(context, e);
+      showAppError(context, e, fallback: '보내지 못했어요. 잠시 후 다시 시도해 주세요.');
     }
   }
 }

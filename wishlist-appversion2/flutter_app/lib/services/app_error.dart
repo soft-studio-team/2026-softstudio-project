@@ -1,24 +1,45 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+const kNetworkMessage = '네트워크 연결을 확인해 주세요.';
+const kGenericMessage = '잠시 문제가 생겼어요. 다시 시도해 주세요.';
+const kTooManyRequestsMessage = '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.';
+const kSessionExpiredMessage = '로그인이 만료됐어요. 다시 로그인해 주세요.';
+const kSaveFailedMessage = '저장하지 못했어요. 잠시 후 다시 시도해 주세요.';
+const kListLoadFailedMessage = '목록을 불러오지 못했어요.';
+const kPhotoPermissionMessage = '사진 접근을 허용해야 리뷰에 넣을 수 있어요.';
 
 /// Maps raw exceptions to a short Korean sentence the user can act on.
 /// Never returns stack traces, SDK codes, or `Exception: ...` prefixes.
-String userFacingMessage(Object error) {
+String userFacingMessage(Object error, {String? fallback}) {
   if (error is FirebaseAuthException) {
     return _authMessage(error);
   }
   if (error is FirebaseException) {
-    return _firebaseMessage(error);
+    if (_looksLikeNetwork(error.message ?? error.code)) {
+      return kNetworkMessage;
+    }
+    return fallback ?? _firebaseMessage(error);
+  }
+  if (error is PlatformException && _looksLikePhotoPermission(error.code, error.message)) {
+    return fallback ?? kPhotoPermissionMessage;
   }
 
   final raw = error.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
   if (_looksLikeNetwork(raw)) {
-    return '네트워크 연결을 확인해 주세요.';
+    return kNetworkMessage;
+  }
+  if (_looksLikeSession(raw)) {
+    return kSessionExpiredMessage;
+  }
+  if (_looksLikePhotoPermission('', raw)) {
+    return fallback ?? kPhotoPermissionMessage;
   }
   if (_looksLikeUserMessage(raw)) {
     return raw;
   }
-  return '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.';
+  return fallback ?? kGenericMessage;
 }
 
 String _authMessage(FirebaseAuthException e) {
@@ -34,29 +55,27 @@ String _authMessage(FirebaseAuthException e) {
     case 'invalid-credential':
       return '이메일 또는 비밀번호가 맞지 않아요.';
     case 'network-request-failed':
-      return '네트워크 연결을 확인해 주세요.';
+      return kNetworkMessage;
     case 'too-many-requests':
-      return '요청이 너무 많아요. 잠시 후 다시 시도해 주세요.';
+      return kTooManyRequestsMessage;
     case 'requires-recent-login':
-      return '보안을 위해 다시 로그인한 뒤 시도해 주세요.';
+      return kSessionExpiredMessage;
     default:
-      return '인증에 실패했어요. 잠시 후 다시 시도해 주세요.';
+      return kGenericMessage;
   }
 }
 
 String _firebaseMessage(FirebaseException e) {
   switch (e.code) {
-    case 'permission-denied':
-      return '권한이 없어 이 작업을 할 수 없어요.';
     case 'unavailable':
     case 'network-request-failed':
-      return '네트워크 연결을 확인해 주세요.';
+      return kNetworkMessage;
     case 'not-found':
-      return '요청한 정보를 찾을 수 없어요.';
+      return '찾을 수 없어요.';
     case 'already-exists':
       return '이미 있는 정보예요.';
     default:
-      return '요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.';
+      return kGenericMessage;
   }
 }
 
@@ -70,6 +89,20 @@ bool _looksLikeNetwork(String text) {
       lower.contains('httpexception');
 }
 
+bool _looksLikeSession(String text) {
+  return text.contains('로그인 세션') || text.contains('로그인된 계정');
+}
+
+bool _looksLikePhotoPermission(String code, String? message) {
+  final blob = '${code.toLowerCase()} ${message?.toLowerCase() ?? ''}';
+  return blob.contains('photo_access_denied') ||
+      blob.contains('camera_access_denied') ||
+      blob.contains('photos permission') ||
+      blob.contains('camera permission') ||
+      ((blob.contains('permission') || blob.contains('denied')) &&
+          (blob.contains('photo') || blob.contains('camera') || blob.contains('gallery')));
+}
+
 bool _looksLikeUserMessage(String text) {
   return !text.contains('Exception') &&
       !text.contains('Firebase') &&
@@ -78,9 +111,9 @@ bool _looksLikeUserMessage(String text) {
       text.length <= 80;
 }
 
-void showAppError(BuildContext context, Object error) {
+void showAppError(BuildContext context, Object error, {String? fallback}) {
   ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(userFacingMessage(error))),
+    SnackBar(content: Text(userFacingMessage(error, fallback: fallback))),
   );
 }
 
@@ -94,6 +127,7 @@ Future<void> runAppAction(
   BuildContext context,
   Future<void> Function() action, {
   String? success,
+  String? fallback,
 }) async {
   try {
     await action();
@@ -101,6 +135,6 @@ Future<void> runAppAction(
       showAppMessage(context, success);
     }
   } catch (e) {
-    if (context.mounted) showAppError(context, e);
+    if (context.mounted) showAppError(context, e, fallback: fallback);
   }
 }

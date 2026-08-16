@@ -31,7 +31,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       setState(() => message = '인증 메일을 다시 보냈어요. 메일함을 확인해 주세요.');
     } catch (e) {
       if (!mounted) return;
-      setState(() => error = userFacingMessage(e));
+      setState(() => error = userFacingMessage(
+            e,
+            fallback: '메일을 보내지 못했어요. 잠시 후 다시 시도해 주세요.',
+          ));
     } finally {
       if (mounted) setState(() => busy = false);
     }

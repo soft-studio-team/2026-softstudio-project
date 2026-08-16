@@ -59,10 +59,16 @@ class _AccountRecoveryScreenState extends State<AccountRecoveryScreen> {
       setState(() {
         error = e.code == 'user-not-found'
             ? '해당 이메일로 가입된 계정을 찾지 못했어요.'
-            : userFacingMessage(e);
+            : userFacingMessage(
+                e,
+                fallback: '메일을 보내지 못했어요. 잠시 후 다시 시도해 주세요.',
+              );
       });
     } catch (e) {
-      setState(() => error = userFacingMessage(e));
+      setState(() => error = userFacingMessage(
+            e,
+            fallback: '메일을 보내지 못했어요. 잠시 후 다시 시도해 주세요.',
+          ));
     } finally {
       if (mounted) setState(() => loading = false);
     }

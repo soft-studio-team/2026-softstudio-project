@@ -67,7 +67,7 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
       setState(() {
         parsed = info;
         if (info.isPlaceholder) {
-          error = '상품 정보를 읽지 못했어요. 이름과 가격을 직접 입력해 주세요.';
+          error = '상품 정보를 읽지 못했어요. 이름과 가격을 직접 적어 주세요.';
         }
       });
     } catch (e) {
@@ -84,7 +84,7 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
           resolvedTier: 3,
           engineUsed: false,
         );
-        error = '상품 정보를 읽지 못했어요. 이름과 가격을 직접 입력해 주세요.';
+        error = '상품 정보를 읽지 못했어요. 이름과 가격을 직접 적어 주세요.';
       });
     } finally {
       setState(() => loading = false);
@@ -132,7 +132,7 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
       );
       context.go('/');
     } catch (e) {
-      if (mounted) showAppError(context, e);
+      if (mounted) showAppError(context, e, fallback: kSaveFailedMessage);
     }
   }
 
