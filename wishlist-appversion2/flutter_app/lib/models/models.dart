@@ -601,6 +601,7 @@ class ParsedProductInfo {
     this.optionPriceMin,
     this.optionPriceMax,
     this.priceEvidence = const [],
+    this.extractFailureReason,
   });
 
   final String name;
@@ -620,6 +621,9 @@ class ParsedProductInfo {
   final int? optionPriceMin;
   final int? optionPriceMax;
   final List<Map<String, dynamic>> priceEvidence;
+  final String? extractFailureReason;
+
+  bool get needsManualPrice => price <= 0;
 
   /// Canonical v2 aliases. 기존 UI의 price/originalPrice는 하위 호환용이다.
   int? get purchasePrice => price > 0 ? price : null;
@@ -715,6 +719,7 @@ class ParsedProductInfo {
                   },
                 ])
           : this.priceEvidence,
+      extractFailureReason: extractFailureReason,
     );
   }
 

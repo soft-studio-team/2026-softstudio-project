@@ -637,9 +637,7 @@ class AppStore extends ChangeNotifier {
       listId: listId,
       name: info.name,
       price: info.price,
-      image: info.image.isEmpty
-          ? 'https://images.unsplash.com/photo-1524275406383-49f669cf763a?w=400&h=400&fit=crop'
-          : info.image,
+      image: info.image,
       platform: info.platform,
       originalPrice: info.originalPrice,
       discount: info.discount,

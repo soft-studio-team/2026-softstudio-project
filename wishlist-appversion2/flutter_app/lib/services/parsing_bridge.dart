@@ -1,128 +1,131 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
-
-import '../config.dart';
 import '../models/models.dart';
+import 'share_input.dart';
 import 'webview_scraper.dart';
 
-/// HTTP client for the unmodified parsing-engine server.
+typedef OnDeviceExtractFn = Future<OnDeviceExtract?> Function(String url);
+
+/// 공유된 상품 URL을 단말 WebView로 읽는다. 파이썬 서버는 호출하지 않는다.
 ///
-/// Run the engine separately:
-///   cd parsing-engine/server
-///   pip install -r requirements.txt
-///   python3 -m uvicorn api_server_engine:app --reload --port 8000
-///
-/// This file never imports or edits engine Python modules.
+/// 가격을 못 읽어도 이름·사진·URL은 남기고, 가격은 사용자가 입력한다.
 class ParsingBridge {
-  ParsingBridge({String? baseUrl, WebViewScraper? webViewScraper})
-    : baseUrl = baseUrl ?? AppConfig.engineBaseUrl,
-      _webView = webViewScraper ?? WebViewScraper();
+  ParsingBridge({WebViewScraper? webViewScraper, OnDeviceExtractFn? extract})
+    : _webView = webViewScraper ?? WebViewScraper(),
+      _extract = extract;
 
-  final String baseUrl;
   final WebViewScraper _webView;
+  final OnDeviceExtractFn? _extract;
 
-  Future<ParsedProductInfo> parseProductUrl(String url) async {
-    try {
-      final res = await http
-          .post(
-            Uri.parse('$baseUrl/parse'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'url': url}),
-          )
-          .timeout(const Duration(seconds: 25));
-
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        final data = jsonDecode(res.body) as Map<String, dynamic>;
-        return _fillOnDevice(ParsedProductInfo.fromEngineResponse(data), url);
-      }
-    } catch (_) {
-      // Offline / engine not running → keep share flow usable.
-    }
-    return _fillOnDevice(_heuristicFromUrl(url), url);
+  Future<ParsedProductInfo> parseProductUrl(String url) {
+    final target = ShareInput.firstUrl(url) ?? url.trim();
+    return _read(target, titleHint: ShareInput.titleHint(url, target));
   }
 
-  /// Share text may include title hint + URL (engine /api/scrap).
-  Future<ParsedProductInfo> scrapShareInput(String input) async {
-    try {
-      final res = await http
-          .post(
-            Uri.parse('$baseUrl/api/scrap'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'input': input}),
-          )
-          .timeout(const Duration(seconds: 25));
-
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        final data = jsonDecode(res.body) as Map<String, dynamic>;
-        final product = data['product'] as Map<String, dynamic>? ?? data;
-        final info = ParsedProductInfo.fromEngineProduct(product);
-        return _fillOnDevice(info, info.productUrl);
-      }
-    } catch (_) {}
-    final urlMatch = RegExp(r'https?://[^\s]+').firstMatch(input);
-    if (urlMatch != null) {
-      return parseProductUrl(urlMatch.group(0)!);
-    }
-    return _heuristicFromUrl(input);
-  }
-
-  /// Tier 2.5 — 서버가 가격을 못 채웠을 때 단말 WebView 로 보완한다.
-  ///
-  /// 구조화된 기본 판매가는 옵션 선택 전 기준이므로 그대로 유지한다.
-  /// 실패해도 원래 결과를 반환한다.
-  Future<ParsedProductInfo> _fillOnDevice(
-    ParsedProductInfo info,
-    String url,
-  ) async {
-    final target = info.productUrl.isNotEmpty ? info.productUrl : url;
-    final needsPrice = info.price <= 0 || info.missingFields.contains('price');
-    if (!needsPrice || !WebViewScraper.isSupported || target.isEmpty) {
-      return info;
-    }
-    try {
-      final ex = await _webView.extract(target);
-      if (ex == null || !ex.hasAnything) return info;
-      return info.mergeOnDevice(
-        name: ex.name,
-        price: ex.price,
-        originalPrice: ex.originalPrice,
-        image: ex.image,
-        platform: ex.siteName,
-        purchasePriceStatus: ex.purchasePriceStatus,
-        priceConfidence: ex.priceConfidence,
-        availability: ex.availability,
-        optionDependent: ex.optionDependent,
-        optionPriceMin: ex.optionPriceMin,
-        optionPriceMax: ex.optionPriceMax,
-        priceEvidence: ex.priceEvidence,
+  Future<ParsedProductInfo> scrapShareInput(String input) {
+    final url = ShareInput.firstUrl(input);
+    if (url == null || url.isEmpty) {
+      return Future.value(
+        productFromOnDeviceExtract(
+          url: '',
+          titleHint: input.trim(),
+        ),
       );
-    } catch (_) {
-      return info;
     }
+    return _read(url, titleHint: ShareInput.titleHint(input, url));
   }
 
-  ParsedProductInfo _heuristicFromUrl(String url) {
-    final lower = url.toLowerCase();
-    String platform = '쇼핑몰';
-    if (lower.contains('musinsa')) platform = '무신사';
-    if (lower.contains('zigzag') || lower.contains('kakaostyle')) {
-      platform = '지그재그';
+  Future<ParsedProductInfo> _read(String url, {String? titleHint}) async {
+    OnDeviceExtract? extracted;
+    if (url.isNotEmpty && (_extract != null || WebViewScraper.isSupported)) {
+      try {
+        extracted = await (_extract ?? _webView.extract)(url);
+      } catch (_) {
+        extracted = OnDeviceExtract(
+          failureReason: ExtractFailureReason.networkError,
+        );
+      }
     }
-    if (lower.contains('29cm')) platform = '29CM';
-    if (lower.contains('coupang')) platform = '쿠팡';
-    if (lower.contains('wconcept')) platform = 'W CONCEPT';
-
-    return ParsedProductInfo(
-      name: '공유된 상품',
-      price: 0,
-      platform: platform,
-      image:
-          'https://images.unsplash.com/photo-1524275406383-49f669cf763a?w=400&h=400&fit=crop',
-      productUrl: url,
-      missingFields: const ['title', 'price', 'image_url'],
-      resolvedTier: 3,
-      engineUsed: false,
+    return productFromOnDeviceExtract(
+      url: url,
+      extract: extracted,
+      titleHint: titleHint,
     );
   }
+}
+
+ParsedProductInfo productFromOnDeviceExtract({
+  required String url,
+  OnDeviceExtract? extract,
+  String? titleHint,
+}) {
+  final extractedName = extract?.name?.trim();
+  final hint = titleHint?.trim();
+  final name = (extractedName != null && extractedName.isNotEmpty)
+      ? extractedName
+      : (hint != null && hint.isNotEmpty ? hint : '');
+  final extractedPrice = extract?.price;
+  final price = (extractedPrice != null && extractedPrice > 0)
+      ? extractedPrice
+      : 0;
+  final original = extract?.originalPrice;
+  final image = extract?.image?.trim() ?? '';
+  final platform = () {
+    final site = extract?.siteName?.trim();
+    if (site != null && site.isNotEmpty) return site;
+    return platformLabelForUrl(url);
+  }();
+  final productUrl = () {
+    final finalUrl = extract?.finalUrl;
+    if (finalUrl != null &&
+        finalUrl.startsWith('http') &&
+        isSameExtractSite(url, finalUrl)) {
+      return finalUrl;
+    }
+    return url;
+  }();
+  final missing = <String>[
+    if (name.isEmpty) 'title',
+    if (price <= 0) 'price',
+    if (image.isEmpty) 'image_url',
+  ];
+
+  return ParsedProductInfo(
+    name: name.isEmpty ? '공유된 상품' : name,
+    price: price,
+    platform: platform,
+    image: image,
+    productUrl: productUrl,
+    originalPrice: original != null && original > price ? original : null,
+    missingFields: missing,
+    resolvedTier: price > 0 ? 2 : 3,
+    engineUsed: false,
+    onDeviceExtracted: extract?.hasAnything == true,
+    purchasePriceStatus: price > 0
+        ? extract?.purchasePriceStatus ?? 'unknown'
+        : 'unknown',
+    priceConfidence: price > 0
+        ? extract?.priceConfidence ?? 'unknown'
+        : 'unknown',
+    availability: extract?.availability ?? 'unknown',
+    optionDependent: extract?.optionDependent,
+    optionPriceMin: extract?.optionPriceMin,
+    optionPriceMax: extract?.optionPriceMax,
+    priceEvidence: price > 0 ? extract?.priceEvidence ?? const [] : const [],
+    extractFailureReason: extract?.failureReason,
+  );
+}
+
+String platformLabelForUrl(String url) {
+  final host = extractHost(url) ?? '';
+  if (host.contains('musinsa')) return '무신사';
+  if (host.contains('zigzag') || host.contains('kakaostyle')) return '지그재그';
+  if (host.contains('29cm')) return '29CM';
+  if (host.contains('coupang')) return '쿠팡';
+  if (host.contains('wconcept')) return 'W CONCEPT';
+  if (host.contains('hmall')) return '현대Hmall';
+  if (host.contains('vans')) return '반스';
+  if (host.contains('nike')) return '나이키';
+  if (host.contains('elandmall')) return '이랜드몰';
+  if (host.contains('levi')) return '리바이스';
+  if (host.isEmpty) return '쇼핑몰';
+  return host;
 }

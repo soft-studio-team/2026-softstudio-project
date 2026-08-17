@@ -43,6 +43,16 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
 
+## 0.5 2026-08-17 공유 담기 WebView 전용
+
+구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
+
+- 공유 담기는 파이썬 서버를 호출하지 않는다.
+- WebView가 가격을 못 내도 이름·이미지·URL을 남기고 가격은 수동 입력한다.
+- 저장 시 상품명과 양수 가격이 필요하다.
+
+다음: iOS 스모크(오염·SSG/Vans/Marithe/Aritzia). 파이썬 엔진 폴더 정리는 앱 경로가 안정된 뒤에 한다. 리바이스 timeout은 고정 대기를 늘리지 않는다.
+
 ## 0.4 2026-08-17 blank 리셋·남은 몰 규칙
 
 구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
@@ -63,7 +73,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 - 실기기 5몰 `WEBVIEW_AUDIT_ONLY=12,30,31,54,64`: 현대Hmall PASS 42900, 반스 PASS 올드스쿨 57000, 나이키 PASS 134100, 이랜드몰 PASS 55600. 리바이스 `NO_RESULT`/`loading_timeout` 27.4초. 고정 대기는 늘리지 않음.
 - 검사 후 일반 앱을 `flutter build apk --debug` + `adb install -r`로 복구한다.
 
-다음: 리바이스는 대기 시간을 늘리지 않고 원인만 남긴다. 실패 UX(이름/이미지/URL 저장 + 수동 가격), Python 폴백 결정, iOS 스모크(오염·SSG/Vans/Marithe/Aritzia).
+다음: 공유 담기 WebView 전용은 0.5. 리바이스 timeout은 고정 대기를 늘리지 않는다.
 
 ## 0.3 2026-08-16 실기기 64개 분할 감사
 
@@ -76,7 +86,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 - NO_RESULT 1: 리바이스 `loading_timeout`
 - PARTIAL_NO_PRICE 9: 현대Hmall, 마리떼, 오호라, 육육걸즈, 파르티멘토, Reformation, 나이키(`not_product_page`), ZARA, 이랜드몰(`not_product_page`)
 
-다음: 리바이스 timeout은 고정 대기를 늘리지 않고 보류. 실패 UX, Python 폴백 결정, iOS 스모크.
+다음: 공유 담기 WebView 전용은 0.5. 리바이스 timeout은 고정 대기를 늘리지 않는다.
 검사 후 일반 앱을 `-r`로 복구했다.
 iOS 작업자용 시작 프롬프트: `wishlist-appversion2/IOS_WEBVIEW_AUDIT_PROMPT.md`
 
