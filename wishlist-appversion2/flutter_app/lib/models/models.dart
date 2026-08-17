@@ -5,13 +5,6 @@ class DeletedAccount {
   static const avatar =
       'https://api.dicebear.com/7.x/thumbs/png?seed=deleted';
 
-  static Map<String, String> basketAuthorFields() => {
-        'ownerName': name,
-        'fromHandle': handle,
-        'fromAvatar': avatar,
-        'title': '$name의 살까말까',
-      };
-
   static Map<String, String> commentAuthorFields() => {
         'authorName': name,
         'authorHandle': handle,

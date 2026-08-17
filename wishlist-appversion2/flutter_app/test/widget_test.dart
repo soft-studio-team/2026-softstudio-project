@@ -125,11 +125,10 @@ void main() {
     expect(store.myReviewForProduct(8)?.id, review.id);
   });
 
-  test('DeletedAccount fields replace the leaver name on leftover social copies', () {
-    expect(DeletedAccount.basketAuthorFields()['ownerName'], '탈퇴한 사용자');
-    expect(DeletedAccount.basketAuthorFields()['title'], '탈퇴한 사용자의 살까말까');
+  test('DeletedAccount fields replace the leaver name on leftover comments', () {
     expect(DeletedAccount.commentAuthorFields()['authorName'], '탈퇴한 사용자');
     expect(DeletedAccount.commentAuthorFields()['authorHandle'], isEmpty);
+    expect(DeletedAccount.commentAuthorFields()['authorAvatar'], isNotEmpty);
   });
 
   test('Product json round-trips list privacy', () {

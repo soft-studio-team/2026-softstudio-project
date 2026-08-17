@@ -200,7 +200,7 @@ class AccountRepository {
       }
     }
 
-    await _anonymizeLeavingUserContent(uid);
+    await _cleanupLeavingUserSocial(uid);
     await _deleteSharePages(uid);
     await _deleteStoragePrefix('reviews/$uid');
     await _deleteStoragePrefix('avatars/$uid');
@@ -304,8 +304,9 @@ class AccountRepository {
     }
   }
 
-  /// Friends keep the products they received; the leaver's name is stripped.
-  Future<void> _anonymizeLeavingUserContent(String uid) async {
+  /// Deletes 살까말까 copies friends still hold. Comments stay, with the
+  /// leaver's name replaced by [DeletedAccount].
+  Future<void> _cleanupLeavingUserSocial(String uid) async {
     final sentSnap = await _sentBaskets(uid).limit(100).get();
     final receivedSnap = await _receivedBaskets(uid).limit(100).get();
     final threadIds = <String>{};
@@ -326,7 +327,6 @@ class AccountRepository {
       if (threadId.isNotEmpty) threadIds.add(threadId);
     }
 
-    final basketFields = DeletedAccount.basketAuthorFields();
     for (final recipientUid in recipientUids) {
       final copies = await _receivedBaskets(recipientUid)
           .where('fromUid', isEqualTo: uid)
@@ -334,7 +334,7 @@ class AccountRepository {
           .get();
       for (final copy in copies.docs) {
         try {
-          await copy.reference.update(basketFields);
+          await copy.reference.delete();
         } catch (_) {}
       }
     }

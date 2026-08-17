@@ -300,7 +300,7 @@ class MyPageScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '탈퇴하면 계정·위시리스트·리뷰가 삭제되고 되돌릴 수 없어요. 친구가 받은 살까말까와 댓글은 탈퇴한 사용자로 남아 있어요.',
+                      '탈퇴하면 계정·위시리스트·리뷰·살까말까가 삭제되고 되돌릴 수 없어요. 댓글은 탈퇴한 사용자로 남아 있어요.',
                       style: DiaryTheme.body(13, color: DiaryColors.inkMuted),
                     ),
                     const SizedBox(height: 12),
