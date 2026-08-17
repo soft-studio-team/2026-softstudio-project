@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:figmadesign/services/product_extract_js.dart';
 
 void main() {
-  test('Python HTML 어댑터와 guard 61개 도메인이 온디바이스 관리 목록에 있다', () {
+  test('온디바이스 관리 도메인 61개가 추출 JS에 있다', () {
     const domains = <String>[
       'musinsa.com',
       'wconcept.co.kr',

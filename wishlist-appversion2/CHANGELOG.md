@@ -1,5 +1,18 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-17 - 파이썬 파싱 엔진 폴더 제거
+
+🌟 **쉬운 설명**
+- 앱이 더 이상 쓰지 않는 파이썬 파싱 서버 폴더를 저장소에서 뺐습니다. 상품 읽기는 휴대폰 WebView만 사용합니다.
+
+🔧 **기술 설명**
+- `wishlist-appversion2/parsing-engine/` 삭제 (FastAPI `/parse`·`/api/scrap`, site adapters, PRICE_SCHEMA).
+- 가격 규칙은 `flutter_app/lib/services/product_extract_js.dart`가 기준이다.
+- 단위 테스트는 파이썬 폴더를 읽지 않음. 관리 도메인 목록 테스트 이름만 온디바이스 기준으로 바꿈.
+- 리바이스 대기는 늘리지 않음.
+
+---
+
 ## 2026-08-17 - 앱에서 파이썬 서버 연결 흔적 제거
 
 🌟 **쉬운 설명**

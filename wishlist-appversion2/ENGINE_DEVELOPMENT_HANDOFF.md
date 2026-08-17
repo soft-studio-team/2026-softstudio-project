@@ -43,11 +43,21 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
 
+## 0.9 2026-08-17 파이썬 파싱 엔진 폴더 제거
+
+구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
+
+`wishlist-appversion2/parsing-engine/`을 삭제했다. 공유 담기와 상품 추출은 WebView만 사용한다. 파이썬 폴백은 없다.
+
+가격 규칙 기준: `flutter_app/lib/services/product_extract_js.dart`. 스키마 필드는 `ParsedProductInfo` / `OnDeviceExtract`.
+
+다음: 리바이스 timeout은 고정 대기를 늘리지 않는다. 가격이 비는 관리 몰 전용 규칙은 필요할 때만.
+
 ## 0.8 2026-08-17 앱의 파이썬 서버 연결 제거
 
 구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
 
-공유 담기 스모크(0.7) 이후, 앱이 파이썬 서버를 부를 수 있는 남은 코드를 지웠다. `parsing-engine/` 폴더는 아직 삭제하지 않았다.
+공유 담기 스모크(0.7) 이후, 앱이 파이썬 서버를 부를 수 있는 남은 코드를 지웠다. `parsing-engine/` 폴더는 0.9에서 삭제했다.
 
 - `lib/config.dart` (`ENGINE_BASE_URL` / `10.0.2.2:8000`) 삭제
 - `ParsedProductInfo`의 `/parse`·`/api/scrap` JSON 팩토리 삭제
@@ -55,7 +65,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 - 직접 쓰이지 않던 `http` 패키지 제거
 - 단위 테스트 43 passed, 대상 analyze 0 issues
 
-다음: `parsing-engine/` 폴더 삭제는 별도. 리바이스 timeout은 고정 대기를 늘리지 않는다.
+다음: 파이썬 폴더 제거는 0.9. 리바이스 timeout은 고정 대기를 늘리지 않는다.
 
 ## 0.7 2026-08-17 갤럭시 공유 담기 스모크
 
@@ -408,13 +418,13 @@ Python 엔진을 변경하면 현재 Windows Python/프로젝트 의존성으로
     - 상품명·이미지·URL은 저장
     - 가격만 사용자 입력
     - 차단/지원 통화/품절/불명확 사유 표시
-11. Python 서버를 선택적 폴백으로 유지할지, 완전 서버리스로 출시할지 최종 결정
-12. 최종적으로 `product_extract_js.dart`와 Python 쇼핑몰 규칙의 자동 동기화/대조 테스트 강화
+11. Python 서버 폴백은 채택하지 않음. `parsing-engine/` 삭제 (0.9)
+12. 쇼핑몰 규칙은 `product_extract_js.dart`가 단일 기준이다
 
 ## 10. 기록 파일
 
 - 전체 프로젝트 개요: `C:\0.My_Project\17.SoftStudio\PROJECT_OVERVIEW.md`
-- 가격 스키마: `parsing-engine/server/PRICE_SCHEMA.md`
+- 가격 스키마: `flutter_app/lib/models/models.dart` (`ParsedProductInfo`), 규칙은 `product_extract_js.dart`
 - 쇼핑몰 상세 조사: `C:\0.My_Project\17.SoftStudio\0.EngineTest\data\MALL_ADAPTER_PROGRESS.md`
 - Android 최초 원본 결과: `C:\0.My_Project\17.SoftStudio\0.EngineTest\data\webview_android_audit_64_2026-08-16.json`
 - 변경 이력: `CHANGELOG.md`
