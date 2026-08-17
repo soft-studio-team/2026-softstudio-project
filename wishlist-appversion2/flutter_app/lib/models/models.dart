@@ -244,6 +244,14 @@ class FriendWishlist {
   final List<Product> items;
 }
 
+/// How a [SharedBasket] left the app. A basket can carry more than one
+/// channel — e.g. a link share that was later re-sent to app friends.
+class SharedChannel {
+  static const friends = 'friends';
+  static const link = 'link';
+  static const kakao = 'kakao';
+}
+
 /// Snapshot of a basket shared via URL or sent to a friend in-app.
 class SharedBasket {
   SharedBasket({
@@ -257,6 +265,8 @@ class SharedBasket {
     this.fromAvatar = '',
     this.recipientUids = const [],
     this.recipientNames = const [],
+    this.channels = const [],
+    this.lastSharedAt,
   });
 
   final String id;
@@ -269,10 +279,26 @@ class SharedBasket {
   final String fromAvatar;
   final List<String> recipientUids;
   final List<String> recipientNames;
+  final List<String> channels;
+
+  /// When the basket was last sent out. Null on records written before this
+  /// existed, and on baskets never re-shared — [sharedAt] falls back to
+  /// [createdAt] in both cases.
+  final DateTime? lastSharedAt;
+
+  /// Only friend-sent baskets belong in the 내 친구 탭 feed; link / KakaoTalk
+  /// shares stay in 마이페이지 > 내가 보낸 살까말까.
+  bool get sharedToFriends => channels.contains(SharedChannel.friends);
+
+  /// Sort key for the friends feed — a re-sent basket rises back to the top.
+  /// 마이페이지 keeps ordering by [createdAt] so the archive stays chronological.
+  DateTime get sharedAt => lastSharedAt ?? createdAt;
 
   SharedBasket copyWith({
     List<String>? recipientUids,
     List<String>? recipientNames,
+    List<String>? channels,
+    DateTime? lastSharedAt,
   }) {
     return SharedBasket(
       id: id,
@@ -285,41 +311,54 @@ class SharedBasket {
       fromAvatar: fromAvatar,
       recipientUids: recipientUids ?? this.recipientUids,
       recipientNames: recipientNames ?? this.recipientNames,
+      channels: channels ?? this.channels,
+      lastSharedAt: lastSharedAt ?? this.lastSharedAt,
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'ownerName': ownerName,
-    'fromUid': fromUid,
-    'fromHandle': fromHandle,
-    'fromAvatar': fromAvatar,
-    'createdAt': createdAt.toIso8601String(),
-    'items': items.map((p) => p.toJson()).toList(),
-    'recipientUids': recipientUids,
-    'recipientNames': recipientNames,
-  };
+        'id': id,
+        'title': title,
+        'ownerName': ownerName,
+        'fromUid': fromUid,
+        'fromHandle': fromHandle,
+        'fromAvatar': fromAvatar,
+        'createdAt': createdAt.toIso8601String(),
+        'items': items.map((p) => p.toJson()).toList(),
+        'recipientUids': recipientUids,
+        'recipientNames': recipientNames,
+        'channels': channels,
+        'lastSharedAt': lastSharedAt?.toIso8601String(),
+      };
 
   factory SharedBasket.fromJson(Map<String, dynamic> json) => SharedBasket(
-    id: json['id'] as String? ?? '',
-    title: json['title'] as String? ?? '살까말까 공유',
-    ownerName: json['ownerName'] as String? ?? '',
-    fromUid: json['fromUid'] as String? ?? '',
-    fromHandle: json['fromHandle'] as String? ?? '',
-    fromAvatar: json['fromAvatar'] as String? ?? '',
-    items: (json['items'] as List? ?? [])
-        .map((p) => Product.fromJson(Map<String, dynamic>.from(p as Map)))
-        .toList(),
-    createdAt:
-        DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
-    recipientUids: (json['recipientUids'] as List? ?? [])
-        .map((e) => e.toString())
-        .toList(),
-    recipientNames: (json['recipientNames'] as List? ?? [])
-        .map((e) => e.toString())
-        .toList(),
-  );
+        id: json['id'] as String? ?? '',
+        title: json['title'] as String? ?? '살까말까 공유',
+        ownerName: json['ownerName'] as String? ?? '',
+        fromUid: json['fromUid'] as String? ?? '',
+        fromHandle: json['fromHandle'] as String? ?? '',
+        fromAvatar: json['fromAvatar'] as String? ?? '',
+        items: (json['items'] as List? ?? [])
+            .map((p) => Product.fromJson(Map<String, dynamic>.from(p as Map)))
+            .toList(),
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+            DateTime.now(),
+        recipientUids: (json['recipientUids'] as List? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        recipientNames: (json['recipientNames'] as List? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        // Records written before channels existed: a basket with recipients
+        // went out to app friends, anything else was a link share.
+        channels: (json['channels'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            ((json['recipientUids'] as List? ?? []).isNotEmpty
+                ? const [SharedChannel.friends]
+                : const [SharedChannel.link]),
+        lastSharedAt: DateTime.tryParse(json['lastSharedAt'] as String? ?? ''),
+      );
 }
 
 enum AppNotificationType { follow, basket, review, list }

@@ -205,6 +205,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             Expanded(
               child: SpiralNotebook(
                 folderColor: DiaryColors.canvas,
+                border: Border.all(color: DiaryColors.fileCream, width: 3),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: switch (tab) {
@@ -626,6 +627,16 @@ class _SalkamalkaFeedPane extends StatelessWidget {
                       ],
                     ),
                   ),
+                  IconButton(
+                    onPressed: () => _confirmHide(context, e),
+                    tooltip: '목록에서 숨기기',
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      Icons.close,
+                      size: 18,
+                      color: DiaryColors.inkMuted,
+                    ),
+                  ),
                 ],
               ),
               if (b.items.isNotEmpty) ...[
@@ -661,6 +672,51 @@ class _SalkamalkaFeedPane extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  /// Hides the entry from this feed only — never deletes the basket.
+  Future<void> _confirmHide(
+      BuildContext context, SalkamalkaFeedEntry e) async {
+    final store = context.read<AppStore>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: DiaryColors.paper,
+        title: Text(
+          '목록에서 숨기기',
+          style: DiaryTheme.ui(17, weight: FontWeight.w700),
+        ),
+        content: Text(
+          e.isMine
+              ? '이 목록에서 숨길까요? 내가 보낸 살까말까에는 남아 있어요'
+              : '이 목록에서 숨길까요? 숨기면 다시 볼 수 없어요',
+          style: DiaryTheme.body(13, color: DiaryColors.inkMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              '숨기기',
+              style: DiaryTheme.ui(
+                14,
+                weight: FontWeight.w700,
+                color: DiaryColors.pin,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await store.hideFromSalkamalkaFeed(e.basket.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('목록에서 숨겼어요')),
     );
   }
 
