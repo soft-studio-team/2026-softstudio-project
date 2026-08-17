@@ -43,6 +43,34 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
 
+## 0.7 2026-08-17 갤럭시 공유 담기 스모크
+
+구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
+
+공유 담기 화면이 쓰는 `ParsingBridge`를 실물 Galaxy WebView 호스트로 확인했다. 위시리스트/Firebase에 저장하지 않았다.
+
+환경:
+
+- `flutter test integration_test/share_intake_smoke_test.dart -d R3CY10LF2HE --no-uninstall`
+- JS probe=`2`, SuperDisplay Stopped, SDK ADB 1.0.41
+- 로그인·결제·장바구니 변경 없음. 앱 uninstall 없음.
+
+결과:
+
+| 입력 | 분류 | 이름 | 가격 | engineUsed |
+|---|---|---|---:|---|
+| 반스 공유 텍스트 | 자동 채움 | 올드스쿨 | 57000 | false |
+| ZARA URL | 수동 가격 | 플리츠 쇼트 트렌치 코트 | 0 (`price_ambiguous`) | false |
+| 쿠팡 URL | 불안정 | 통과 실행은 Access Denied | 0 (`access_blocked`) | false |
+
+쿠팡은 `managedDomains`에 없다. 1차 실행에서 페이지가 열려 11990/이미지가 나왔고, 통과 실행에서는 차단 화면이었다. 우회 코드를 넣은 것이 아니며 안정 PASS로 세지 않는다.
+
+원본: `wishlist-appversion2/share_intake_smoke_2026-08-17.json`.
+
+검사 후 `flutter build apk --debug` + `adb install -r`. 패키지 `com.softstudio.wishlist` 유지.
+
+다음: 파이썬 엔진 폴더/`engineBaseUrl` 정리는 앱 경로가 안정된 뒤에 한다. 리바이스 timeout은 고정 대기를 늘리지 않는다.
+
 ## 0.6 2026-08-17 iOS blank 리셋 재확인
 
 구현 브랜치: `feat/webview-scraper-stabilize` (`eafa6b3`, PR #28)
@@ -82,7 +110,7 @@ SSG 차단은 우회하지 않는다. Aritzia 전용 규칙 실패에 범용 JSO
 
 검사 후 `flutter install -d`로 일반 Debug를 시뮬레이터에 다시 넣었다. 이 명령이 시뮬레이터의 기존 앱을 지운 뒤 설치했다. 실기기 앱/데이터는 건드리지 않았다.
 
-다음: 파이썬 엔진 폴더 정리는 앱 경로가 안정된 뒤에 한다. 리바이스 timeout은 고정 대기를 늘리지 않는다. Aritzia iOS 이름/이미지 품질은 이전 64보다 나빴으나 가격 우회로 고치지 않는다.
+다음: 공유 담기 스모크는 0.7. 파이썬 엔진 폴더 정리는 앱 경로가 안정된 뒤에 한다. 리바이스 timeout은 고정 대기를 늘리지 않는다. Aritzia iOS 이름/이미지 품질은 이전 64보다 나빴으나 가격 우회로 고치지 않는다.
 
 ## 0.5 2026-08-17 공유 담기 WebView 전용
 
@@ -92,7 +120,7 @@ SSG 차단은 우회하지 않는다. Aritzia 전용 규칙 실패에 범용 JSO
 - WebView가 가격을 못 내도 이름·이미지·URL을 남기고 가격은 수동 입력한다.
 - 저장 시 상품명과 양수 가격이 필요하다.
 
-다음: iOS 재확인은 0.6. 파이썬 엔진 폴더 정리는 앱 경로가 안정된 뒤에 한다. 리바이스 timeout은 고정 대기를 늘리지 않는다.
+다음: 공유 담기 스모크는 0.7. 파이썬 엔진 폴더 정리는 앱 경로가 안정된 뒤에 한다. 리바이스 timeout은 고정 대기를 늘리지 않는다.
 
 ## 0.4 2026-08-17 blank 리셋·남은 몰 규칙
 

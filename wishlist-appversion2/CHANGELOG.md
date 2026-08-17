@@ -1,5 +1,22 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-17 - 갤럭시 공유 담기 WebView 경로 스모크
+
+🌟 **쉬운 설명**
+- 실물 갤럭시에서 공유 담기가 파이썬 없이 페이지를 읽는지 확인했습니다. 반스는 이름·사진·가격이 자동으로 채워졌고, ZARA는 이름·사진은 남기고 가격만 직접 넣게 했습니다.
+- 위시리스트에는 상품을 저장하지 않았습니다. 검사 뒤 일반 앱을 다시 넣었습니다.
+
+🔧 **기술 설명**
+- `integration_test/share_intake_smoke_test.dart`가 공유 화면과 같은 `ParsingBridge.scrapShareInput`을 실기기 WebView 호스트로 호출한다. AppStore/Firebase 저장 없음.
+- 실물 `SM-S938N` / `R3CY10LF2HE` / Android 16, SuperDisplay Stopped, `--no-uninstall`, SDK ADB 1.0.41. JS probe=`2`.
+- 반스 공유 텍스트: 올드스쿨 57000, 이미지 있음, `engineUsed=false`, `needsManualPrice=false`.
+- ZARA: 플리츠 쇼트 트렌치 코트, 이미지 있음, 가격 0, `price_ambiguous`, `needsManualPrice=true`. 관리 몰이라 범용 가격 우회 없음.
+- 쿠팡은 관리 도메인이 아니라 페이지가 열리면 범용 추출이 허용된다. 1차 실행은 11990 자동 채움, 통과 실행은 `Access Denied`/`access_blocked`. 안정 PASS로 보지 않음.
+- 원본: `wishlist-appversion2/share_intake_smoke_2026-08-17.json`.
+- 검사 후 `flutter build apk --debug` + `adb install -r`. 앱/데이터 삭제 없음.
+
+---
+
 ## 2026-08-17 - iOS blank 리셋 재확인 (오염 3쌍 + SSG/반스/Aritzia/마리떼)
 
 🌟 **쉬운 설명**
