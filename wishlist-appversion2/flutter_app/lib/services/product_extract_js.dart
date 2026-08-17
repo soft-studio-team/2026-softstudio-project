@@ -126,6 +126,10 @@ const String productExtractJs = r'''
     if(ld || ogType==='product' || ogType.indexOf('product.')===0) return true;
     var target=decodeURIComponent(location.pathname+location.search);
     if(/(^|\.)hm\.com$/i.test(location.hostname)) return /\/productpage\.\d+\.html$/i.test(location.pathname);
+    if(/(^|\.)hmall\.com$/i.test(location.hostname)) return /itemPtc|slitmCd=/i.test(target);
+    if(/(^|\.)elandmall\.co\.kr$/i.test(location.hostname)) return /\/i\/item|itemNo=/i.test(target);
+    if(/(^|\.)vans\.co\.kr$/i.test(location.hostname)) return /\/PRODUCT\//i.test(location.pathname);
+    if(/(^|\.)nike\.com$/i.test(location.hostname)) return /\/t\/[^/?#]+/i.test(location.pathname);
     if(/\/(search|category|categories|collections?|login|member|customer|account|board|event(_list)?|archive|project(_list)?|features|recent_view_product|image_zoom\d*|lookbook([-_]detail|_list)?|magazine_list|editorial|flashsale|ranking_daily|group-mall|sale-zone|new|collection\d*|men(_all)?|women(_all|_fit)?|item-shop|shop|journal|index|best)(\.|\/|\?|$)|products?\/(list|search)|gift_card|returnUrl=|['"]?%?20?\s*\+\s*link/i.test(target)) return false;
     return /\/products?\/[^/?#]+|\/goods?\/(detail\/)?[^/?#]+|\/productpage\.\d+\.html|\/product\/detail\.html|\/product\/[^/?#]+\/\d+|\/p\/product\/[^/?#]+|\/items?\/itemview|(?:product_no|itemId|goods_id|pid|PROD_CD)=/i.test(target);
   }
@@ -526,8 +530,8 @@ const String productExtractJs = r'''
     }
 
     if(hostIs('elandmall.co.kr')){
-      sale=scriptPrice('final_price',raw);var ep=scriptPrice('s_price',raw);regular=scriptPrice('regular_price',raw);var es=scriptPrice('item_stock_qty',raw),em=/soldout_yn\s*=\s*['"]([^'"]+)/.exec(raw),en=/s_item_name\s*=\s*['"]([^'"]+)/.exec(raw);if(!sale||sale!==ep||!regular||regular<sale||!es||!em||em[1]!=='N'||!en||pageText().indexOf(en[1])<0||pageText().indexOf(Number(sale).toLocaleString('en-US'))<0||!/(바로구매|구매하기)/.test(pageText()))return null;
-      return result('elandmall',sale,regular>sale?regular:null,'final_price + s_price','regular_price',{priceConfidence:'medium',optionDependent:false});
+      sale=scriptPrice('s_price',raw);regular=scriptPrice('regular_price',raw);var es=scriptPrice('item_stock_qty',raw),em=/soldout_yn\s*=\s*['"]([^'"]+)/.exec(raw),en=/s_item_name\s*=\s*['"]([^'"]+)/.exec(raw);if(!sale||!regular||regular<sale||!es||!em||em[1]!=='N'||!en||pageText().indexOf(en[1])<0||pageText().indexOf(Number(sale).toLocaleString('en-US'))<0||!/(바로구매|구매하기)/.test(pageText()))return null;
+      return result('elandmall',sale,regular>sale?regular:null,'s_price','regular_price',{priceConfidence:'medium',optionDependent:false});
     }
 
     if(hostIs('zara.com')){
@@ -558,9 +562,10 @@ const String productExtractJs = r'''
 
   var vansTitle = hostIs('vans.co.kr') ? metaOne('recopick:title') : null;
   var name;
-  if(ld && ld.name) name = ld.name;
+  if(vansTitle) name = vansTitle;
+  else if(ld && ld.name) name = ld.name;
   else if(useDomName) name = dn;
-  else name = ogTitle || dn || vansTitle;
+  else name = ogTitle || dn;
 
   // URL만으로 확정할 수 있는 구조화된 기본 판매가를 우선한다. 화면의 쿠폰
   // 예상가나 옵션 선택 후 추가금은 사용자 상태에 따라 달라지므로 저장하지 않는다.
@@ -571,7 +576,7 @@ const String productExtractJs = r'''
   var image = normalizeUrl((ld&&ld.image) || ogImage) || null;
 
   var source={
-    name: (ld&&ld.name)?'json-ld':(useDomName?'dom':(ogTitle?'og':(vansTitle?'site-adapter':(name?'dom':null)))),
+    name: vansTitle?'site-adapter':((ld&&ld.name)?'json-ld':(useDomName?'dom':(ogTitle?'og':(name?'dom':null)))),
     price:(ld&&ld.price)?'json-ld':(ogPrice?'og':(price?'dom':null)),
     image:(ld&&ld.image)?'json-ld':(ogImage?'og':null),
     brand:(ld&&ld.brand)?'json-ld':null

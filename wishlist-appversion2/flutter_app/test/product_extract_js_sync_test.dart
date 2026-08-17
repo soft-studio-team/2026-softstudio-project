@@ -85,6 +85,15 @@ void main() {
     );
   });
 
+  test('반스는 recopick 제목을 상품명으로 우선하고 Hmall·이랜드 상품 URL을 인식한다', () {
+    expect(productExtractJs, contains("if(vansTitle) name = vansTitle"));
+    expect(productExtractJs, contains('itemPtc|slitmCd='));
+    expect(productExtractJs, contains(r'/\/i\/item|itemNo='));
+    expect(productExtractJs, contains("return result('elandmall',sale"));
+    expect(productExtractJs, contains("'s_price'"));
+    expect(productExtractJs, isNot(contains("'final_price + s_price'")));
+  });
+
   test('관리 쇼핑몰은 전용 규칙 실패 시 범용 가격으로 우회하지 않는다', () {
     expect(
       productExtractJs,

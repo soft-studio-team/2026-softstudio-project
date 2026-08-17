@@ -33,6 +33,8 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
   bool _busy = false;
   InAppWebViewController? _controller;
   WebViewExtractLoop? _loop;
+  Completer<void>? _blankReady;
+  String? _activeRequestUrl;
   final Completer<InAppWebViewController> _created =
       Completer<InAppWebViewController>();
 
@@ -79,12 +81,12 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
         loop.firstLoadTimeout,
         onTimeout: () => throw TimeoutException('webview not created'),
       );
-      // 이전 상품 페이지의 load 콜백이 새 루프를 오염시키지 않게 먼저 비운다.
+      // 이전 상품 페이지의 load 콜백·DOM이 새 루프를 오염시키지 않게
+      // about:blank onLoadStop까지 기다린 뒤에만 대상 URL을 연다.
       _loop = null;
-      await controller.stopLoading();
-      await controller.loadUrl(
-        urlRequest: URLRequest(url: WebUri('about:blank')),
-      );
+      _activeRequestUrl = null;
+      await _resetToBlank(controller);
+      _activeRequestUrl = url;
       _loop = loop;
       await controller.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
       return loop.run(
@@ -107,8 +109,51 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
       );
     } finally {
       _loop = null;
+      _activeRequestUrl = null;
       _busy = false;
     }
+  }
+
+  bool get _isResetting => _blankReady != null;
+
+  void _finishBlankReset() {
+    final pending = _blankReady;
+    if (pending != null && !pending.isCompleted) {
+      pending.complete();
+    }
+  }
+
+  Future<void> _resetToBlank(InAppWebViewController controller) async {
+    _blankReady = Completer<void>();
+    try {
+      try {
+        await controller.stopLoading();
+      } catch (_) {}
+      try {
+        await controller.loadUrl(
+          urlRequest: URLRequest(url: WebUri('about:blank')),
+        );
+      } catch (_) {
+        return;
+      }
+      try {
+        await _blankReady!.future.timeout(const Duration(seconds: 2));
+      } on TimeoutException {
+        // blank 콜백이 안 와도 대상 URL 로드는 진행한다.
+      }
+    } finally {
+      _finishBlankReset();
+      _blankReady = null;
+    }
+  }
+
+  bool _shouldForward(String? url) {
+    if (_isResetting) return false;
+    if (isAboutBlankUrl(url)) return false;
+    final active = _activeRequestUrl;
+    if (active == null) return false;
+    if (url == null || url.isEmpty) return true;
+    return isSameExtractSite(active, url);
   }
 
   @override
@@ -132,18 +177,32 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
                 },
                 onLoadStart: (controller, uri) {
                   _controller = controller;
-                  _loop?.onLoadStart(uri?.toString());
+                  final url = uri?.toString();
+                  if (_isResetting || !_shouldForward(url)) return;
+                  _loop?.onLoadStart(url);
                 },
                 onLoadStop: (controller, uri) {
                   _controller = controller;
-                  _loop?.onLoadStop(uri?.toString());
+                  final url = uri?.toString();
+                  if (_isResetting) {
+                    if (isAboutBlankUrl(url)) _finishBlankReset();
+                    return;
+                  }
+                  if (!_shouldForward(url)) return;
+                  _loop?.onLoadStop(url);
                 },
                 onUpdateVisitedHistory: (controller, uri, _) {
                   _controller = controller;
-                  _loop?.onHistoryUpdate(uri?.toString());
+                  final url = uri?.toString();
+                  if (_isResetting || !_shouldForward(url)) return;
+                  _loop?.onHistoryUpdate(url);
                 },
                 onReceivedError: (controller, _, __) {
                   _controller = controller;
+                  if (_isResetting) {
+                    _finishBlankReset();
+                    return;
+                  }
                   _loop?.onNetworkError();
                 },
               ),

@@ -184,17 +184,20 @@ class WebViewExtractLoop {
   }
 
   void onLoadStart(String? url) {
+    if (isAboutBlankUrl(url)) return;
     loading = true;
     lastNavigationAt = clock.now();
   }
 
   void onLoadStop(String? url) {
+    if (isAboutBlankUrl(url)) return;
     loading = false;
     sawFirstLoad = true;
     lastNavigationAt = clock.now();
   }
 
   void onHistoryUpdate(String? url) {
+    if (isAboutBlankUrl(url)) return;
     lastNavigationAt = clock.now();
   }
 
@@ -242,9 +245,13 @@ class WebViewExtractLoop {
         continue;
       }
 
-      final parsed = await _evaluateOnce(evaluate, extractSource);
+      var parsed = await _evaluateOnce(evaluate, extractSource);
       if (scriptTimedOut) {
         return _finish(best ?? lastParsed, requestUrl);
+      }
+      if (parsed != null &&
+          isForeignExtractResult(requestUrl, parsed.finalUrl)) {
+        parsed = null;
       }
       if (parsed != null) lastParsed = parsed;
 
@@ -403,6 +410,37 @@ bool isUnsupportedCurrencyHost(String url) {
       host.endsWith('.gap.com') ||
       host == 'nugu.jp' ||
       host.endsWith('.nugu.jp');
+}
+
+bool isAboutBlankUrl(String? url) {
+  if (url == null || url.isEmpty) return false;
+  final value = url.trim().toLowerCase();
+  return value == 'about:blank' || value.startsWith('about:blank?');
+}
+
+String? extractHost(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null || uri.host.isEmpty) return null;
+  var host = uri.host.toLowerCase();
+  if (host.startsWith('www.')) host = host.substring(4);
+  return host;
+}
+
+bool isSameExtractSite(String requestUrl, String? candidateUrl) {
+  if (candidateUrl == null || candidateUrl.isEmpty) return false;
+  if (isAboutBlankUrl(candidateUrl)) return false;
+  final requestHost = extractHost(requestUrl);
+  final candidateHost = extractHost(candidateUrl);
+  if (requestHost == null || candidateHost == null) return false;
+  if (requestHost == candidateHost) return true;
+  return requestHost.endsWith('.$candidateHost') ||
+      candidateHost.endsWith('.$requestHost');
+}
+
+bool isForeignExtractResult(String requestUrl, String? finalUrl) {
+  if (finalUrl == null || finalUrl.isEmpty) return false;
+  if (isAboutBlankUrl(finalUrl)) return true;
+  return !isSameExtractSite(requestUrl, finalUrl);
 }
 
 /// Tier 2.5 — 안 보이는 WebView 로 렌더링된 페이지에서 상품정보를 추출한다.

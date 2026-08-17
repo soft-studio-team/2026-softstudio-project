@@ -43,6 +43,26 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
 
+## 0.4 2026-08-17 blank 리셋·남은 몰 규칙
+
+구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
+
+구현:
+
+- 추출마다 `about:blank` `onLoadStop`을 기다린 뒤에만 대상 URL을 연다. 리셋 중 콜백·blank URL·다른 호스트 결과는 버린다.
+- 반스 상품명은 `recopick:title` 우선.
+- Hmall `itemPtc`/`slitmCd`, 이랜드 `/i/item`/`itemNo`, 나이키 `/t/`를 상품 페이지로 분류.
+- 이랜드 전용 가격은 `s_price`(판매가). 쿠폰 `final_price`는 사용하지 않음.
+- 품절/단종 표본 교체: Hmall `2060464676`, 나이키 `IH1698-100`, 이랜드 `2607498077`.
+
+검증:
+
+- `flutter test test/product_extract_js_sync_test.dart test/webview_scraper_result_test.dart` → 25 passed
+- 대상 `flutter analyze` → 0 issues
+- SuperDisplay Stopped. 실기기 5몰 재감사는 Gradle 빌드 후 `adb: device 'R3CY10LF2HE' not found`로 설치가 실패해 이번 실행에서 가격 통과로 보지 않는다.
+
+다음: 폰 USB가 다시 잡히면 `--no-uninstall`로 `WEBVIEW_AUDIT_ONLY=12,30,31,54,64`를 돌리고 일반 앱을 `-r` 복구한다. 실패 UX와 Python 폴백은 그 다음이다.
+
 ## 0.3 2026-08-16 실기기 64개 분할 감사
 
 실물 Galaxy에서 1~64를 나눠 완주했다. SuperDisplay는 끈 상태, `--no-uninstall`.
@@ -54,7 +74,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 - NO_RESULT 1: 리바이스 `loading_timeout`
 - PARTIAL_NO_PRICE 9: 현대Hmall, 마리떼, 오호라, 육육걸즈, 파르티멘토, Reformation, 나이키(`not_product_page`), ZARA, 이랜드몰(`not_product_page`)
 
-다음: iOS(기기 필요), 반스 이름 재감사, Hmall/리바이스/나이키/이랜드몰 규칙, 실패 UX, Python 폴백 결정.
+다음: 실기기 5몰 재감사는 USB 재연결 후. 실패 UX, Python 폴백 결정은 그 다음.
 검사 후 일반 앱을 `-r`로 복구했다.
 iOS 작업자용 시작 프롬프트: `wishlist-appversion2/IOS_WEBVIEW_AUDIT_PROMPT.md`
 

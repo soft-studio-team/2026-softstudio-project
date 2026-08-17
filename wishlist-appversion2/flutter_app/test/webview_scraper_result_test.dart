@@ -401,6 +401,66 @@ void main() {
     expect(result?.failureReason, ExtractFailureReason.unsupportedCurrency);
   });
 
+  test('about:blank 로드는 첫 상품 로드로 치지 않는다', () {
+    final clock = _FakeClock();
+    final loop = WebViewExtractLoop(clock: clock);
+    loop.onLoadStart('about:blank');
+    loop.onLoadStop('about:blank');
+    expect(loop.sawFirstLoad, isFalse);
+    expect(loop.loading, isFalse);
+
+    loop.onLoadStop('https://www.vans.co.kr/PRODUCT/VN000D6WBOM');
+    expect(loop.sawFirstLoad, isTrue);
+  });
+
+  test('이전 쇼핑몰 finalUrl 결과는 버리고 요청 호스트만 확정한다', () async {
+    final clock = _FakeClock();
+    final loop = WebViewExtractLoop(clock: clock);
+    loop.onLoadStop('https://www.brandi.co.kr/products/1');
+
+    final result = await loop.run(
+      requestUrl: 'https://www.brandi.co.kr/products/1',
+      maxWait: const Duration(milliseconds: 800),
+      evaluate: (_) async => _extractJson(
+        name: '퀸잇 상품',
+        price: 12900,
+        image: 'https://x/a.jpg',
+        finalUrl: 'https://web.queenit.kr/product/old',
+      ),
+      loadUrl: (_) async {},
+    );
+
+    expect(result?.price, isNull);
+    expect(result?.name, isNull);
+    expect(result?.failureReason, ExtractFailureReason.notProductPage);
+  });
+
+  test('같은 사이트의 www/서브도메인은 요청 호스트로 인정한다', () {
+    expect(
+      isSameExtractSite(
+        'https://vans.co.kr/PRODUCT/1',
+        'https://www.vans.co.kr/PRODUCT/1',
+      ),
+      isTrue,
+    );
+    expect(
+      isSameExtractSite(
+        'https://a-bly.com/goods/1',
+        'https://mobile.a-bly.com/goods/1',
+      ),
+      isTrue,
+    );
+    expect(
+      isSameExtractSite(
+        'https://www.brandi.co.kr/products/1',
+        'https://web.queenit.kr/product/1',
+      ),
+      isFalse,
+    );
+    expect(isForeignExtractResult('https://x.example/p', 'about:blank'), isTrue);
+    expect(isForeignExtractResult('https://x.example/p', null), isFalse);
+  });
+
   testWidgets('추출 호스트는 트리에 붙으면 인스턴스를 등록한다', (tester) async {
     expect(WebViewExtractHost.maybeInstance, isNull);
     await tester.pumpWidget(

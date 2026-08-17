@@ -45,7 +45,7 @@ const _cases = <_MallCase>[
   _MallCase('무인양품', 'https://mujikorea.co.kr/products/view/1005531'),
   _MallCase(
     '현대Hmall',
-    'https://www.hmall.com/md/pda/itemPtc?slitmCd=2028730260',
+    'https://www.hmall.com/md/pda/itemPtc?slitmCd=2060464676',
   ),
   _MallCase('롯데온', 'https://www.lotteon.com/p/product/LO2724337622'),
   _MallCase('미쏘', 'https://mixxo.com/product/detail.html?product_no=12455'),
@@ -161,7 +161,7 @@ const _cases = <_MallCase>[
   ),
   _MallCase(
     '나이키',
-    'https://www.nike.com/kr/t/dunk-low-shoes-KJFYnLZQ/DD1391-100',
+    'https://www.nike.com/kr/t/나이키-에어-포스-1-07-남성-신발-qdjlTENZ/IH1698-100',
   ),
   _MallCase(
     '올리브영',
@@ -188,7 +188,7 @@ const _cases = <_MallCase>[
   ),
   _MallCase(
     '이랜드몰',
-    'https://www.elandmall.co.kr/i/item?chnl_no=GSW&itemNo=2410548876',
+    'https://www.elandmall.co.kr/i/item?itemNo=2607498077&lowerVendNo=LV25019098',
   ),
 ];
 
