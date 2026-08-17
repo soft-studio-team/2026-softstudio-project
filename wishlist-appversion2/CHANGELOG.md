@@ -1,5 +1,19 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-17 - 앱에서 파이썬 서버 연결 흔적 제거
+
+🌟 **쉬운 설명**
+- 공유 담기는 이미 휴대폰만 쓰는데, 앱 안에 남아 있던 파이썬 서버 주소와 서버 JSON 읽기 코드를 지웠습니다.
+- 파이썬 엔진 폴더는 아직 저장소에 있습니다. 이번엔 앱이 그걸 부르지 못하게만 정리했습니다.
+
+🔧 **기술 설명**
+- `AppConfig.engineBaseUrl` / `lib/config.dart` 삭제. `ENGINE_BASE_URL` dart-define은 더 이상 없다.
+- `ParsedProductInfo.fromEngineResponse` / `fromEngineProduct` / `fromJson` 제거. `engineUsed` 기본값은 false.
+- 직접 쓰이지 않던 `http` 의존성 제거. 단위 테스트 43 passed, 대상 analyze 0 issues.
+- `parsing-engine/` 폴더는 유지. 리바이스 대기는 늘리지 않음.
+
+---
+
 ## 2026-08-17 - 갤럭시 공유 담기 WebView 경로 스모크
 
 🌟 **쉬운 설명**

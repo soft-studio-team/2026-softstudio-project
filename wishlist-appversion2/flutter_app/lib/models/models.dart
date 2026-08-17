@@ -580,7 +580,7 @@ class BasketItem {
   }
 }
 
-/// Normalized product info returned by the parsing bridge (engine untouched).
+/// WebView에서 읽은 상품 정보. 파이썬 서버 응답을 담지 않는다.
 class ParsedProductInfo {
   ParsedProductInfo({
     required this.name,
@@ -592,7 +592,7 @@ class ParsedProductInfo {
     this.discount,
     this.missingFields = const [],
     this.resolvedTier,
-    this.engineUsed = true,
+    this.engineUsed = false,
     this.onDeviceExtracted = false,
     this.purchasePriceStatus = 'unknown',
     this.priceConfidence = 'unknown',
@@ -613,6 +613,8 @@ class ParsedProductInfo {
   final int? discount;
   final List<String> missingFields;
   final int? resolvedTier;
+
+  /// 파이썬 서버를 호출했으면 true. 공유 담기는 항상 false.
   final bool engineUsed;
   final String purchasePriceStatus;
   final String priceConfidence;
@@ -632,7 +634,7 @@ class ParsedProductInfo {
   /// 단말 WebView(Tier 2.5)로 정보를 보완했는지. UI 배지 표시용.
   final bool onDeviceExtracted;
 
-  /// 서버가 못 채운 칸을 단말 WebView 추출 결과로 메운다.
+  /// 단말 WebView 추출 결과로 비어 있는 칸을 메운다.
   /// [replacePrice]일 때는 화면에서 검증한 정가·판매가 쌍으로 교체한다.
   ParsedProductInfo mergeOnDevice({
     String? name,
@@ -720,104 +722,6 @@ class ParsedProductInfo {
                 ])
           : this.priceEvidence,
       extractFailureReason: extractFailureReason,
-    );
-  }
-
-  /// Engine POST /parse response: { product, resolved_tier, missing_fields, ... }
-  factory ParsedProductInfo.fromEngineResponse(Map<String, dynamic> json) {
-    final product = (json['product'] as Map<String, dynamic>?) ?? json;
-    return ParsedProductInfo.fromEngineProduct(
-      product,
-      resolvedTier: json['resolved_tier'] as int?,
-      missingFields:
-          (json['missing_fields'] as List?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          const [],
-    );
-  }
-
-  /// Engine product dict (also used by /api/scrap → product).
-  factory ParsedProductInfo.fromEngineProduct(
-    Map<String, dynamic> product, {
-    int? resolvedTier,
-    List<String> missingFields = const [],
-  }) {
-    final pricing = (product['pricing'] as Map?)?.cast<String, dynamic>();
-    final purchasePrice = pricing != null
-        ? (pricing['purchase_price'] as num?)?.toInt()
-        : (product['price'] as num?)?.toInt();
-    final regularPrice = pricing != null
-        ? (pricing['regular_price'] as num?)?.toInt()
-        : (product['original_price'] as num?)?.toInt() ??
-              (product['originalPrice'] as num?)?.toInt();
-    final evidence =
-        (pricing?['evidence'] as List?)
-            ?.whereType<Map>()
-            .map((e) => e.cast<String, dynamic>())
-            .toList() ??
-        const <Map<String, dynamic>>[];
-    return ParsedProductInfo(
-      name: (product['title'] as String?)?.trim().isNotEmpty == true
-          ? product['title'] as String
-          : (product['name'] as String? ?? '공유된 상품'),
-      price: purchasePrice ?? 0,
-      platform: (product['platform_label'] as String?)?.isNotEmpty == true
-          ? product['platform_label'] as String
-          : (product['source_platform'] as String? ??
-                product['platform'] as String? ??
-                '쇼핑몰'),
-      image:
-          product['image_url'] as String? ?? product['image'] as String? ?? '',
-      productUrl:
-          product['original_url'] as String? ??
-          product['productUrl'] as String? ??
-          product['url'] as String? ??
-          '',
-      originalPrice: regularPrice,
-      discount:
-          (product['discount_rate'] as num?)?.toInt() ??
-          (product['discount'] as num?)?.toInt(),
-      missingFields: missingFields.isNotEmpty
-          ? missingFields
-          : ((product['missing_fields'] as List?)
-                    ?.map((e) => e.toString())
-                    .toList() ??
-                const []),
-      resolvedTier: resolvedTier ?? product['resolved_tier'] as int?,
-      engineUsed: true,
-      purchasePriceStatus:
-          pricing?['purchase_price_status'] as String? ??
-          product['purchase_price_status'] as String? ??
-          (purchasePrice == null ? 'unknown' : 'provisional'),
-      priceConfidence:
-          pricing?['confidence'] as String? ??
-          product['price_confidence'] as String? ??
-          'unknown',
-      availability: product['availability'] as String? ?? 'unknown',
-      optionDependent: pricing?['option_dependent'] as bool?,
-      optionPriceMin: (pricing?['option_price_min'] as num?)?.toInt(),
-      optionPriceMax: (pricing?['option_price_max'] as num?)?.toInt(),
-      priceEvidence: evidence,
-    );
-  }
-
-  factory ParsedProductInfo.fromJson(Map<String, dynamic> json) {
-    // Backward-compatible flat shape.
-    if (json.containsKey('product')) {
-      return ParsedProductInfo.fromEngineResponse(json);
-    }
-    if (json.containsKey('pricing') || json.containsKey('original_price')) {
-      return ParsedProductInfo.fromEngineProduct(json);
-    }
-    return ParsedProductInfo(
-      name: json['name'] as String? ?? '상품',
-      price: (json['price'] as num?)?.toInt() ?? 0,
-      platform: json['platform'] as String? ?? 'unknown',
-      image: json['image'] as String? ?? '',
-      productUrl: json['productUrl'] as String? ?? json['url'] as String? ?? '',
-      originalPrice: (json['originalPrice'] as num?)?.toInt(),
-      discount: (json['discount'] as num?)?.toInt(),
     );
   }
 }

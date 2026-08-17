@@ -43,6 +43,20 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
 
+## 0.8 2026-08-17 앱의 파이썬 서버 연결 제거
+
+구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
+
+공유 담기 스모크(0.7) 이후, 앱이 파이썬 서버를 부를 수 있는 남은 코드를 지웠다. `parsing-engine/` 폴더는 아직 삭제하지 않았다.
+
+- `lib/config.dart` (`ENGINE_BASE_URL` / `10.0.2.2:8000`) 삭제
+- `ParsedProductInfo`의 `/parse`·`/api/scrap` JSON 팩토리 삭제
+- `engineUsed` 기본값 false
+- 직접 쓰이지 않던 `http` 패키지 제거
+- 단위 테스트 43 passed, 대상 analyze 0 issues
+
+다음: `parsing-engine/` 폴더 삭제는 별도. 리바이스 timeout은 고정 대기를 늘리지 않는다.
+
 ## 0.7 2026-08-17 갤럭시 공유 담기 스모크
 
 구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
@@ -69,7 +83,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 검사 후 `flutter build apk --debug` + `adb install -r`. 패키지 `com.softstudio.wishlist` 유지.
 
-다음: 파이썬 엔진 폴더/`engineBaseUrl` 정리는 앱 경로가 안정된 뒤에 한다. 리바이스 timeout은 고정 대기를 늘리지 않는다.
+다음: 앱의 파이썬 연결 제거는 0.8. 리바이스 timeout은 고정 대기를 늘리지 않는다.
 
 ## 0.6 2026-08-17 iOS blank 리셋 재확인
 

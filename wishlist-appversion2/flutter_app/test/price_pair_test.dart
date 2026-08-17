@@ -49,49 +49,49 @@ void main() {
     expect(result.originalPrice, 32000);
   });
 
-  test('v2 pricing JSON을 기존 호환 필드보다 우선해서 읽는다', () {
-    final result = ParsedProductInfo.fromEngineProduct({
-      'title': '상품',
-      'price': 21280,
-      'original_price': 99999,
-      'pricing': {
-        'regular_price': 32000,
-        'purchase_price': 30400,
-        'purchase_price_status': 'confirmed',
-        'confidence': 'high',
-        'option_dependent': false,
-        'evidence': [
-          {
-            'price_role': 'purchase_price',
-            'source': 'metadata',
-            'adapter': 'musinsa',
-            'field': 'product:price:amount',
-          },
-        ],
-      },
-    });
+  test('구매가·정가 별칭은 생성자 필드를 그대로 따른다', () {
+    final result = ParsedProductInfo(
+      name: '상품',
+      price: 30400,
+      originalPrice: 32000,
+      platform: '무신사',
+      image: '',
+      productUrl: 'https://www.musinsa.com/products/6152461',
+      purchasePriceStatus: 'confirmed',
+      priceConfidence: 'high',
+      priceEvidence: const [
+        {
+          'price_role': 'purchase_price',
+          'source': 'rendered-webview',
+          'adapter': 'musinsa',
+          'field': 'product:price:amount',
+        },
+      ],
+    );
 
     expect(result.purchasePrice, 30400);
     expect(result.regularPrice, 32000);
     expect(result.purchasePriceStatus, 'confirmed');
     expect(result.priceConfidence, 'high');
+    expect(result.engineUsed, isFalse);
     expect(result.priceEvidence.single['adapter'], 'musinsa');
   });
 
   test('정가만 알면 구매 가격을 정가로 대신 채우지 않는다', () {
-    final result = ParsedProductInfo.fromEngineProduct({
-      'title': '상품',
-      'price': 21280,
-      'pricing': {
-        'regular_price': 32000,
-        'purchase_price': null,
-        'purchase_price_status': 'unknown',
-      },
-    });
+    final result = ParsedProductInfo(
+      name: '상품',
+      price: 0,
+      originalPrice: 32000,
+      platform: '무신사',
+      image: '',
+      productUrl: 'https://www.musinsa.com/products/6152461',
+      purchasePriceStatus: 'unknown',
+    );
 
     expect(result.purchasePrice, isNull);
     expect(result.regularPrice, 32000);
     expect(result.purchasePriceStatus, 'unknown');
+    expect(result.needsManualPrice, isTrue);
   });
 
   test('검증된 온디바이스 어댑터의 가격 의미와 옵션 범위를 보존한다', () {

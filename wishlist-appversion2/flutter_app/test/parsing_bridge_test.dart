@@ -75,7 +75,7 @@ void main() {
     expect(result.engineUsed, isFalse);
   });
 
-  test('서버 없이 주입된 추출기만 사용한다', () async {
+  test('파이썬 서버 URL 없이 주입된 추출기만 사용한다', () async {
     var called = false;
     final bridge = ParsingBridge(
       extract: (url) async {
