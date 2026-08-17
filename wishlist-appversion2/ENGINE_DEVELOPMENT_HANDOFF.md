@@ -57,9 +57,20 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 러너: `flutter test integration_test/live_field_compare_test.dart -d R3CY10LF2HE --no-uninstall --dart-define=LIVE_COMPARE_MALLS=무신사,반스,나이키`
 
-카탈로그에 실페이지 값을 채운 상태. 실물 Galaxy USB가 빠져 기기 대조는 아직 실행하지 못했다. 앱 uninstall 없음. 리바이스 대기는 늘리지 않음.
+갤럭시 탭 S7 (`SM-T870` / `R54RB01SMVB` / Android 13)에서 대조를 실행했다. JS probe=`2`. `--no-uninstall`. 검사 후 debug APK `-r` 복구.
 
-다음: 갤럭시 재연결 후 무신사·반스·나이키부터 대조. 나머지 몰 3상품·실페이지 값 보충.
+MATCH: 무신사 3, 반스 3, 나이키 1(엔진명에 브랜드·카테고리 부가), 후아유 3, 커버낫 2.
+
+불일치/실패:
+
+- W컨셉 307615241: 가격 19900·사진 일치, 이름 `[W CONCEPT]`
+- W컨셉 이후 같은 세션의 29CM/미쏘/게스/커버낫/후아유: `script_timeout`. 새 세션에서 미쏘·커버낫·후아유는 추출됨
+- 미쏘: 이름·사진 일치, 가격은 `product:sale_price:amount`(12470, 49950) vs 화면/og 49900·99900
+- 커버낫 8581: 이름·사진 일치, `price_ambiguous`
+
+앱 uninstall 없음. 리바이스 대기는 늘리지 않음.
+
+다음: 나머지 PASS 몰 3상품 대조. W컨셉 이름은 og:title 공용 제목 문제. 미쏘는 sale_price 메타가 화면 판매가보다 낮음.
 
 ## 0.9 2026-08-17 파이썬 파싱 엔진 폴더 제거
 

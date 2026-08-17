@@ -4,13 +4,14 @@
 
 🌟 **쉬운 설명**
 - 자동 채움이 되는 쇼핑몰을 대상으로, 엔진이 읽은 이름·가격·사진이 실제 상품 페이지와 같은지 비교하는 검사를 만들었습니다.
-- 엔진 이름에 브랜드가 붙어 나와도, 화면에 보이는 상품명이 포함되면 같은 상품으로 봅니다. 가격은 첫구매·카드 쿠폰이 아닌 판매가입니다.
+- 갤럭시 탭 S7에서 무신사 3개, 반스 3개, 나이키 1개, 후아유 3개, 커버낫 2개가 이름·가격·사진 모두 맞았습니다. 나이키는 엔진 이름에 「나이키」「남성 신발」이 붙어도 같은 상품으로 봤습니다.
 
 🔧 **기술 설명**
-- `lib/services/live_field_compare.dart`: 이름 포함/브랜드 제거/토큰 포함, 가격 정수 일치, 이미지 canonical URL·파일 stem 비교.
-- `integration_test/live_field_compare_test.dart` + `live_field_compare_catalog.dart`. `--no-uninstall`, `LIVE_COMPARE_MALLS`로 몰 부분집합 가능.
-- 실페이지 확인값을 카탈로그에 채운 몰: 무신사·29CM·반스 3상품, W컨셉 1상품, 카페24 브랜드 다수. 29CM 레이브 재킷은 화면 첫구매가 177,510이 아니라 `sellPrice` 206,400.
-- 실물 Galaxy USB가 이어서 빠져 `R3CY10LF2HE` 대조 실행은 아직 못 함. SuperDisplay Stopped, SDK ADB 1.0.41.
+- 기기: `SM-T870` / `R54RB01SMVB` / Android 13, `--no-uninstall`, JS probe=`2`. SuperDisplay 없음. SDK ADB 1.0.41.
+- MATCH: 무신사 3, 반스 3, 나이키 1(엔진명 `나이키 에어 포스 1 '07 남성 신발` vs 화면 `에어 포스 1 '07`), 후아유 3, 커버낫 2.
+- W컨셉 1: 가격·사진 일치, 이름은 엔진이 `[W CONCEPT]`만 읽음. 같은 세션 이후 29CM·미쏘·게스 등은 `script_timeout`. 새 세션에서 미쏘·커버낫·후아유는 추출됨.
+- 미쏘 3: 이름·사진 일치, 가격 불일치(`sale_price` 12470/49950 vs 화면 49900/99900). 커버낫 서퍼샵 티셔츠는 `price_ambiguous`.
+- 검사 뒤 `flutter build apk --debug` + `adb install -r`. 앱 uninstall 없음. 리바이스 대기 늘리지 않음.
 
 ---
 
