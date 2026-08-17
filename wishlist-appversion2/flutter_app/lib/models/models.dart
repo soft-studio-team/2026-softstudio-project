@@ -1,3 +1,17 @@
+/// Display fields written onto leftover social content after account deletion.
+class DeletedAccount {
+  static const name = '탈퇴한 사용자';
+  static const handle = '';
+  static const avatar =
+      'https://api.dicebear.com/7.x/thumbs/png?seed=deleted';
+
+  static Map<String, String> commentAuthorFields() => {
+        'authorName': name,
+        'authorHandle': handle,
+        'authorAvatar': avatar,
+      };
+}
+
 class WishlistTab {
   WishlistTab({
     required this.id,

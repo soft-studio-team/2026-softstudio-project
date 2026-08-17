@@ -93,18 +93,22 @@ class ReviewPostCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: DiaryTheme.product(12, color: DiaryColors.inkSoft),
           ),
-          const SizedBox(height: 6),
-          Text(
-            review.title,
-            style: DiaryTheme.body(16, weight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            review.body,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: DiaryTheme.product(13, color: DiaryColors.ink),
-          ),
+          if (review.title.trim().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              review.title,
+              style: DiaryTheme.body(16, weight: FontWeight.w700),
+            ),
+          ],
+          if (review.body.trim().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              review.body,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: DiaryTheme.product(13, color: DiaryColors.ink),
+            ),
+          ],
           if (!showAuthor) ...[
             const SizedBox(height: 8),
             Row(

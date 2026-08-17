@@ -94,7 +94,9 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if signedIn()
           && request.resource.data.fromUid == request.auth.uid;
-        allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
+        allow delete: if isOwner(userId)
+          || userEmailMatchesAuth(userId)
+          || (signedIn() && resource.data.fromUid == request.auth.uid);
       }
 
       match /sentBaskets/{basketId} {

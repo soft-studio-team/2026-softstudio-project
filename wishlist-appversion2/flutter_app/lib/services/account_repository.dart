@@ -200,6 +200,12 @@ class AccountRepository {
       }
     }
 
+    await _cleanupLeavingUserSocial(uid);
+    await _deleteSharePages(uid);
+    await _deleteStoragePrefix('reviews/$uid');
+    await _deleteStoragePrefix('avatars/$uid');
+    await _deleteStoragePrefix('share-pages/$uid');
+
     await _deleteCollectionDocs(_tabs(uid));
     await _deleteCollectionDocs(_products(uid));
     await _deleteCollectionDocs(_following(uid));
@@ -296,6 +302,84 @@ class AccountRepository {
     if (snap.docs.length >= 200) {
       await _deleteCollectionDocs(col);
     }
+  }
+
+  /// Deletes 살까말까 copies friends still hold. Comments stay, with the
+  /// leaver's name replaced by [DeletedAccount].
+  Future<void> _cleanupLeavingUserSocial(String uid) async {
+    final sentSnap = await _sentBaskets(uid).limit(100).get();
+    final receivedSnap = await _receivedBaskets(uid).limit(100).get();
+    final threadIds = <String>{};
+    final recipientUids = <String>{};
+
+    for (final doc in sentSnap.docs) {
+      final data = doc.data();
+      final threadId = data['threadId'] as String? ?? '';
+      if (threadId.isNotEmpty) threadIds.add(threadId);
+      for (final id in data['recipientUids'] as List? ?? const []) {
+        if (id is String && id.isNotEmpty && id != uid) {
+          recipientUids.add(id);
+        }
+      }
+    }
+    for (final doc in receivedSnap.docs) {
+      final threadId = doc.data()['threadId'] as String? ?? '';
+      if (threadId.isNotEmpty) threadIds.add(threadId);
+    }
+
+    for (final recipientUid in recipientUids) {
+      final copies = await _receivedBaskets(recipientUid)
+          .where('fromUid', isEqualTo: uid)
+          .limit(100)
+          .get();
+      for (final copy in copies.docs) {
+        try {
+          await copy.reference.delete();
+        } catch (_) {}
+      }
+    }
+
+    final commentFields = DeletedAccount.commentAuthorFields();
+    for (final threadId in threadIds) {
+      final comments = await _basketComments(threadId)
+          .where('authorUid', isEqualTo: uid)
+          .limit(200)
+          .get();
+      for (final comment in comments.docs) {
+        try {
+          await comment.reference.update(commentFields);
+        } catch (_) {}
+      }
+    }
+  }
+
+  Future<void> _deleteSharePages(String uid) async {
+    final snap = await _sharePages.where('uid', isEqualTo: uid).limit(100).get();
+    for (final doc in snap.docs) {
+      final path = doc.data()['storagePath'] as String? ?? '';
+      if (path.isNotEmpty) {
+        try {
+          await _storage.ref(path).delete();
+        } catch (_) {}
+      }
+      try {
+        await doc.reference.delete();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _deleteStoragePrefix(String path) async {
+    try {
+      final listed = await _storage.ref(path).listAll();
+      for (final item in listed.items) {
+        try {
+          await item.delete();
+        } catch (_) {}
+      }
+      for (final prefix in listed.prefixes) {
+        await _deleteStoragePrefix(prefix.fullPath);
+      }
+    } catch (_) {}
   }
 
   DocumentReference<Map<String, dynamic>> _handleDoc(String handleLower) =>
