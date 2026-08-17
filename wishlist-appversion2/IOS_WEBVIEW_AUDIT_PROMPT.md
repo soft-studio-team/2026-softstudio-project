@@ -1,77 +1,89 @@
-# iOS WebView 감사 — 다른 작업자용 시작 프롬프트
+# iOS WebView 재확인 — 다른 작업자용 시작 프롬프트
+
+64곳 전체를 다시 돌리지 마세요. 목적은 **blank 리셋 이후 이전 몰 페이지가 섞이는지**, 그리고 Android와 갈렸던 **SSG·반스·마리떼·Aritzia**만 확인하는 것입니다.
+
+실기기 아이폰이 있으면 그걸 우선하고, 없으면 시뮬레이터로 해도 됩니다.
 
 아래 블록을 새 Cursor 대화에 그대로 붙여 넣으면 됩니다.
 
 ---
 
 ```
-wishkit iOS WebView 상품 추출 감사를 진행해. Android 실기기 64개 감사는 이미 끝났고, 같은 URL을 iPhone 또는 iOS 시뮬레이터에서 재현하는 것이 목적이다.
+wishkit iOS WebView 재확인을 진행해. 전체 64개 감사가 아니다. blank 리셋 이후 오염이 줄었는지, SSG/반스/마리떼/Aritzia가 어떻게 나오는지만 보면 된다.
 
 ## 저장소
 - GitHub: soft-studio-team/2026-softstudio-project
 - 브랜치: feat/webview-scraper-stabilize
-- 기준 커밋: 820a8c1 (docs: record the completed 64-mall phone WebView audit)
+- 최신을 pull 한다. 프롬프트 파일: wishlist-appversion2/IOS_WEBVIEW_AUDIT_PROMPT.md
 - Draft PR: https://github.com/soft-studio-team/2026-softstudio-project/pull/28
 - 앱 경로: wishlist-appversion2/flutter_app
 - 패키지/표시 이름: com.softstudio.wishlist / wishkit
 - 감사 러너: integration_test/webview_all_malls_audit_test.dart
-- 인수인계: wishlist-appversion2/ENGINE_DEVELOPMENT_HANDOFF.md 섹션 0.3
+- 인수인계: wishlist-appversion2/ENGINE_DEVELOPMENT_HANDOFF.md 섹션 0.4, 0.5
 - 한국어로 답하고, 끝나면 커밋·푸시·PR #28 갱신. 절대 머지하지 말 것.
+- PR #31(이전 iOS 시뮬레이터 64 문서)을 덮어쓰지 말 것.
 
 ## 금지
 - git reset --hard, git checkout --, git clean 사용 금지
 - 로그인, 결제, 사용자 데이터 삭제, 장바구니 삭제 금지
-- 실기기 앱을 uninstall 하지 말 것. flutter test 기본값은 종료 시 앱을 지운다. 반드시 --no-uninstall
+- 실기기/시뮬레이터 앱을 uninstall 하지 말 것. flutter test 기본값은 종료 시 앱을 지운다. 반드시 --no-uninstall
 - 관리 쇼핑몰 전용 가격 규칙이 실패하면 JSON-LD/OG/DOM 범용 가격으로 우회하지 말 것. 가격은 null
 - 고정 대기 시간만 늘리지 말 것
-- SuperDisplay를 켜지 말 것 (Windows 환경 이야기. Mac에서는 해당 없음)
+- 파이썬 서버를 켜거나 /parse 를 호출하지 말 것. 공유 담기는 WebView 전용이다
 
 ## 시작 절차
-1. 이 브랜치를 checkout / pull 한다. origin/feat/webview-scraper-stabilize @ 820a8c1 이상.
+1. git fetch origin feat/webview-scraper-stabilize
+   git checkout feat/webview-scraper-stabilize
+   git pull --ff-only origin feat/webview-scraper-stabilize
 2. 작업 루트를 저장소 루트로 옮긴다.
-3. flutter devices 로 iPhone 실기기 또는 시뮬레이터 ID를 확인한다. iOS 기기가 없으면 중단하고 그 사실을 보고한다.
+3. flutter devices 로 iPhone 실기기 또는 시뮬레이터 ID를 확인한다. iOS 기기가 없으면 중단하고 보고한다. 실기기가 있으면 시뮬레이터보다 실기기를 쓴다.
 4. cd wishlist-appversion2/flutter_app
-5. 단위 테스트만 먼저:
-   flutter test test/product_extract_js_sync_test.dart test/webview_scraper_result_test.dart
-6. 감사 전에 JS가 도는지 확인한다. WEBVIEW_JS_PROBE 가 2 가 아니면 몰 감사를 가격 통과로 보지 말 것.
+5. 단위 테스트:
+   flutter test test/product_extract_js_sync_test.dart test/webview_scraper_result_test.dart test/parsing_bridge_test.dart test/share_input_test.dart
+6. WEBVIEW_JS_PROBE 가 2 또는 2.0 이 아니면 몰 결과를 가격 통과로 보지 말 것.
 
-## 감사 명령 (iOS 기기 ID를 DEVICE_ID로 바꿔)
-반드시 --no-uninstall. 한 번에 64개를 돌리지 말고 Android와 같이 분할한다.
+## 감사 명령 (DEVICE_ID를 실제 기기 ID로)
+반드시 --no-uninstall. 한 번에 64개를 돌리지 말 것.
 
-7개 스모크 (미쏘, 핫핑, SSG, 오호라, 파르티멘토, Reformation, 올리브영):
-flutter test integration_test/webview_all_malls_audit_test.dart -d DEVICE_ID --no-uninstall --dart-define=WEBVIEW_AUDIT_ONLY=14,22,24,46,49,53,55
+1) 오염 확인 — 이전 몰 DOM이 다음 결과에 섞이면 실패다. finalUrl·상품명이 요청한 몰과 같아야 한다.
+퀸잇 다음 브랜디:
+flutter test integration_test/webview_all_malls_audit_test.dart -d DEVICE_ID --no-uninstall --dart-define=WEBVIEW_AUDIT_ONLY=56,57
 
-1~3 (쿠팡, 네이버, 11번가):
-flutter test integration_test/webview_all_malls_audit_test.dart -d DEVICE_ID --no-uninstall --dart-define=WEBVIEW_AUDIT_START=0 --dart-define=WEBVIEW_AUDIT_END=3
+탑텐 다음 무인양품:
+flutter test integration_test/webview_all_malls_audit_test.dart -d DEVICE_ID --no-uninstall --dart-define=WEBVIEW_AUDIT_ONLY=10,11
 
-그다음 4~20, 20~38, 38~51, 51~64 처럼 15개 안팎으로 나눈다.
-노이아고(38, START=37 END=38)에서 Android는 긴 배치 중 러너가 끊긴 적이 있으므로 의심되면 단독 실행.
+코드그라피 다음 후아유:
+flutter test integration_test/webview_all_malls_audit_test.dart -d DEVICE_ID --no-uninstall --dart-define=WEBVIEW_AUDIT_ONLY=33,34
 
-시작 로그 WEBVIEW_JS_PROBE 2 와 각 줄 WEBVIEW_AUDIT_RESULT JSON을 저장한다.
+2) Android와 갈렸던 몰:
+flutter test integration_test/webview_all_malls_audit_test.dart -d DEVICE_ID --no-uninstall --dart-define=WEBVIEW_AUDIT_ONLY=24,31,37,40
+
+인덱스: 24 SSG, 31 반스, 37 Aritzia, 40 마리떼.
+
+시작 로그 WEBVIEW_JS_PROBE 와 각 줄 WEBVIEW_AUDIT_RESULT JSON을 저장한다.
+
+## 비교용 (iOS 통과로 베끼지 말 것)
+이전 iOS 시뮬레이터 64(PR #31): 퀸잇 DOM이 브랜디 등으로 새어 나왔고, 단독 재실행으로 덮어썼다. 이번 코드는 추출마다 about:blank onLoadStop을 기다린다. 오염이 다시 나오면 몰 이름·요청 URL·finalUrl을 적고, 범용 가격 우회로 고치지 말 것.
+
+Android 실기기 최신:
+- SSG PASS, 반스 PASS(올드스쿨 57000), Aritzia PASS, 마리떼는 전용 규칙 실패로 가격 null(PARTIAL_NO_PRICE)
+- 현대Hmall·나이키·이랜드몰은 Android에서 PASS. 리바이스는 loading_timeout. iOS에서 리바이스 대기를 늘리지 말 것.
+- SSG가 iOS에서 「접속이 잠시 제한되었습니다」이면 BLOCKED 가 맞다. 우회하지 말 것.
+- 마리떼 iOS에서 전용 규칙으로 가격이 나오면 PASS로 적어도 된다. 안 나오면 가격 null을 유지한다.
+
+PASS로 보고하려면 이름·이미지·양수 가격이 있어야 한다. 관리 몰은 source.price 가 site-adapter 여야 한다.
+
+## 선택: 공유 담기
+시간이 되면 반스 URL을 공유 담기에 넣어 이름·가격이 채워지는지, 가격이 없는 몰은 이름/사진/URL이 남고 가격만 직접 입력하면 저장되는지 본다. 파이썬 서버는 켜지 말 것.
 
 ## 검사 후 일반 앱 복구
 flutter test 는 검사 전용 엔트리를 설치한다. 끝나면 일반 앱을 덮어씌운다. uninstall 하지 말 것.
-flutter build ios --debug
-flutter install -d DEVICE_ID --no-uninstall
+flutter build ios --debug --no-codesign 이 실패하면 코드사인된 debug 설치를 쓴다.
+flutter install -d DEVICE_ID
 또는 Xcode에서 Runner를 일반 Debug로 설치. 사용자 데이터 삭제 금지.
 
-## Android 실기기 기준 (비교용, iOS 통과로 베끼지 말 것)
-기기: Galaxy SM-S938N / Android 16. JS probe=2.
-PASS 46, EXPECTED_ABSTAIN 5, BLOCKED 2, PARTIAL_MEDIA 1, NO_RESULT 1, PARTIAL_NO_PRICE 9.
-
-- BLOCKED: 쿠팡, H&M (Access Denied)
-- EXPECTED_ABSTAIN: 네이버 쇼핑, Gap, LF몰, NUGU, SHEIN
-- PARTIAL_MEDIA: 반스 (가격·이미지 있음, 이름 없음)
-- NO_RESULT: 리바이스 (loading_timeout)
-- PARTIAL_NO_PRICE: 현대Hmall, 마리떼, 오호라, 육육걸즈, 파르티멘토, Reformation, 나이키(not_product_page), ZARA, 이랜드몰(not_product_page)
-- 11번가: hang 없이 PASS (json-ld, 비관리 몰)
-- 노이아고: 단독 재실행 PASS 219000
-- SSG·올리브영: Android에서는 전용 어댑터 PASS. iOS에서 차단 화면이면 BLOCKED로 적고 우회하지 말 것.
-
-PASS로 보고하려면 이름·이미지·양수 가격이 있어야 한다. 관리 몰은 source.price 가 site-adapter 여야 한다. 전용 규칙 실패로 가격이 null이면 PARTIAL_NO_PRICE / price_ambiguous 가 맞다.
-
 ## 보고
-CHANGELOG와 ENGINE_DEVELOPMENT_HANDOFF.md에 iOS 결과를 남긴다. Android와 다른 분류는 몰 이름·failureReason·finalUrl을 명시한다. 가격 미검증이면 통과로 쓰지 말 것.
+CHANGELOG와 ENGINE_DEVELOPMENT_HANDOFF.md에 iOS 재확인 결과를 남긴다. 오염 여부, SSG/반스/마리떼/Aritzia 분류, Android와 다른 점을 몰 이름·failureReason·finalUrl로 적는다.
 커밋·푸시 후 PR #28을 draft로 갱신하고 머지하지 말 것.
 ```
 

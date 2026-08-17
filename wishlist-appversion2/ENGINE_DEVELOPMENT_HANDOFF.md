@@ -51,7 +51,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 - WebView가 가격을 못 내도 이름·이미지·URL을 남기고 가격은 수동 입력한다.
 - 저장 시 상품명과 양수 가격이 필요하다.
 
-다음: iOS 스모크(오염·SSG/Vans/Marithe/Aritzia). 파이썬 엔진 폴더 정리는 앱 경로가 안정된 뒤에 한다. 리바이스 timeout은 고정 대기를 늘리지 않는다.
+다음: iOS 재확인은 `wishlist-appversion2/IOS_WEBVIEW_AUDIT_PROMPT.md`. 파이썬 엔진 폴더 정리는 앱 경로가 안정된 뒤에 한다. 리바이스 timeout은 고정 대기를 늘리지 않는다.
 
 ## 0.4 2026-08-17 blank 리셋·남은 몰 규칙
 
