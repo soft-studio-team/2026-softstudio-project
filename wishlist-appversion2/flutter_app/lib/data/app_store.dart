@@ -1444,12 +1444,6 @@ class AppStore extends ChangeNotifier {
     }
     final trimmedTitle = title.trim();
     final trimmedBody = body.trim();
-    if (trimmedTitle.isEmpty) {
-      throw Exception('제목을 입력해 주세요.');
-    }
-    if (trimmedBody.isEmpty) {
-      throw Exception('본문을 입력해 주세요.');
-    }
 
     final now = DateTime.now();
     final existing = existingId != null

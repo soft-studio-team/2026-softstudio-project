@@ -166,15 +166,18 @@ class ReviewDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
           ],
-          Text(
-            review.title,
-            style: DiaryTheme.display(28),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            review.body,
-            style: DiaryTheme.product(16, color: DiaryColors.ink),
-          ),
+          if (review.title.trim().isNotEmpty) ...[
+            Text(
+              review.title,
+              style: DiaryTheme.display(28),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (review.body.trim().isNotEmpty)
+            Text(
+              review.body,
+              style: DiaryTheme.product(16, color: DiaryColors.ink),
+            ),
         ],
       ),
     );

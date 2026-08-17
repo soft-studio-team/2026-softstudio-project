@@ -387,7 +387,7 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
               controller: titleCtrl,
               style: DiaryTheme.body(22, weight: FontWeight.w700),
               decoration: InputDecoration(
-                hintText: '제목을 적어보세요',
+                hintText: '제목은 생략해도 돼요',
                 hintStyle: DiaryTheme.body(22, color: DiaryColors.inkSoft),
                 border: InputBorder.none,
               ),
@@ -399,7 +399,7 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
               maxLines: null,
               style: DiaryTheme.product(15),
               decoration: InputDecoration(
-                hintText: '이 상품에 대한 솔직한 이야기를 블로그처럼 남겨보세요.',
+                hintText: '하고 싶은 말이 있으면 남겨보세요 (선택)',
                 hintStyle: DiaryTheme.product(15, color: DiaryColors.inkSoft),
                 border: InputBorder.none,
               ),

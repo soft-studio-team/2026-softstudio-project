@@ -91,6 +91,47 @@ void main() {
     expect(review.imageUrls, isEmpty);
   });
 
+  test('publishReview allows a mood-only review without title or body', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    store.currentUser = AppUser(
+      uid: 'user-1',
+      name: '나',
+      handle: '@me',
+      avatarUrl: 'https://example.com/me.png',
+    );
+    store.products = [
+      Product(
+        id: 8,
+        listId: 'all',
+        name: '테스트 자켓',
+        price: 54000,
+        image: 'https://example.com/jacket.png',
+        platform: '테스트몰',
+      ),
+    ];
+
+    final review = await store.publishReview(
+      product: store.products.first,
+      title: '   ',
+      body: '',
+      mood: 2,
+    );
+
+    expect(review.title, isEmpty);
+    expect(review.body, isEmpty);
+    expect(review.mood, 2);
+    expect(store.myReviewForProduct(8)?.id, review.id);
+  });
+
+  test('DeletedAccount fields replace the leaver name on leftover social copies', () {
+    expect(DeletedAccount.basketAuthorFields()['ownerName'], '탈퇴한 사용자');
+    expect(DeletedAccount.basketAuthorFields()['title'], '탈퇴한 사용자의 살까말까');
+    expect(DeletedAccount.commentAuthorFields()['authorName'], '탈퇴한 사용자');
+    expect(DeletedAccount.commentAuthorFields()['authorHandle'], isEmpty);
+  });
+
   test('Product json round-trips list privacy', () {
     final product = Product(
       id: 3,

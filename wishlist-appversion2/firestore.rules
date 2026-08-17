@@ -94,6 +94,12 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if signedIn()
           && request.resource.data.fromUid == request.auth.uid;
+        // Sender may anonymize leftover copies when they delete their account.
+        allow update: if signedIn()
+          && resource.data.fromUid == request.auth.uid
+          && request.resource.data.fromUid == resource.data.fromUid
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['ownerName', 'fromHandle', 'fromAvatar', 'title']);
         allow delete: if isOwner(userId) || userEmailMatchesAuth(userId);
       }
 
