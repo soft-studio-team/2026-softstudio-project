@@ -6,6 +6,10 @@
 	<string>$(CUSTOM_GROUP_ID)</string>
 	<key>CFBundleDisplayName</key>
 	<string>wishkit</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>NSExtension</key>
 	<dict>
 		<key>NSExtensionAttributes</key>
