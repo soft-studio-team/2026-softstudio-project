@@ -1,5 +1,19 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-17 - iOS 공유 시트에 wishkit 노출
+
+🌟 **쉬운 설명**
+- 아이폰에서 사파리·카톡·쇼핑몰 앱의 공유 목록에 wishkit이 보이도록 했습니다.
+- 상품 URL을 공유하면 기존과 같이 공유 담기 화면으로 이동합니다. Android 동작은 그대로입니다.
+
+🔧 **기술 설명**
+- iOS `Share Extension` 타깃을 추가하고 Runner와 `group.com.softstudio.wishlist` App Group으로 공유 텍스트를 넘깁니다.
+- Extension은 URL·텍스트·이미지를 App Group에 저장한 뒤 `ShareMedia-com.softstudio.wishlist` 스킴으로 호스트 앱을 엽니다.
+- 호스트 앱은 Android와 같은 `com.softstudio.wishlist/share` MethodChannel로 공유 문장을 Flutter `/share` 화면에 전달합니다.
+- 공유 시트 표시 이름은 `wishkit`이며, 텍스트·웹 URL·웹페이지·이미지를 활성화 규칙에 포함합니다.
+
+---
+
 ## 2026-08-16 - 패션 플랫폼 선택 확장 9곳
 
 🌟 **쉬운 설명**
