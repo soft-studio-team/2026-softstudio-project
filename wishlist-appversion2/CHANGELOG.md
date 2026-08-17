@@ -1,5 +1,19 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-17 - WebView 이름·가격·사진 실페이지 대조 시작
+
+🌟 **쉬운 설명**
+- 자동 채움이 되는 쇼핑몰을 대상으로, 엔진이 읽은 이름·가격·사진이 실제 상품 페이지와 같은지 비교하는 검사를 만들었습니다.
+- 엔진 이름에 브랜드가 붙어 나와도, 화면에 보이는 상품명이 포함되면 같은 상품으로 봅니다. 가격은 첫구매·카드 쿠폰이 아닌 판매가입니다.
+
+🔧 **기술 설명**
+- `lib/services/live_field_compare.dart`: 이름 포함/브랜드 제거/토큰 포함, 가격 정수 일치, 이미지 canonical URL·파일 stem 비교.
+- `integration_test/live_field_compare_test.dart` + `live_field_compare_catalog.dart`. `--no-uninstall`, `LIVE_COMPARE_MALLS`로 몰 부분집합 가능.
+- 실페이지 확인값을 카탈로그에 채운 몰: 무신사·29CM·반스 3상품, W컨셉 1상품, 카페24 브랜드 다수. 29CM 레이브 재킷은 화면 첫구매가 177,510이 아니라 `sellPrice` 206,400.
+- 실물 Galaxy USB가 이어서 빠져 `R3CY10LF2HE` 대조 실행은 아직 못 함. SuperDisplay Stopped, SDK ADB 1.0.41.
+
+---
+
 ## 2026-08-17 - 파이썬 파싱 엔진 폴더 제거
 
 🌟 **쉬운 설명**

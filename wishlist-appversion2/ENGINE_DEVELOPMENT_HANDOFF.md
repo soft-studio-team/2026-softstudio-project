@@ -43,6 +43,24 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
 
+## 0.10 2026-08-17 WebView vs 실페이지 이름·가격·사진 대조
+
+구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
+
+자동 채움 PASS 50몰을 대상으로 WebView 추출 값과 실제 상품 페이지 확인 값을 비교한다. 이전 64몰 감사는 양수 가격 유무만 봤고, 이번 검사는 이름·가격·사진이다.
+
+비교 규칙 (`lib/services/live_field_compare.dart`):
+
+- 이름: 완전 일치, 한쪽이 다른 쪽을 포함, 브랜드를 뺀 뒤 포함, live 토큰이 모두 engine에 있으면 통과. 엔진 이름에 `[트위]`·`VANS` 같은 부가 정보가 붙는 경우를 허용한다. 추출 JS에서 브랜드를 지우지는 않는다.
+- 가격: 엔진 판매가 == 실페이지 판매가. 첫구매·카드·앱 쿠폰은 정답이 아니다. 무신사 6152461은 화면에 21,280이 보여도 `goodsPrice.salePrice` 30400. 29CM 3503849는 첫구매가 177,510이 아니라 `item.sellPrice` 206400.
+- 사진: 쿼리 제거 canonical URL, 파일 stem 포함.
+
+러너: `flutter test integration_test/live_field_compare_test.dart -d R3CY10LF2HE --no-uninstall --dart-define=LIVE_COMPARE_MALLS=무신사,반스,나이키`
+
+카탈로그에 실페이지 값을 채운 상태. 실물 Galaxy USB가 빠져 기기 대조는 아직 실행하지 못했다. 앱 uninstall 없음. 리바이스 대기는 늘리지 않음.
+
+다음: 갤럭시 재연결 후 무신사·반스·나이키부터 대조. 나머지 몰 3상품·실페이지 값 보충.
+
 ## 0.9 2026-08-17 파이썬 파싱 엔진 폴더 제거
 
 구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
