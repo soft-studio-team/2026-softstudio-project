@@ -6,6 +6,7 @@
 - 상품을 읽기 전에 빈 화면이 실제로 열린 뒤에만 다음 쇼핑몰을 열도록 바꿨습니다. 이전 페이지가 다음 결과에 섞이지 않게 합니다.
 - 반스는 전용 상품명을 우선하고, 현대Hmall·이랜드몰 상품 주소를 상품 페이지로 인식합니다.
 - 품절·단종된 감사 표본(현대Hmall, 나이키, 이랜드몰)은 현재 판매 중인 주소로 바꿨습니다. 쿠폰 예상가는 저장하지 않습니다.
+- 실물 갤럭시에서 5곳을 다시 열었습니다. 현대Hmall·반스·나이키·이랜드몰은 이름·사진·가격이 같이 나왔고, 리바이스만 페이지가 끝나지 않았습니다.
 
 🔧 **기술 설명**
 - `WebViewExtractHost`는 추출마다 `about:blank` `onLoadStop`을 최대 2초 기다린 뒤에만 대상 URL을 연다. 리셋 중 콜백과 blank URL은 루프에 넘기지 않는다.
@@ -13,7 +14,10 @@
 - 반스는 `recopick:title`을 상품명으로 우선한다. Hmall은 `itemPtc`/`slitmCd`, 이랜드몰은 `/i/item`/`itemNo`, 나이키는 `/t/` 상품 URL을 상품 페이지로 본다.
 - 이랜드몰 전용 가격은 표시 판매가 `s_price`만 사용한다. `final_price`는 쿠폰 예상가라 쓰지 않는다. 관리 몰 범용 JSON-LD/OG/DOM 가격 우회는 그대로 없다.
 - 감사 URL: Hmall `slitmCd=2060464676`(판매중 42900), 나이키 AF1 `IH1698-100`(BUYABLE_BUY), 이랜드몰 `itemNo=2607498077`. 기존 Hmall/나이키/이랜드 표본은 품절·404·판매종료.
-- 단위 테스트 25개, 대상 analyze 0 issues. 실기기 5몰(`12,30,31,54,64`) 재감사는 APK 빌드 후 `R3CY10LF2HE` ADB가 사라져 이번 실행에서 완료하지 못했다. SuperDisplay는 Stopped 유지.
+- 단위 테스트 25개, 대상 analyze 0 issues.
+- 실물 `SM-S938N` / `R3CY10LF2HE` / Android 16, SuperDisplay Stopped, `--no-uninstall`, SDK ADB 1.0.41. JS probe=`2`.
+- 5몰 재감사 `WEBVIEW_AUDIT_ONLY=12,30,31,54,64`: 현대Hmall PASS 42900, 반스 PASS 올드스쿨 57000, 나이키 PASS 134100, 이랜드몰 PASS 55600. 리바이스는 여전히 `loading_timeout`(27.4초, 고정 대기는 늘리지 않음).
+- 검사 후 일반 앱을 `flutter build apk --debug` + `adb install -r`로 복구한다.
 
 ---
 

@@ -59,9 +59,11 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 - `flutter test test/product_extract_js_sync_test.dart test/webview_scraper_result_test.dart` → 25 passed
 - 대상 `flutter analyze` → 0 issues
-- SuperDisplay Stopped. 실기기 5몰 재감사는 Gradle 빌드 후 `adb: device 'R3CY10LF2HE' not found`로 설치가 실패해 이번 실행에서 가격 통과로 보지 않는다.
+- SuperDisplay Stopped, `--no-uninstall`, SDK ADB 1.0.41. JS probe=`2`.
+- 실기기 5몰 `WEBVIEW_AUDIT_ONLY=12,30,31,54,64`: 현대Hmall PASS 42900, 반스 PASS 올드스쿨 57000, 나이키 PASS 134100, 이랜드몰 PASS 55600. 리바이스 `NO_RESULT`/`loading_timeout` 27.4초. 고정 대기는 늘리지 않음.
+- 검사 후 일반 앱을 `flutter build apk --debug` + `adb install -r`로 복구한다.
 
-다음: 폰 USB가 다시 잡히면 `--no-uninstall`로 `WEBVIEW_AUDIT_ONLY=12,30,31,54,64`를 돌리고 일반 앱을 `-r` 복구한다. 실패 UX와 Python 폴백은 그 다음이다.
+다음: 리바이스는 대기 시간을 늘리지 않고 원인만 남긴다. 실패 UX(이름/이미지/URL 저장 + 수동 가격), Python 폴백 결정, iOS 스모크(오염·SSG/Vans/Marithe/Aritzia).
 
 ## 0.3 2026-08-16 실기기 64개 분할 감사
 
@@ -74,7 +76,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 - NO_RESULT 1: 리바이스 `loading_timeout`
 - PARTIAL_NO_PRICE 9: 현대Hmall, 마리떼, 오호라, 육육걸즈, 파르티멘토, Reformation, 나이키(`not_product_page`), ZARA, 이랜드몰(`not_product_page`)
 
-다음: 실기기 5몰 재감사는 USB 재연결 후. 실패 UX, Python 폴백 결정은 그 다음.
+다음: 리바이스 timeout은 고정 대기를 늘리지 않고 보류. 실패 UX, Python 폴백 결정, iOS 스모크.
 검사 후 일반 앱을 `-r`로 복구했다.
 iOS 작업자용 시작 프롬프트: `wishlist-appversion2/IOS_WEBVIEW_AUDIT_PROMPT.md`
 
