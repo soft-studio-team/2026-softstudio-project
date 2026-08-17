@@ -1,5 +1,23 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-17 - iOS blank 리셋 재확인 (오염 3쌍 + SSG/반스/Aritzia/마리떼)
+
+🌟 **쉬운 설명**
+- iOS에서 연속으로 쇼핑몰을 열어도 이전 페이지가 다음 결과에 섞이지 않는지 다시 확인했습니다. 퀸잇→브랜디, 탑텐→무인양품, 코드그라피→후아유는 모두 각자 상품이 나왔습니다.
+- SSG는 여전히 접속 제한 화면입니다. 반스·마리떼는 이름·사진·가격이 같이 나왔고, Aritzia는 가격을 비운 채 두었습니다.
+
+🔧 **기술 설명**
+- 브랜치 `feat/webview-scraper-stabilize` (`eafa6b3`). 64개 전체 감사가 아니다. JS probe=`2.0`, `--no-uninstall`.
+- 실물 iPhone `지으닝`은 무선으로 보였으나 `flutter test`가 wireless tether에서 앱을 시작하지 못해, 부팅된 iPhone 17 Pro 시뮬레이터(`53D6E81D-B9AC-48B0-8175-7F12FECF1041`)를 썼다.
+- 오염 3쌍 모두 `finalUrl`·상품명·adapter가 요청 몰과 일치. 이전 iOS 64에서 무인양품←탑텐, 후아유←코드그라피, 퀸잇 DOM이 브랜디로 새던 오염은 이번 연속 실행에서 재현되지 않음.
+- SSG `BLOCKED` `access_blocked` 「접속이 잠시 제한되었습니다」. 우회하지 않음. finalUrl `ssg.com`.
+- 반스 PASS 올드스쿨 57000, `source.price=site-adapter`. 마리떼 PASS 49000, `source.price=site-adapter`.
+- Aritzia `PARTIAL_NO_PRICE` `price_ambiguous`. 이름 `www.aritzia.com`, 이미지/가격 null. 전용 규칙 실패라 범용 가격 우회 없음. Android PASS·이전 iOS 64(이름·이미지 있음)와 다름.
+- 원본: `wishlist-appversion2/ios_webview_recheck_2026-08-17.json`. PR #31 64몰 문서는 덮어쓰지 않음.
+- 검사 후 `flutter install`로 일반 Debug를 시뮬레이터에 다시 넣었다. 이 명령이 시뮬레이터 기존 앱을 지운 뒤 설치했다. 실기기 데이터는 건드리지 않음.
+
+---
+
 ## 2026-08-17 - 공유 담기를 WebView 전용으로 전환
 
 🌟 **쉬운 설명**

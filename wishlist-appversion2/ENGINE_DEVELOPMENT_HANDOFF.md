@@ -43,6 +43,47 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
 
+## 0.6 2026-08-17 iOS blank 리셋 재확인
+
+구현 브랜치: `feat/webview-scraper-stabilize` (`eafa6b3`, PR #28)
+
+64개 전체가 아니다. blank 리셋 이후 연속 추출 오염과 Android와 갈리던 4몰만 봤다.
+
+환경:
+
+- 단위 테스트 4파일 통과 (`product_extract_js_sync` / `webview_scraper_result` / `parsing_bridge` / `share_input`)
+- JS probe=`2.0`, `--no-uninstall`
+- 실물 iPhone `지으닝`(iPhone 16, iOS 26.6, wireless `00008140-001202993CEB001C`)은 `available (paired)`였으나 `flutter test`가 wireless tether에서 앱을 시작하지 못함 (`Cannot start app on wirelessly tethered iOS device`)
+- 사용 기기: iPhone 17 Pro 시뮬레이터 `53D6E81D-B9AC-48B0-8175-7F12FECF1041` / iOS 26.5
+- 파이썬 서버 미사용. 로그인·결제·장바구니 변경 없음. 감사 러너는 `--no-uninstall`
+
+오염 3쌍 — 모두 없음. `finalUrl`·상품명·adapter가 요청 몰과 같다.
+
+| 순서 | 몰 | 분류 | 가격 | finalUrl 호스트 |
+|---|---|---|---:|---|
+| 56→57 | 퀸잇 → 브랜디 | PASS → PASS | 32900 → 34500 | queenit.kr → brandi.co.kr |
+| 10→11 | 탑텐 → 무인양품 | PASS → PASS | 19900 → 9900 | topten10.goodwearmall.com → mujikorea.co.kr |
+| 33→34 | 코드그라피 → 후아유 | PASS → PASS | 70300 → 19900 | code-graphy.com → whoau.com |
+
+이전 iOS 시뮬레이터 64(PR #31)에서는 무인양품←탑텐, 후아유←코드그라피, 퀸잇 DOM이 브랜디 등으로 샜다. 이번 코드는 추출마다 `about:blank` `onLoadStop`을 기다린다. 연속 실행에서 그 오염은 재현되지 않았다. 퀸잇 판매가는 이전 29900에서 32900으로 바뀌었고, 전용 어댑터 PASS는 유지.
+
+Android와 갈리던 4몰:
+
+| 몰 | iOS 재확인 | failureReason | Android 최신 | 이전 iOS 64 |
+|---|---|---|---|---|
+| SSG | BLOCKED. 이름 「안전한 서비스 이용을 위해접속이 잠시 제한되었습니다」. finalUrl `https://www.ssg.com/item/itemView.ssg?itemId=1000571660298` | `access_blocked` | PASS | BLOCKED |
+| 반스 | PASS 올드스쿨 57000, `source.price=site-adapter`. finalUrl `https://www.vans.co.kr/PRODUCT/VN000D6WBOM` | null | PASS 올드스쿨 57000 | PASS 올드스쿨 57000 |
+| Aritzia | PARTIAL_NO_PRICE. 이름 `www.aritzia.com`, 이미지/가격 null. finalUrl 상품 URL 유지 | `price_ambiguous` | PASS 88900 | PARTIAL_NO_PRICE(이름·이미지 있음, 가격 null) |
+| 마리떼 | PASS 49000, `source.price=site-adapter`. finalUrl `https://marithe-official.com/product/detail.html?product_no=8883` | null | PARTIAL_NO_PRICE | PASS 49000 |
+
+SSG 차단은 우회하지 않는다. Aritzia 전용 규칙 실패에 범용 JSON-LD/OG/DOM 가격을 넣지 않았다. 마리떼 iOS 전용 규칙은 가격이 나와 PASS로 적는다.
+
+공유 담기 UI는 이번 재확인에서 돌리지 않았다. 단위 테스트만 통과. 원본 JSON: `wishlist-appversion2/ios_webview_recheck_2026-08-17.json`. PR #31 64몰 문서는 덮어쓰지 않음.
+
+검사 후 `flutter install -d`로 일반 Debug를 시뮬레이터에 다시 넣었다. 이 명령이 시뮬레이터의 기존 앱을 지운 뒤 설치했다. 실기기 앱/데이터는 건드리지 않았다.
+
+다음: 파이썬 엔진 폴더 정리는 앱 경로가 안정된 뒤에 한다. 리바이스 timeout은 고정 대기를 늘리지 않는다. Aritzia iOS 이름/이미지 품질은 이전 64보다 나빴으나 가격 우회로 고치지 않는다.
+
 ## 0.5 2026-08-17 공유 담기 WebView 전용
 
 구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
@@ -51,7 +92,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 - WebView가 가격을 못 내도 이름·이미지·URL을 남기고 가격은 수동 입력한다.
 - 저장 시 상품명과 양수 가격이 필요하다.
 
-다음: iOS 재확인은 `wishlist-appversion2/IOS_WEBVIEW_AUDIT_PROMPT.md`. 파이썬 엔진 폴더 정리는 앱 경로가 안정된 뒤에 한다. 리바이스 timeout은 고정 대기를 늘리지 않는다.
+다음: iOS 재확인은 0.6. 파이썬 엔진 폴더 정리는 앱 경로가 안정된 뒤에 한다. 리바이스 timeout은 고정 대기를 늘리지 않는다.
 
 ## 0.4 2026-08-17 blank 리셋·남은 몰 규칙
 
