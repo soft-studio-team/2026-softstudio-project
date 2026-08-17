@@ -25,6 +25,7 @@ import 'screens/reviews/review_compose_screen.dart';
 import 'screens/reviews/review_detail_screen.dart';
 import 'screens/salkamalka/salkamalka_screen.dart';
 import 'screens/share/share_intake_screen.dart';
+import 'screens/shared/shared_basket_detail_screen.dart';
 import 'screens/shared/shared_wishlist_screen.dart';
 import 'screens/wishlist/wishlist_screen.dart';
 import 'services/share_input.dart';
@@ -304,31 +305,9 @@ GoRouter _buildRouter(AppStore store) {
       ),
       GoRoute(
         path: '/shared/:id',
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          final store = context.read<AppStore>();
-          final shared = store.sharedBasketById(id);
-          if (shared == null) {
-            return Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.pop(),
-                ),
-              ),
-              body: const Center(child: Text('공유 링크를 찾을 수 없어요')),
-            );
-          }
-          return SharedWishlistScreen(
-            title: shared.title,
-            subtitle: '${shared.ownerName} 님이 공유한 살까말까 바구니',
-            products: shared.items,
-            accentColor: DiaryColors.folderPeach,
-            onShare: store.sharedBaskets.containsKey(id)
-                ? () => showSentBasketShareSheet(context, store, shared)
-                : null,
-          );
-        },
+        builder: (context, state) => SharedBasketDetailScreen(
+          basketId: state.pathParameters['id']!,
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {

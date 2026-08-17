@@ -145,6 +145,7 @@ class PushNotificationService {
       AppNotificationType.basket => '살까말까',
       AppNotificationType.review => '친구 리뷰',
       AppNotificationType.list => '리스트 공개',
+      AppNotificationType.comment => '살까말까 댓글',
     };
   }
 }

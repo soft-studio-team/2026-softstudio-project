@@ -7,11 +7,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 import '../firebase_options.dart';
 import '../models/models.dart';
 import '../services/account_repository.dart';
 import '../services/push_notification_service.dart';
+import '../services/share_page_html.dart';
 import '../theme/diary_theme.dart';
 
 class AppStore extends ChangeNotifier {
@@ -211,9 +213,9 @@ class AppStore extends ChangeNotifier {
     }
     try {
       final sent = await _repo.loadSentBaskets(userId);
-      for (final b in sent) {
-        sharedBaskets[b.id] = b;
-      }
+      sharedBaskets
+        ..clear()
+        ..addEntries(sent.map((b) => MapEntry(b.id, b)));
       await _persistShared();
     } catch (_) {}
     await _syncHiddenFeed(userId);
@@ -288,6 +290,7 @@ class AppStore extends ChangeNotifier {
     _hiddenFeedIds = {};
     _pendingHideIds = {};
     _pendingUnhideIds = {};
+    sharedBaskets.clear();
     currentUser = AppUser(
       name: '게스트',
       handle: '@guest',
@@ -729,7 +732,9 @@ class AppStore extends ChangeNotifier {
   SharedBasket? sharedBasketById(String id) {
     final local = sharedBaskets[id];
     if (local != null) return local;
-    return receivedBaskets.where((b) => b.id == id).firstOrNull;
+    return receivedBaskets
+        .where((b) => b.id == id || b.threadId == id || b.commentThreadId == id)
+        .firstOrNull;
   }
 
   int get unreadNotificationCount =>
@@ -775,24 +780,32 @@ class AppStore extends ChangeNotifier {
   /// Feed behind 내 친구 탭 > 살까말까. Display-level filtering only — nothing is
   /// dropped from [sentBaskets], which stays the full archive for 마이페이지.
   List<SalkamalkaFeedEntry> get salkamalkaFeed {
-    final mineIds = sentBaskets.map((b) => b.id).toSet();
+    final myUid = uid ?? '';
     final out = <SalkamalkaFeedEntry>[
       for (final b in receivedBaskets)
-        SalkamalkaFeedEntry(basket: b, isMine: false),
+        if (!_isSentByMe(b, myUid))
+          SalkamalkaFeedEntry(basket: b, isMine: false),
       // Link / KakaoTalk shares never went to an app friend, so they do not
       // belong in the friends feed.
       for (final b in sentBaskets)
-        if (b.sharedToFriends) SalkamalkaFeedEntry(basket: b, isMine: true),
+        if (b.sharedToFriends && _isSentByMe(b, myUid))
+          SalkamalkaFeedEntry(basket: b, isMine: true),
     ];
     // Prefer the sent copy when the same id somehow appears in both.
     final byId = <String, SalkamalkaFeedEntry>{};
     for (final e in out) {
       if (_hiddenFeedIds.contains(e.basket.id)) continue;
-      if (mineIds.contains(e.basket.id) && !e.isMine) continue;
+      if (_hiddenFeedIds.contains(e.basket.commentThreadId)) continue;
       byId[e.basket.id] = e;
     }
     return byId.values.toList()
       ..sort((a, b) => b.basket.sharedAt.compareTo(a.basket.sharedAt));
+  }
+
+  bool _isSentByMe(SharedBasket basket, String myUid) {
+    if (myUid.isEmpty) return false;
+    if (basket.fromUid.isNotEmpty) return basket.fromUid == myUid;
+    return sharedBaskets.containsKey(basket.id);
   }
 
   bool isHiddenFromSalkamalkaFeed(String id) => _hiddenFeedIds.contains(id);
@@ -1061,7 +1074,9 @@ class AppStore extends ChangeNotifier {
     return _repo.uploadAvatarFile(userId, file);
   }
 
-  Future<SharedBasket> createSharedBasketFromSelection() async {
+  Future<SharedBasket> createSharedBasketFromSelection({
+    String memo = '',
+  }) async {
     final selected = basket
         .where((b) => b.isSelected)
         .map((b) => b.product)
@@ -1072,7 +1087,8 @@ class AppStore extends ChangeNotifier {
     return rememberSentBasket(
       items: selected,
       title: '살까말까 공유',
-      channels: const [SharedChannel.link],
+      channels: const [SharedChannel.friends],
+      memo: memo,
     );
   }
 
@@ -1090,6 +1106,7 @@ class AppStore extends ChangeNotifier {
     List<String> channels = const [],
     String? existingId,
     bool touchSharedAt = false,
+    String memo = '',
   }) async {
     final now = DateTime.now();
     final id = existingId ?? 'sb-${now.millisecondsSinceEpoch}';
@@ -1119,6 +1136,11 @@ class AppStore extends ChangeNotifier {
       // Re-sending bumps the basket back to the top of the friends feed;
       // createdAt stays put so 마이페이지 keeps the original date.
       lastSharedAt: touchSharedAt ? now : existing?.lastSharedAt,
+      publicPageId: existing?.publicPageId,
+      publicUrl: existing?.publicUrl,
+      publicUrlExpiresAt: existing?.publicUrlExpiresAt,
+      memo: memo.isNotEmpty ? memo : (existing?.memo ?? ''),
+      threadId: existing?.threadId.isNotEmpty == true ? existing!.threadId : id,
     );
     sharedBaskets[id] = shared;
     await _persistShared();
@@ -1132,7 +1154,10 @@ class AppStore extends ChangeNotifier {
     return shared;
   }
 
-  Future<void> sendBasketToFriends(List<String> friendIds) async {
+  Future<void> sendBasketToFriends(
+    List<String> friendIds, {
+    String memo = '',
+  }) async {
     final selected = basket
         .where((b) => b.isSelected)
         .map((b) => b.product)
@@ -1140,13 +1165,18 @@ class AppStore extends ChangeNotifier {
     if (selected.isEmpty) {
       throw Exception('공유할 상품을 선택해 주세요.');
     }
-    await resendBasketToFriends(items: selected, friendIds: friendIds);
+    await resendBasketToFriends(
+      items: selected,
+      friendIds: friendIds,
+      memo: memo,
+    );
   }
 
   Future<void> resendBasketToFriends({
     required List<Product> items,
     required List<String> friendIds,
     String? existingId,
+    String memo = '',
   }) async {
     if (items.isEmpty) {
       throw Exception('공유할 상품을 선택해 주세요.');
@@ -1159,10 +1189,17 @@ class AppStore extends ChangeNotifier {
     if (userId == null) {
       throw Exception('로그인된 계정이 없어요.');
     }
+    final existingBasket =
+        existingId == null ? null : sharedBaskets[existingId];
+    final threadId = existingBasket?.commentThreadId.isNotEmpty == true
+        ? existingBasket!.commentThreadId
+        : (existingId ?? 'sb-${DateTime.now().millisecondsSinceEpoch}');
     await _repo.sendBasketToFriends(
       from: currentUser.copyWith(uid: userId),
       recipientUids: friendIds,
       items: items,
+      threadId: threadId,
+      memo: memo,
     );
     final names = [
       for (final id in friendIds) friendById(id)?.name ?? '',
@@ -1173,21 +1210,101 @@ class AppStore extends ChangeNotifier {
       recipientUids: friendIds,
       recipientNames: names,
       channels: const [SharedChannel.friends],
-      existingId: existingId,
+      existingId: threadId,
       touchSharedAt: true,
+      memo: memo,
     );
     // Re-sending a basket that was X-ed out of the friends feed brings it back.
     // Covers both re-used ids (마이페이지 > 다시 보내기) and freshly minted ones.
     await unhideFromSalkamalkaFeed(shared.id);
   }
 
+  Stream<List<BasketComment>> watchBasketComments(String threadId) {
+    if (threadId.isEmpty || !_firebaseConfigured || uid == null) {
+      return Stream.value(const []);
+    }
+    return _repo.watchBasketComments(threadId);
+  }
+
+  Future<void> postBasketComment({
+    required SharedBasket basket,
+    required String text,
+    String parentId = '',
+  }) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      throw Exception('댓글을 입력해 주세요.');
+    }
+    final threadId = basket.commentThreadId;
+    if (threadId.isEmpty) {
+      throw Exception('이 살까말까에는 댓글을 달 수 없어요.');
+    }
+    _ensureFirebase();
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    final ownerUid = basket.fromUid.isNotEmpty ? basket.fromUid : userId;
+    await _repo.addBasketComment(
+      threadId: threadId,
+      from: currentUser.copyWith(uid: userId),
+      text: trimmed,
+      parentId: parentId,
+      ownerUid: ownerUid,
+      participantUids: {
+        ownerUid,
+        userId,
+        ...basket.recipientUids,
+      }.toList(),
+      memo: basket.memo,
+    );
+  }
+
+  /// Hosts an HTML snapshot of [basket] in Storage and returns a public URL.
+  /// Re-publishing the same basket overwrites the page and restarts the 28-day
+  /// clock so an actively re-shared link stays alive.
+  Future<String> publishSharePage(SharedBasket basket) async {
+    _ensureFirebase();
+    final userId = uid;
+    if (userId == null || !isLoggedIn) {
+      throw Exception('로그인하면 링크로 공유할 수 있어요.');
+    }
+    final pageId = (basket.publicPageId != null && basket.publicPageId!.isNotEmpty)
+        ? basket.publicPageId!
+        : const Uuid().v4();
+    final expiresAt = DateTime.now().add(kSharePageTtl);
+    final html = buildSharePageHtml(basket: basket, expiresAt: expiresAt);
+    final url = await _repo.uploadSharePage(
+      uid: userId,
+      pageId: pageId,
+      basketId: basket.id,
+      html: html,
+      expiresAt: expiresAt,
+    );
+    final updated = basket.copyWith(
+      publicPageId: pageId,
+      publicUrl: url,
+      publicUrlExpiresAt: expiresAt,
+      channels: {...basket.channels, SharedChannel.link}.toList(),
+      lastSharedAt: DateTime.now(),
+    );
+    sharedBaskets[basket.id] = updated;
+    await _persistShared();
+    try {
+      await _repo.upsertSentBasket(userId, updated);
+    } catch (_) {}
+    notifyListeners();
+    return url;
+  }
+
   String shareUrlFor(SharedBasket basket) =>
-      'https://wishlist.app/shared/${basket.id}';
+      basket.publicUrl ?? 'https://wishlist.app/shared/${basket.id}';
 
   Future<void> _persistShared() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sharedKey);
     await prefs.setString(
-      _sharedKey,
+      '${_sharedKey}_${uid ?? 'guest'}',
       jsonEncode(sharedBaskets.values.map((s) => s.toJson()).toList()),
     );
   }
@@ -1222,13 +1339,21 @@ class AppStore extends ChangeNotifier {
   Future<void> _loadLocalExtras() async {
     final prefs = await SharedPreferences.getInstance();
     notificationsEnabled = _readNotificationsEnabled(prefs, uid ?? 'guest');
-    final sharedRaw = prefs.getString(_sharedKey);
-    if (sharedRaw != null) {
-      final list = jsonDecode(sharedRaw) as List;
-      for (final e in list) {
-        final map = Map<String, dynamic>.from(e as Map);
-        final basket = SharedBasket.fromJson(map);
-        sharedBaskets[basket.id] = basket;
+    if (sharedBaskets.isEmpty) {
+      final sharedRaw =
+          prefs.getString('${_sharedKey}_${uid ?? 'guest'}');
+      if (sharedRaw != null) {
+        final list = jsonDecode(sharedRaw) as List;
+        for (final e in list) {
+          final map = Map<String, dynamic>.from(e as Map);
+          final basket = SharedBasket.fromJson(map);
+          if (uid != null &&
+              basket.fromUid.isNotEmpty &&
+              basket.fromUid != uid) {
+            continue;
+          }
+          sharedBaskets[basket.id] = basket;
+        }
       }
     }
     await _restoreHiddenFeedLocal();
