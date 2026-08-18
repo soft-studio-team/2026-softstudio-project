@@ -49,7 +49,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 50몰 새 상품 페이지에서 이름·화면 판매가·사진을 읽어 카탈로그를 채웠다. 카탈로그를 엔진 JS로 채우지 않는다. `generate_live_catalog.py`는 JSON을 읽고 W컨셉 3개를 덮어쓴 뒤 JSON 전체를 다시 쓴다.
 
-정답 3개 48몰. 낫포유 2(hang URL 290 제외). 퀸잇 0: 홈 해시가 상품이 아니고 `확인` 오버레이, 옛 상품 해시는 「존재하지 않는 상품」.
+정답 3개 49몰. 낫포유 2(hang URL 290 제외). 퀸잇 3: 감사 URL `421b849e…`와 검색 결과에서 연 상품 페이지. 판매가는 `product.finalPrice`(첫구매·최대쿠폰 `maximumBenefitCouponAppliedFinalPrice` 제외).
 
 브라우저로 채운 예: Aritzia는 `[data-testid=product-list-price-text]`의 `₩211,500` (무료배송 `₩200000` 금지). 에이블리 3번째는 쿠폰적용가 17120이 아니라 즉시할인 판매가 24450. 유니클로는 목록가 19900·chip 이미지가 아니라 페이지 판매가 49900·`kr/imagesgoods/…_3x4.jpg`.
 
@@ -61,9 +61,9 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 - IMAGE 3: 룩핀 이름·가격 일치, 엔진 이미지 `og_tag_lookpin_web.jpg`
 - PRICE: 코드그라피 3(`price_ambiguous`, Cafe24 전용 규칙 실패·폴백 없음), 프롬비기닝 3(~20% 낮음), Aritzia 2(`price_ambiguous`)
 - 정답 품질 주의: 탑텐 990000/1990000/1290000, 무인양품 3500·제네릭 이미지, 패션플러스 live `og_200x200.jpg`, 더현대Hi live 18100/3000 vs 엔진 수십만, 4910 live 1000/1690, 11번가·롯데온 비패션
-- 기기 `offline`으로 미대조: 노이아고, 탑텐, 무인양품, SSG, W컨셉(단독 세션), 올리브영, 에이블리, 브랜디, 이랜드몰. debug APK `-r` 복구도 같은 이유로 보류
+- 기기 `offline`으로 미대조: 노이아고, 탑텐, 무인양품, SSG, W컨셉(단독 세션), 올리브영, 에이블리, 브랜디, 이랜드몰, 퀸잇. debug APK `-r` 복구도 같은 이유로 보류
 
-다음: 탭 화면을 켠 뒤 미대조 몰 재실행. 퀸잇은 실제 상품 딥링크가 필요하다. 리바이스 대기는 늘리지 않음.
+다음: 탭 화면을 켠 뒤 미대조 몰 재실행. 리바이스 대기는 늘리지 않음.
 
 ## 0.11 2026-08-18 탭 S7 50몰 전부 대조
 

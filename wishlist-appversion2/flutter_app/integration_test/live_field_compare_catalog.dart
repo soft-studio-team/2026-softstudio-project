@@ -1287,7 +1287,35 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
   ]),
-  LiveCompareMall("퀸잇", []),
+  LiveCompareMall("퀸잇", [
+    LiveCompareProduct(
+      "https://web.queenit.kr/product/421b849e05731238976b9f01d96c7e31",
+      live: LiveCompareExpected(
+        name: "[M,L 사이즈/벨트세트]반팔 데님 원피스(하객룩, 하객원피스)",
+        price: 32900,
+        image:
+            "https://image.queenit.kr/product/asset/v1/upload/04120430d08047c38524a66065b43ca2.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://web.queenit.kr/product/360e9e7089a6346d2e9b5de2b2d8e121",
+      live: LiveCompareExpected(
+        name: "[비버리힐스폴로클럽]여성 케이블 라운드 니트 폴로 가디건 TK001 _A",
+        price: 33900,
+        image:
+            "https://imgs.kshop.co.kr/d2/emc/goods/openmarket/queenit/5250535/5250535_20250421165441.png",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://web.queenit.kr/product/b52c66c75291c8ef4d9f136282cac90c",
+      live: LiveCompareExpected(
+        name: "모에나 레이어 가디건",
+        price: 35900,
+        image:
+            "https://irisccc.cafe24.com/web/upload/NNEditor/20260316/8f6ebe26042b013dbd95d700f5d3abfe.jpg",
+      ),
+    ),
+  ]),
   LiveCompareMall("브랜디", [
     LiveCompareProduct(
       "https://www.brandi.co.kr/products/183024247",
