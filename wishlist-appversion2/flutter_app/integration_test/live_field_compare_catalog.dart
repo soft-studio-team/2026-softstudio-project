@@ -204,7 +204,35 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
   ]),
-  LiveCompareMall("룩핀", []),
+  LiveCompareMall("룩핀", [
+    LiveCompareProduct(
+      "https://www.lookpin.co.kr/products/3176309",
+      live: LiveCompareExpected(
+        name: "아미 스몰로고 반팔티 2종 택1",
+        price: 29900,
+        image:
+            "https://static.lookpin.co.kr/20260629051610-a5df/2aeed68c47ae4fbcab74d57fe9e1e2c9.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.lookpin.co.kr/products/3183252",
+      live: LiveCompareExpected(
+        name: "[1+1할인] 세미와이드 쿨 여름 밴딩 팬츠 4COLOR",
+        price: 19800,
+        image:
+            "https://static.lookpin.co.kr/20260721045352-9e2d/7322353cfda84075a25511f9563c7ec0.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.lookpin.co.kr/products/3149308",
+      live: LiveCompareExpected(
+        name: "[1+1할인] 리브드 에센셜 하프 니트 - 2Type",
+        price: 22900,
+        image:
+            "https://static.lookpin.co.kr/20260623081643-2b32/112e1f9c2a794bc2a311b8ef53f4f32b.jpg",
+      ),
+    ),
+  ]),
   LiveCompareMall("탑텐", [
     LiveCompareProduct(
       "https://topten10.goodwearmall.com/product/MSG2TS3002WT/detail",
@@ -286,7 +314,35 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
   ]),
-  LiveCompareMall("롯데온", []),
+  LiveCompareMall("롯데온", [
+    LiveCompareProduct(
+      "https://www.lotteon.com/p/product/LO2724337623",
+      live: LiveCompareExpected(
+        name: "[모로엠] 남성 밴딩 헬스 데일리 반바지 ON-PTH-QWFOQWRF",
+        price: 26400,
+        image:
+            "https://contents.lotteon.com/itemimage/20260715172126/LO/27/24/33/76/23/_2/72/43/37/62/4/LO2724337623_2724337624_1.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.lotteon.com/p/product/LO2724337620",
+      live: LiveCompareExpected(
+        name: "어린이물총 실내외놀이 여름 전동물총 아기 육아 물놀이 퀵샷",
+        price: 172440,
+        image:
+            "https://contents.lotteon.com/itemimage/20260715172126/LO/27/24/33/76/20/_2/72/43/37/62/1/LO2724337620_2724337621_1.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.lotteon.com/p/product/LO2724337630",
+      live: LiveCompareExpected(
+        name: "노런 바퀴트랩 5매입 -H/노런바퀴트랩5매입/바퀴/바퀴벌레/끈끈이/바퀴벌레약/바퀴약/에프킬라/애프킬라/바",
+        price: 2600,
+        image:
+            "https://contents.lotteon.com/itemimage/20260715172125/LO/27/24/33/76/30/_2/72/43/37/63/1/LO2724337630_2724337631_1.jpg",
+      ),
+    ),
+  ]),
   LiveCompareMall("미쏘", [
     LiveCompareProduct(
       "https://mixxo.com/product/detail.html?product_no=11934",
@@ -542,7 +598,35 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
   ]),
-  LiveCompareMall("유니클로", []),
+  LiveCompareMall("유니클로", [
+    LiveCompareProduct(
+      "https://www.uniqlo.com/kr/ko/products/E488796-000/00?colorDisplayCode=00&sizeDisplayCode=005",
+      live: LiveCompareExpected(
+        name: "옥스포드오버사이즈셔츠",
+        price: 49900,
+        image:
+            "https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/488796/sub/krgoods_488796_sub14_3x4.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.uniqlo.com/kr/ko/products/E488798-000/00?colorDisplayCode=32&sizeDisplayCode=005",
+      live: LiveCompareExpected(
+        name: "옥스포드오버사이즈셔츠(스트라이프)B",
+        price: 49900,
+        image:
+            "https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/488798/sub/krgoods_488798_sub3_3x4.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.uniqlo.com/kr/ko/products/E488797-000/00?colorDisplayCode=54&sizeDisplayCode=005",
+      live: LiveCompareExpected(
+        name: "옥스포드오버사이즈셔츠(스트라이프)A",
+        price: 49900,
+        image:
+            "https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/488797/sub/krgoods_488797_sub3_3x4.jpg",
+      ),
+    ),
+  ]),
   LiveCompareMall("SSG", [
     LiveCompareProduct(
       "https://www.ssg.com/item/dealItemView.ssg?itemId=1000625754372&siteNo=7009&salestrNo=2551",
@@ -598,7 +682,35 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
   ]),
-  LiveCompareMall("에이블리", []),
+  LiveCompareMall("에이블리", [
+    LiveCompareProduct(
+      "https://m.a-bly.com/goods/75432976",
+      live: LiveCompareExpected(
+        name: "[하이넥/간절기필수🍂] 톤텔 루즈 사선 지퍼 후드집업",
+        price: 26500,
+        image:
+            "https://imgb.a-bly.com/data/goods/7b7beef563b76b4fa88149111c73b23f.gif",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://m.a-bly.com/goods/75506878",
+      live: LiveCompareExpected(
+        name: "[여리코어🪡] made 소피 여리 펀칭 니트 - 4color",
+        price: 23270,
+        image:
+            "https://imgb.a-bly.com/data/goods/1ae2f183f57bb3474c726cf53f09e5e0.gif",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://m.a-bly.com/goods/28244036",
+      live: LiveCompareExpected(
+        name: "🏆1위🏆 스킨 레이어 핏 파운데이션",
+        price: 24450,
+        image:
+            "https://imgb.a-bly.com/data/goods/f7995d70c943e5ca270f9f07ca8d10e2.gif",
+      ),
+    ),
+  ]),
   LiveCompareMall("지그재그", [
     LiveCompareProduct(
       "https://zigzag.kr/catalog/products/159126270",
@@ -688,7 +800,32 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
   ]),
-  LiveCompareMall("반스", []),
+  LiveCompareMall("반스", [
+    LiveCompareProduct(
+      "https://www.vans.co.kr/PRODUCT/VN00114ABLK",
+      live: LiveCompareExpected(
+        name: "OTW 에라 95 빈티지 렐릭",
+        price: 155000,
+        image: "https://img.vans.com/image/upload/VN00114ABLK-ALT20.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.vans.co.kr/PRODUCT/VN000V74BRD",
+      live: LiveCompareExpected(
+        name: "스케이트 로완 Z3 검솔",
+        price: 125000,
+        image: "https://img.vans.com/image/upload/VN000V74BRD-ALT20.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.vans.co.kr/PRODUCT/VN000EJ8FST",
+      live: LiveCompareExpected(
+        name: "울트라레인지 네오 2.0",
+        price: 149000,
+        image: "https://img.vans.com/image/upload/VN000EJ8FST-ALT20.jpg",
+      ),
+    ),
+  ]),
   LiveCompareMall("커버낫", [
     LiveCompareProduct(
       "https://covernat.co.kr/product/detail.html?product_no=8321",
@@ -718,7 +855,35 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
   ]),
-  LiveCompareMall("코드그라피", []),
+  LiveCompareMall("코드그라피", [
+    LiveCompareProduct(
+      "https://code-graphy.com/product/detail.html?product_no=8265",
+      live: LiveCompareExpected(
+        name: "(우먼) CGP 체크 토마토 링거 반소매 티셔츠-화이트",
+        price: 44100,
+        image:
+            "https://cafe24.poxo.com/ec01/cgraphy/nDa3+VeoMR5vyddRVokF8ltOczmmZefMqiQFCv903NO3uqDUY03GsJUYRdWtWSXw916shfsw86QFrSvagfRRrA==/_/web/product/big/202604/2cdc55d7272c36306f3a873133bf9185.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://code-graphy.com/product/detail.html?product_no=8260",
+      live: LiveCompareExpected(
+        name: "BERRY CUTE 반소매 티셔츠-버건디",
+        price: 44100,
+        image:
+            "https://cafe24.poxo.com/ec01/cgraphy/nDa3+VeoMR5vyddRVokF8ltOczmmZefMqiQFCv903NO3uqDUY03GsJUYRdWtWSXw916shfsw86QFrSvagfRRrA==/_/web/product/big/202603/b98209ef5e0450e18d3567aa7fee5e93.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://code-graphy.com/product/detail.html?product_no=8261",
+      live: LiveCompareExpected(
+        name: "8부 버뮤다 트레이닝 쇼츠-다크 그레이",
+        price: 62100,
+        image:
+            "https://cafe24.poxo.com/ec01/cgraphy/nDa3+VeoMR5vyddRVokF8ltOczmmZefMqiQFCv903NO3uqDUY03GsJUYRdWtWSXw916shfsw86QFrSvagfRRrA==/_/web/product/big/202603/a612c6a05a5aa4b99b2b67adbba685a2.jpg",
+      ),
+    ),
+  ]),
   LiveCompareMall("후아유", [
     LiveCompareProduct(
       "https://whoau.com/product/detail.html?product_no=4457",
@@ -748,7 +913,35 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
   ]),
-  LiveCompareMall("Aritzia", []),
+  LiveCompareMall("Aritzia", [
+    LiveCompareProduct(
+      "https://www.aritzia.com/intl/en/product/cinch-jacket/130882.html?color=28150",
+      live: LiveCompareExpected(
+        name: "Cinch Jacket - City Twill",
+        price: 360100,
+        image:
+            "https://assets.aritzia.com/image/upload/c_crop,ar_1920:2623,g_south/q_auto,f_auto,dpr_auto,w_1800/f26_a04_130882_28150_on_a",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.aritzia.com/intl/en/product/the-lodge-pant/118495.html?color=11420",
+      live: LiveCompareExpected(
+        name: "The Lodge Pant™ - Crepette™",
+        price: 211500,
+        image:
+            "https://assets.aritzia.com/image/upload/c_crop,ar_1920:2623,g_south/q_auto,f_auto,dpr_auto,w_1800/f26_a06_118495_11420_on_a",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.aritzia.com/intl/en/product/ensemble-pant/132922.html?color=37627",
+      live: LiveCompareExpected(
+        name: "Ensemble Pant - Crepette™",
+        price: 226800,
+        image:
+            "https://assets.aritzia.com/image/upload/c_crop,ar_1920:2623,g_south/q_auto,f_auto,dpr_auto,w_1800/f26_a06_132922_37627_on_a",
+      ),
+    ),
+  ]),
   LiveCompareMall("노이아고", [
     LiveCompareProduct(
       "https://noirer.com/product/detail.html?product_no=2497",
@@ -1065,9 +1258,66 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
   ]),
-  LiveCompareMall("올리브영", []),
+  LiveCompareMall("올리브영", [
+    LiveCompareProduct(
+      "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000262781",
+      live: LiveCompareExpected(
+        name: "프로티원 단백질쉐이크 파우치형 40g 7입 6종",
+        price: 19900,
+        image:
+            "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0026/A00000026278108ko.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000247884",
+      live: LiveCompareExpected(
+        name: "[8월 올영픽/수면 효율증가]대원제약 대원헬스 꿀잠샷 20gX12포 (+2포+수면안대) (14일분)",
+        price: 18900,
+        image:
+            "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0024/A00000024788471ko.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000250742",
+      live: LiveCompareExpected(
+        name: "[긴장완화] 대원제약 대원헬스 스트레스샷 20g x 12포 (+2포 증정) (14일분)",
+        price: 16400,
+        image:
+            "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0025/A00000025074205ko.jpg",
+      ),
+    ),
+  ]),
   LiveCompareMall("퀸잇", []),
-  LiveCompareMall("브랜디", []),
+  LiveCompareMall("브랜디", [
+    LiveCompareProduct(
+      "https://www.brandi.co.kr/products/183024247",
+      live: LiveCompareExpected(
+        name: "스투시 베이직 반팔티셔츠",
+        price: 28860,
+        image:
+            "https://image.brandi.co.kr/cproduct/BRANDI/2026/05/30/201de78f-3983-4de6-ae6a-b5d95e741d96/SB000000000178449059_1780141951_image1_S.webp",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.brandi.co.kr/products/179256288",
+      live: LiveCompareExpected(
+        name: "[갓성비/감성색감]에어컨 바람막기, 감성 잔줄 스트라이프 빈티지 오버핏 셔츠 남방",
+        price: 22900,
+        image:
+            "https://image.brandi.co.kr/cproduct/BRANDI/2025/06/18/3bf427ba-f0d8-47f1-ae4f-b636054f3027/SB000000000174538297_1750239057_image1_S.webp",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.brandi.co.kr/products/106329458",
+      live: LiveCompareExpected(
+        name:
+            "(당일출고/하객룩) 반팔 오프숄더 스퀘어넥 블랙 퍼프 셔링 A라인 페플럼 플레어 크롭 면접 블라우스 여름 썸머 셔츠 휴가룩 바캉스룩 휴양지룩 페스티벌룩 4color_8926",
+        price: 19920,
+        image:
+            "https://image.brandi.co.kr/cproduct/2023/05/25/SB000000000099464494_1684995009_image1_S.webp",
+      ),
+    ),
+  ]),
   LiveCompareMall("CJ온스타일", [
     LiveCompareProduct(
       "https://display.cjonstyle.com/p/item/2082445074?channelCode=30002002",
@@ -1126,6 +1376,62 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
   ]),
-  LiveCompareMall("SSF샵", []),
-  LiveCompareMall("이랜드몰", []),
+  LiveCompareMall("SSF샵", [
+    LiveCompareProduct(
+      "https://www.ssfshop.com/GOOD-ON/GPCX21040888339/good",
+      live: LiveCompareExpected(
+        name: "굿온 피그먼트 다잉 베이스볼 티셔츠 - 네츄럴",
+        price: 63360,
+        image:
+            "https://img.ssfshop.com/cmd/LB_750x1000/src/https://img.ssfshop.com/goods/ORBR/21/04/08/GPCX21040888339_0_THNAIL_ORGINL_20240503185548877.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.ssfshop.com/GOOD-ON/GPCX21031513266/good",
+      live: LiveCompareExpected(
+        name: "굿온 피그먼트 다잉 베이스볼 티셔츠 - 바나나",
+        price: 63360,
+        image:
+            "https://img.ssfshop.com/cmd/LB_750x1000/src/https://img.ssfshop.com/goods/ORBR/21/03/15/GPCX21031513266_0_ORGINL_20220708125043755.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.ssfshop.com/GOOD-ON/GPCX22072270530/good",
+      live: LiveCompareExpected(
+        name: "굿온 피그먼트 다잉 베이스볼 티셔츠 - 세이지",
+        price: 63360,
+        image:
+            "https://img.ssfshop.com/cmd/LB_750x1000/src/https://img.ssfshop.com/goods/ORBR/22/07/22/GPCX22072270530_0_ORGINL_20230428144836311.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("이랜드몰", [
+    LiveCompareProduct(
+      "https://www.elandmall.co.kr/i/item?itemNo=2602298723&lowerVendNo=LV16003579",
+      live: LiveCompareExpected(
+        name: "[UV차단] 라이트 후드 윈드브레이커_SPJJG25G01",
+        price: 19900,
+        image:
+            "https://item.elandrs.com/r/image/item/2026-04-22/f1577af4-cab8-4724-9c5e-667913640b55.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.elandmall.co.kr/i/item?itemNo=2603331622&lowerVendNo=LV16003579",
+      live: LiveCompareExpected(
+        name: "[ACTIVE] 라이트 시어 후드 크롭 윈드브레이커_SPJJG37G02",
+        price: 19900,
+        image:
+            "https://item.elandrs.com/r/image/item/2026-04-28/18cd3dea-aacc-47bf-8e7b-bd5c08f37bb9.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.elandmall.co.kr/i/item?itemNo=2602306879&lowerVendNo=LV16003579",
+      live: LiveCompareExpected(
+        name: "[UV차단] 라이트 패커블 윈드브레이커_SPJJG25C09",
+        price: 19900,
+        image:
+            "https://item.elandrs.com/r/image/item/2026-02-27/e9a8ccfd-8a4d-4dbe-aae8-e0070ca47149.jpg",
+      ),
+    ),
+  ]),
 ];
