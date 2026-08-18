@@ -43,6 +43,31 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
 
+**2026-08-18 저녁 이어서 할 일:** Tab S7 신규 카탈로그 재대조가 코드그라피 2번에서 멈춤. `wishlist-appversion2/TAB_S7_LIVE_COMPARE_CONTINUATION.md`를 새 대화에 쓴다. 머지하지 않는다.
+
+## 0.13 2026-08-18 저녁 Tab S7 재대조 중간 상태
+
+구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
+
+이어서 하는 사람: `wishlist-appversion2/TAB_S7_LIVE_COMPARE_CONTINUATION.md`를 먼저 읽는다. 이 섹션은 그날 저녁 재실행의 숫자다. §0.12의 MATCH 목록은 같은 날 낮 배치·다른 URL이 섞여 있을 수 있어, **재개 기준으로 쓰지 않는다.**
+
+기기: Galaxy Tab S7 `SM-T870` / `R54RB01SMVB` / Android 13. ADB `C:\Users\tingo\AppData\Local\Android\sdk\platform-tools\adb.exe`. `--no-uninstall`. SuperDisplay 없음.
+
+분류: 라벨은 **틀린 필드**다. `MATCH` = 이름·가격·사진 모두 일치. `PRICE` = 이름·사진 맞고 가격만 불일치.
+
+진행 (카탈로그 50몰, 낫포유만 정답 2개):
+
+- 3/3(낫포유 2/2) 완료 36몰 중 35몰 + 코드그라피 1번만.
+- 완료 예: 무신사·29CM·FILA·탑텐·무인양품·현대Hmall·유니클로·게스·반스·퀸잇·브랜디 MATCH 3. W컨셉 NAME (`[W CONCEPT]`). 에이블리 `NAME_PRICE_IMAGE` 3(`loading_timeout`). 노이아고·립합 PRICE 3. 커버낫 PRICE/MATCH/MATCH. 이랜드몰 MATCH/IMAGE/MATCH.
+- **재개 지점:** 코드그라피 2 (`https://code-graphy.com/product/detail.html?product_no=8260`) hang. 1번은 PRICE.
+- **미실행 14몰:** 후아유, Aritzia, 마하그리드, 비바스튜디오, 아모멘토, 앤더슨벨, 예일, 위드윤, 패션플러스, 프롬비기닝, 나이키, CJ온스타일, 4910, SSF샵
+
+운영 규칙: 1몰씩. 3몰 이상 배치는 설치 직후 hang. hang/`error: closed`면 `adb kill-server` + 화면 깨우기(`keyevent 82`) + `am force-stop com.softstudio.wishlist`. Gradle APK 복사/assets 잠금이면 java·dart를 끄고 `flutter build apk --debug`. debug APK 재빌드는 2026-08-18 20:59에 성공해 둔 상태. 검사 후 uninstall 금지, 전부 끝나면 `adb install -r`.
+
+하지 말 것: 리바이스 대기 늘리기, 관리 몰 범용 가격 우회, 엔진 패치(대조 완료 전), PR 머지.
+
+다음: 코드그라피 2·3 → 남은 14몰 → APK `-r` → 이 섹션·CHANGELOG·continuation 파일 갱신 후 푸시.
+
 ## 0.12 2026-08-18 신규 3상품 정답지 + 엔진 대조
 
 구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
@@ -517,7 +542,9 @@ Python 엔진을 변경하면 현재 Windows Python/프로젝트 의존성으로
 
 ## 12. 다음 대화 시작 프롬프트
 
-아래 내용을 새 대화에 그대로 붙여 넣으면 된다.
+**Tab S7 실페이지 대조를 이어서 할 때:** `wishlist-appversion2/TAB_S7_LIVE_COMPARE_CONTINUATION.md` 안의 시작 프롬프트를 새 대화에 붙여 넣는다. 브랜치는 `feat/webview-scraper-stabilize` (PR #28). 머지하지 않는다.
+
+아래는 예전 WebView 안정화용 프롬프트다.
 
 ```text
 GitHub의 `feat/webview-engine-handoff` 브랜치를 checkout한 뒤 C:\0.My_Project\17.SoftStudio\2026-softstudio-project\wishlist-appversion2\ENGINE_DEVELOPMENT_HANDOFF.md를 먼저 끝까지 읽고 wishkit 엔진 개발을 이어서 진행해줘.
