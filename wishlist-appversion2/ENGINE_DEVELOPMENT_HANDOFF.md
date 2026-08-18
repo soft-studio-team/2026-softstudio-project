@@ -55,12 +55,12 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 탭 S7 `--no-uninstall` 신규 정답 대조 (2026-08-18 완료):
 
-- MATCH 3: 무신사, 29CM, 게스, 후아유, 예일, FILA, 아모멘토, 앤더슨벨, 반스, SSF샵, 유니클로, 현대Hmall, 퀸잇, 브랜디
+- MATCH 3: 무신사, 29CM, 게스, 후아유, 예일, FILA, 아모멘토, 앤더슨벨, 반스, SSF샵, 유니클로, 현대Hmall, 퀸잇, 브랜디, 탑텐, 무인양품
 - MATCH 2: 위드윤, 커버낫, 데일리쥬, 11번가, 롯데온, 이랜드몰
 - MATCH 1: Aritzia, 지그재그, CJ온스타일, 미쏘, 나이키, 올리브영
 - IMAGE 3: 룩핀 이름·가격 일치, 엔진 이미지 `og_tag_lookpin_web.jpg`
 - IMAGE 1: 이랜드몰 2(엔진·live 이미지 날짜 경로 불일치, 이름·가격 일치)
-- PRICE·엔진 맞음·live 카탈로그 오류: 탑텐 3(엔진 9900/19900/12900), 무인양품 3(엔진 29900/49900)
+- PRICE·엔진 맞음·live 카탈로그 오류(재수집 후 MATCH): 탑텐 3, 무인양품 3
 - PRICE·엔진 이슈: 코드그라피 3(`price_ambiguous`), 프롬비기닝 3(~20% 낮음), Aritzia 2(`price_ambiguous`), 올리브영 2(`price_ambiguous`), 노이아고 3(엔진 null·`price_ambiguous`)
 - PRICE_IMAGE: SSG 3(엔진 null·`price_ambiguous`, 이미지 stem 일치·`_1200` vs `_250` URL)
 - `loading_timeout`: 에이블리 3
@@ -68,7 +68,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 - 정답 품질 주의: 탑텐·무인양품 live 가격·이미지 재수집 필요, 패션플러스 live `og_200x200.jpg`, 더현대Hi·4910 live 가격 이상
 - 검사 후 debug APK `-r` 복구
 
-다음: 탑텐·무인양품 live 정답 재수집, W컨셉 og:title, 올리브영·노이아고·SSG 가격 추출, 에이블리 `loading_timeout`. 리바이스 대기는 늘리지 않음.
+다음: W컨셉 og:title, 올리브영·노이아고·SSG 가격 추출, 에이블리 `loading_timeout`. 탑텐·무인양품 live 정답은 브라우저로 재수집 완료. 리바이스 대기는 늘리지 않음.
 
 ## 0.11 2026-08-18 탭 S7 50몰 전부 대조
 

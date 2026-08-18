@@ -238,7 +238,7 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://topten10.goodwearmall.com/product/MSG2TS3002WT/detail",
       live: LiveCompareExpected(
         name: "공용) [카카오프렌즈] COOL Air 코튼 반팔 T",
-        price: 990000,
+        price: 9900,
         image: "https://img.goodwearmall.com/goods/MSG2TS/MSG2TS3002WT_M.jpg",
       ),
     ),
@@ -246,7 +246,7 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://topten10.goodwearmall.com/product/MSG2PP2001BK/detail",
       live: LiveCompareExpected(
         name: "여성) COOL 와이드 크롭 이지 팬츠",
-        price: 1990000,
+        price: 19900,
         image: "https://img.goodwearmall.com/goods/MSG2PP/MSG2PP2001BK_M.jpg",
       ),
     ),
@@ -254,7 +254,7 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://topten10.goodwearmall.com/product/MBG2PH2701BK/detail",
       live: LiveCompareExpected(
         name: "여성) 워터 쇼츠",
-        price: 1290000,
+        price: 12900,
         image: "https://img.goodwearmall.com/goods/MBG2PH/MBG2PH2701BK_M.jpg",
       ),
     ),
@@ -264,7 +264,7 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://mujikorea.co.kr/products/view/1005557",
       live: LiveCompareExpected(
         name: "워싱 브로드 레귤러 칼라 긴소매 셔츠",
-        price: 3500,
+        price: 29900,
         image:
             "https://public.mujikorea.co.kr/metas/nsGaFaLffindyVDC5BACub7Tog0evl5XZ4h1LNYD.jpg",
       ),
@@ -273,7 +273,7 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://mujikorea.co.kr/products/view/1005389",
       live: LiveCompareExpected(
         name: "워싱 브로드 레귤러 칼라 긴소매 셔츠",
-        price: 3500,
+        price: 29900,
         image:
             "https://public.mujikorea.co.kr/metas/nsGaFaLffindyVDC5BACub7Tog0evl5XZ4h1LNYD.jpg",
       ),
@@ -282,7 +282,7 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://mujikorea.co.kr/products/view/1005367",
       live: LiveCompareExpected(
         name: "슬러브 치노 와이드 팬츠",
-        price: 3500,
+        price: 49900,
         image:
             "https://public.mujikorea.co.kr/metas/nsGaFaLffindyVDC5BACub7Tog0evl5XZ4h1LNYD.jpg",
       ),
