@@ -26,731 +26,1106 @@ class LiveCompareMall {
   final List<LiveCompareProduct> products;
 }
 
-/// 자동 채움 PASS 50몰. 실제 페이지에서 확인한 판매가(첫구매·카드 쿠폰 제외).
+/// 2026-08-18 새로 연 상품 페이지에서 확인한 판매가(첫구매·카드 쿠폰 제외).
 /// 엔진 상품명에는 브랜드가 붙을 수 있으므로 live.name 은 화면에 보이는 상품명이다.
 const liveCompareMalls = <LiveCompareMall>[
-  LiveCompareMall('11번가', [
-    LiveCompareProduct('https://www.11st.co.kr/products/5932454122'),
-  ]),
-  LiveCompareMall('무신사', [
+  LiveCompareMall("11번가", [
     LiveCompareProduct(
-      'https://www.musinsa.com/products/6558705',
+      "https://www.11st.co.kr/products/2046037563",
       live: LiveCompareExpected(
-        name: '26 SS 세미 크롭 라이트웨이트 스트라이프 [반팔] 셔츠 (3컬러)',
-        price: 35900,
+        name: "[40%쿠폰+T11%] 비너스외 본사 신상브라.팬티,드로즈,홈웨어 BEST모음",
+        price: 10000,
         image:
-            'https://image.msscdn.net/images/goods_img/20260527/6558705/6558705_17821067310601_500.jpg',
-        brand: '효지',
+            "https://cdn.011st.com/11dims/resize/600x600/quality/75/11src/dl/v2/0/3/7/5/6/3/uhTkW/2046037563_237337664.webp",
       ),
     ),
     LiveCompareProduct(
-      'https://www.musinsa.com/products/3348384',
+      "https://www.11st.co.kr/products/9255708792",
       live: LiveCompareExpected(
-        name: '와이드 투 턱 워시드 데님 버뮤다 팬츠 블루',
-        price: 78000,
+        name: "남양 경기미 10kg 상등급 쌀",
+        price: 26900,
         image:
-            'https://image.msscdn.net/images/goods_img/20230607/3348384/3348384_16861027432924_500.jpg',
-        brand: '케이엔드',
+            "https://cdn.011st.com/11dims/resize/600x600/quality/75/11src/product/9255708792/B.webp",
       ),
     ),
     LiveCompareProduct(
-      'https://www.musinsa.com/products/6152461',
+      "https://www.11st.co.kr/products/8716610739",
       live: LiveCompareExpected(
-        name: '컴포트 썸머 와이드 팬츠 브라운',
-        price: 30400,
+        name: "세스코 마이랩 배수구클리너 5개+5개 악취제거",
+        price: 9900,
         image:
-            'https://image.msscdn.net/images/goods_img/20260318/6152461/6152461_17841009414778_500.jpg',
-        brand: '모즈모즈',
+            "https://cdn.011st.com/11dims/resize/600x600/quality/75/11src/dl/v2/6/1/0/7/3/9/inTzn/8716610739_237406180.webp",
       ),
     ),
   ]),
-  LiveCompareMall('W컨셉', [
+  LiveCompareMall("무신사", [
     LiveCompareProduct(
-      'https://www.wconcept.co.kr/Product/307615241',
+      "https://www.musinsa.com/products/4341120",
       live: LiveCompareExpected(
-        name: '벨리브 골지 폴라 긴팔 니트',
-        price: 19900,
+        name: "클래식 반소매 티셔츠 - 블랙 / 801474YB2FT1000",
+        price: 105990,
         image:
-            'https://product-image.wconcept.co.kr/productimg/image/img2/41/307615241_GG10272.jpg',
-        brand: '트위',
-      ),
-    ),
-    LiveCompareProduct('https://www.wconcept.co.kr/Product/305573391'),
-    LiveCompareProduct('https://www.wconcept.co.kr/Product/305914779'),
-  ]),
-  LiveCompareMall('29CM', [
-    LiveCompareProduct(
-      'https://www.29cm.co.kr/products/4058252',
-      live: LiveCompareExpected(
-        name: '샥스 Z 칼리스트라 W - [블랙 / IR5510-001]',
-        price: 159000,
-        image:
-            'https://img.29cm.co.kr/item/202606/11f16f98cff926419090358d89120339.png',
-        brand: '나이키',
+            "https://image.msscdn.net/images/goods_img/20240819/4341120/4341120_17254134643550_500.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://www.29cm.co.kr/products/1577769',
+      "https://www.musinsa.com/products/6797005",
       live: LiveCompareExpected(
-        name: '퀸 비키니 브라_화이트',
-        price: 109000,
+        name: "Days Comfort Fit Shirt_White",
+        price: 84550,
         image:
-            'https://img.29cm.co.kr/next-product/2022/05/26/386c619c0ffe475bb36a99a77957ef2b_20220526172232.jpg',
-        brand: '아그넬',
+            "https://image.msscdn.net/images/goods_img/20260707/6797005/6797005_17852305721496_500.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://www.29cm.co.kr/products/3503849',
+      "https://www.musinsa.com/products/6677115",
       live: LiveCompareExpected(
-        name: '(사이즈추가)High-neck Leather Blouson Jacket VL5AJ093_2color',
-        price: 206400,
+        name: "소프트 헨리넥 반팔 티셔츠 [브라운]",
+        price: 24900,
         image:
-            'https://img.29cm.co.kr/next-product/2025/09/11/e63e8980e9434ada929917121dcc59b0_20250911123238.jpg',
-        brand: '레이브',
+            "https://image.msscdn.net/images/goods_img/20260616/6677115/6677115_17852914703616_500.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('FILA', [
-    LiveCompareProduct('https://www.fila.co.kr/products/1100fs262rs11m001490'),
-  ]),
-  LiveCompareMall('하고', [
-    LiveCompareProduct('https://www.hago.kr/goods/detail/750307'),
-  ]),
-  LiveCompareMall('룩핀', [
-    LiveCompareProduct('https://www.lookpin.co.kr/products/3083865'),
-    LiveCompareProduct('https://www.lookpin.co.kr/products/2724519'),
-  ]),
-  LiveCompareMall('탑텐', [
+  LiveCompareMall("W컨셉", [
     LiveCompareProduct(
-      'https://topten10.goodwearmall.com/product/MSG2UL2205NVP/detail',
-    ),
-  ]),
-  LiveCompareMall('무인양품', [
-    LiveCompareProduct('https://mujikorea.co.kr/products/view/1005531'),
-    LiveCompareProduct('https://mujikorea.co.kr/products/view/1005528'),
-  ]),
-  LiveCompareMall('현대Hmall', [
-    LiveCompareProduct(
-      'https://www.hmall.com/md/pda/itemPtc?slitmCd=2060464676',
-    ),
-  ]),
-  LiveCompareMall('롯데온', [
-    LiveCompareProduct('https://www.lotteon.com/p/product/LO2724337622'),
-  ]),
-  LiveCompareMall('미쏘', [
-    LiveCompareProduct(
-      'https://mixxo.com/product/detail.html?product_no=12455',
+      "https://www.wconcept.co.kr/Product/308678703",
       live: LiveCompareExpected(
-        name: '[에센셜] 루즈핏 긴팔 니트_MIWKAG530T',
+        name: "멀티 유즈 슬리브리스 탑 브라운 OU2006",
+        price: 29120,
+        image:
+            "https://product-image.wconcept.co.kr/productimg/image/img9/03/308678703_UI25679.jpg",
+        brand: "ouie",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.wconcept.co.kr/Product/308589275",
+      live: LiveCompareExpected(
+        name: "Soft Drape T-shirt_3Color",
+        price: 88000,
+        image:
+            "https://product-image.wconcept.co.kr/productimg/image/img9/75/308589275_EP72624.jpg",
+        brand: "FLOWOOM",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.wconcept.co.kr/Product/308629259",
+      live: LiveCompareExpected(
+        name: "[단독][SET] Wrap Detail T-Shirt & V-Neck Sleeveless Top",
+        price: 86700,
+        image:
+            "https://product-image.wconcept.co.kr/productimg/image/img9/59/308629259_VW44687.jpg",
+        brand: "THE RYE",
+      ),
+    ),
+  ]),
+  LiveCompareMall("29CM", [
+    LiveCompareProduct(
+      "https://www.29cm.co.kr/products/3769341",
+      live: LiveCompareExpected(
+        name: "[꼬민지PICK/29CM 단독] SIOT4182 하이 넥 버튼 블루종_Navy",
+        price: 141950,
+        image:
+            "https://img.29cm.co.kr/item/202608/11f199d6377ee51285e175537dd844cc.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.29cm.co.kr/products/3423314",
+      live: LiveCompareExpected(
+        name:
+            "[Atelier Edition] W/Two Way Vegan Leather Jacket_2COLOR(WC25-OT09)",
+        price: 117260,
+        image:
+            "https://img.29cm.co.kr/item/202509/11f093803023ba4494a2b7e59c753ef1.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.29cm.co.kr/products/3765311",
+      live: LiveCompareExpected(
+        name: "[꼬민지 PICK][10th] faux leather half coat_black",
+        price: 197100,
+        image:
+            "https://img.29cm.co.kr/item/202608/11f199cc75fcdd8885e1f77211683ab4.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("FILA", [
+    LiveCompareProduct(
+      "https://www.fila.co.kr/products/1100fs263ru02x098260",
+      live: LiveCompareExpected(
+        name: "휠라 스피드템포 플러스",
+        price: 179000,
+        image:
+            "http://www.fila.co.kr/cdn/shop/files/01_ec774e94-3176-464e-9139-cab54dec4b8c.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.fila.co.kr/products/1100fs263ft01u003071",
+      live: LiveCompareExpected(
+        name: "[한소희 착용] 1911 니트트랙 집업",
+        price: 129000,
+        image:
+            "http://www.fila.co.kr/cdn/shop/files/01_a69acc45-14e8-4890-b5e6-4f582042e578.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.fila.co.kr/products/1100fs263ft01u003330",
+      live: LiveCompareExpected(
+        name: "[김나영 착용] 1911 여성 니트트랙 집업",
+        price: 129000,
+        image:
+            "http://www.fila.co.kr/cdn/shop/files/01_a478ca37-674d-4e87-b4d0-b1e97e4182a3.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("하고", [
+    LiveCompareProduct(
+      "https://www.hago.kr/goods/detail/468261",
+      live: LiveCompareExpected(
+        name: "Hey Double Pocket Backpack M (헤이 더블 포켓 백팩 미듐) Black",
+        price: 215000,
+        image: "https://image.hago.kr/mall/goods/000/000/468/261/1.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.hago.kr/goods/detail/545988",
+      live: LiveCompareExpected(
+        name: "Toque Hermit Cross S (토크 헐밋 크로스 스몰)_5colors",
+        price: 215000,
+        image: "https://image.hago.kr/mall/goods/000/000/545/988/1.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.hago.kr/goods/detail/456508",
+      live: LiveCompareExpected(
+        name: "Perfec Button Up Soft Hobo S (퍼펙 버튼 업 소프트 호보 스몰) Black",
+        price: 345000,
+        image: "https://image.hago.kr/mall/goods/000/000/456/508/1.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("룩핀", []),
+  LiveCompareMall("탑텐", [
+    LiveCompareProduct(
+      "https://topten10.goodwearmall.com/product/MSG2TS3002WT/detail",
+      live: LiveCompareExpected(
+        name: "공용) [카카오프렌즈] COOL Air 코튼 반팔 T",
+        price: 990000,
+        image: "https://img.goodwearmall.com/goods/MSG2TS/MSG2TS3002WT_M.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://topten10.goodwearmall.com/product/MSG2PP2001BK/detail",
+      live: LiveCompareExpected(
+        name: "여성) COOL 와이드 크롭 이지 팬츠",
+        price: 1990000,
+        image: "https://img.goodwearmall.com/goods/MSG2PP/MSG2PP2001BK_M.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://topten10.goodwearmall.com/product/MBG2PH2701BK/detail",
+      live: LiveCompareExpected(
+        name: "여성) 워터 쇼츠",
+        price: 1290000,
+        image: "https://img.goodwearmall.com/goods/MBG2PH/MBG2PH2701BK_M.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("무인양품", [
+    LiveCompareProduct(
+      "https://mujikorea.co.kr/products/view/1005557",
+      live: LiveCompareExpected(
+        name: "워싱 브로드 레귤러 칼라 긴소매 셔츠",
+        price: 3500,
+        image:
+            "https://public.mujikorea.co.kr/metas/nsGaFaLffindyVDC5BACub7Tog0evl5XZ4h1LNYD.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://mujikorea.co.kr/products/view/1005389",
+      live: LiveCompareExpected(
+        name: "워싱 브로드 레귤러 칼라 긴소매 셔츠",
+        price: 3500,
+        image:
+            "https://public.mujikorea.co.kr/metas/nsGaFaLffindyVDC5BACub7Tog0evl5XZ4h1LNYD.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://mujikorea.co.kr/products/view/1005367",
+      live: LiveCompareExpected(
+        name: "슬러브 치노 와이드 팬츠",
+        price: 3500,
+        image:
+            "https://public.mujikorea.co.kr/metas/nsGaFaLffindyVDC5BACub7Tog0evl5XZ4h1LNYD.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("현대Hmall", [
+    LiveCompareProduct(
+      "https://www.hmall.com/md/pda/itemPtc?slitmCd=2247033660&dispTrtyNmCd=home_onair&dispOrdg=1",
+      live: LiveCompareExpected(
+        name: "[충격특가 울100 가디건 4만원대] 디아루체 26SS 울 100 워셔블 가디건 1종",
+        price: 49900,
+        image: "https://image.hmall.com/static/6/3/03/47/2247033660_0.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.hmall.com/md/pda/itemPtc?slitmCd=2247721571&dispTrtyNmCd=home_tvplus&dispOrdg=1",
+      live: LiveCompareExpected(
+        name: "인터쿡 토마호크 로스돔 3종 세트",
+        price: 99000,
+        image: "https://image.hmall.com/static/5/1/72/47/2247721571_0.png",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.hmall.com/md/pda/itemPtc?slitmCd=2077436192",
+      live: LiveCompareExpected(
+        name: "리락쿠마 사각밀폐 2단 도시락",
+        price: 6650,
+        image: "https://image.hmall.com/static/1/6/43/77/2077436192_0.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("롯데온", []),
+  LiveCompareMall("미쏘", [
+    LiveCompareProduct(
+      "https://mixxo.com/product/detail.html?product_no=11934",
+      live: LiveCompareExpected(
+        name: "크롭탑 나시 티셔츠_MIWHNG310A",
+        price: 7900,
+        image:
+            "https://cafe24img.poxo.com/mixxo/web/product/big/202608/bd5b90689a7a83c2c465cf0e43ddfefd.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://mixxo.com/product/detail.html?product_no=12038",
+      live: LiveCompareExpected(
+        name: "버뮤다 데님_MIWTHG410J",
         price: 49900,
         image:
-            'https://cafe24img.poxo.com/mixxo/web/product/big/202604/af4c717f08d808fbe021d901ac0b8fe2.jpg',
-        brand: '미쏘',
+            "https://cafe24img.poxo.com/mixxo/web/product/big/202604/6f35c8987ae4e3431a8b2966adc18ef9.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://mixxo.com/product/detail.html?product_no=9813',
+      "https://mixxo.com/product/detail.html?product_no=12243",
       live: LiveCompareExpected(
-        name: '스퀘어넥 퍼프 블라우스_MIWBWF504G',
-        price: 39900,
+        name: "크롭탑 나시 티셔츠_MIWHNG310A_MIWHNG3B01",
+        price: 7900,
         image:
-            'https://cafe24img.poxo.com/mixxo/web/product/big/202508/f0a701a6e813203b651c6ae91d3ce324.jpg',
-        brand: '미쏘',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://mixxo.com/product/detail.html?product_no=12454',
-      live: LiveCompareExpected(
-        name: '숏트렌치_MIWJTG40SS',
-        price: 99900,
-        image:
-            'https://cafe24img.poxo.com/mixxo/web/product/big/202604/56f9d9ab63fade7be842a099ff72eb4e.jpg',
-        brand: '미쏘',
+            "https://cafe24img.poxo.com/mixxo/web/product/big/202603/fe376dcef698cdb59d6c245beb293978.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('데일리쥬', [
+  LiveCompareMall("데일리쥬", [
     LiveCompareProduct(
-      'https://dailyjou.com/product/detail.html?product_no=22794',
+      "https://dailyjou.com/product/detail.html?product_no=22793",
       live: LiveCompareExpected(
-        name: '리즌 레이어드 라운드넥 반팔 니트',
-        price: 36000,
+        name: "[MADE] 마르델 스탠다드 셔링 체크 셔츠",
+        price: 39000,
         image:
-            'https://cafe24.poxo.com/ec01/cocomimi93/Kcc0fQ0DsTHpcxHYW7fqLaBIC/o2a/jM6bRPEprGgUE2Ahi38o9n6QY5e//FBcVGbltRbal2kV5zxlu1744asA==/_/web/product/big/202603/4c9aa6ce70db04379a07e87a9472452a.webp',
+            "https://cafe24.poxo.com/ec01/cocomimi93/Kcc0fQ0DsTHpcxHYW7fqLaBIC/o2a/jM6bRPEprGgUE2Ahi38o9n6QY5e//FBcVGbltRbal2kV5zxlu1744asA==/_/web/product/big/202509/f265e64893c6df9bdba535e494a67199.webp",
       ),
     ),
     LiveCompareProduct(
-      'https://dailyjou.com/product/detail.html?product_no=23688',
+      "https://dailyjou.com/product/detail.html?product_no=19572",
       live: LiveCompareExpected(
-        name: '일리아 5부 프릴 카프리 팬츠',
-        price: 46000,
+        name: "올렌 볼드 펜던트 목걸이",
+        price: 17000,
         image:
-            'https://cafe24.poxo.com/ec01/cocomimi93/Kcc0fQ0DsTHpcxHYW7fqLaBIC/o2a/jM6bRPEprGgUE2Ahi38o9n6QY5e//FBcVGbltRbal2kV5zxlu1744asA==/_/web/product/big/202603/ed3a53c275929515dbe0de01e4402ecd.webp',
+            "https://cafe24.poxo.com/ec01/cocomimi93/Kcc0fQ0DsTHpcxHYW7fqLaBIC/o2a/jM6bRPEprGgUE2Ahi38o9n6QY5e//FBcVGbltRbal2kV5zxlu1744asA==/_/web/product/big/202509/be762689d061aafd1be55dd46cf74fee.webp",
       ),
     ),
     LiveCompareProduct(
-      'https://dailyjou.com/product/detail.html?product_no=23726',
+      "https://dailyjou.com/product/detail.html?product_no=19245",
       live: LiveCompareExpected(
-        name: '헤리드 시스루 레이스 긴소매 티셔츠',
-        price: 20000,
+        name: "[MADE] 비셔스 핸드메이드 후드 코트 (하프/롱)",
+        price: 152000,
         image:
-            'https://cafe24.poxo.com/ec01/cocomimi93/Kcc0fQ0DsTHpcxHYW7fqLaBIC/o2a/jM6bRPEprGgUE2Ahi38o9n6QY5e//FBcVGbltRbal2kV5zxlu1744asA==/_/web/product/big/202604/7c5913f3b045618b0ea3f732b3b65204.webp',
+            "https://cafe24.poxo.com/ec01/cocomimi93/Kcc0fQ0DsTHpcxHYW7fqLaBIC/o2a/jM6bRPEprGgUE2Ahi38o9n6QY5e//FBcVGbltRbal2kV5zxlu1744asA==/_/web/product/big/202510/9c488cee2f3d2785af72057cad82172a.webp",
       ),
     ),
   ]),
-  LiveCompareMall('리', [
+  LiveCompareMall("리", [
     LiveCompareProduct(
-      'https://leekorea.co.kr/product/detail.html?product_no=14252',
+      "https://leekorea.co.kr/product/detail.html?product_no=14251",
       live: LiveCompareExpected(
-        name: '로코 포켓 데님 셔츠 인디고 라이트',
+        name: "로코 포켓 데님 셔츠 인디고 미듐",
         price: 99000,
         image:
-            'https://leekorea.co.kr/web/product/big/202606/ec8667b06f230191e25a44ab54c94c04.jpg',
+            "https://leekorea.co.kr/web/product/big/202606/8c3d1b8cd0176a62188526a5280c1f58.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://leekorea.co.kr/product/detail.html?product_no=15434",
+      live: LiveCompareExpected(
+        name: "우먼 후드 긴팔 티셔츠 베이지",
+        price: 75000,
+        image:
+            "https://leekorea.co.kr/web/product/big/202605/8785bfaa63e64defbbc1c811f533f90c.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://leekorea.co.kr/product/detail.html?product_no=15291",
+      live: LiveCompareExpected(
+        name: "우먼 홀리데이 체크 셔츠 브라운",
+        price: 89000,
+        image:
+            "https://leekorea.co.kr/web/product/big/202605/7ae0122ed3a8f4a85967e1bb3d030099.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('필루미네이트', [
+  LiveCompareMall("필루미네이트", [
     LiveCompareProduct(
-      'https://filluminate.com/product/detail.html?product_no=11735',
+      "https://filluminate.com/product/detail.html?product_no=11744",
       live: LiveCompareExpected(
-        name: 'FLM 스몰 로고 피그먼트 티셔츠-브라운',
+        name: "데일리 레귤러 크롭 머슬 티셔츠-3Color",
+        price: 32000,
+        image:
+            "https://filluminate.com/web/product/big/202605/d9ea9d12e98dd435a79dcc276b54001b.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://filluminate.com/product/detail.html?product_no=11567",
+      live: LiveCompareExpected(
+        name: "키체인 그래픽 티셔츠-멜란지그레이",
+        price: 39000,
+        image:
+            "https://filluminate.com/web/product/big/202603/ca71f0deb27571e45d61b208f79ce5b1.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://filluminate.com/product/detail.html?product_no=11639",
+      live: LiveCompareExpected(
+        name: "카고 버뮤다 스웨트 쇼츠-멜란지그레이",
+        price: 54000,
+        image:
+            "https://filluminate.com/web/product/big/202603/a82069ac5973e12c93ede3ae1829a0ca.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("어반스터프", [
+    LiveCompareProduct(
+      "https://urbanstoff.com/product/detail.html?product_no=518",
+      live: LiveCompareExpected(
+        name: "밀키 웨이 엠브로이더리 티 (화이트)",
         price: 45000,
         image:
-            'https://filluminate.com/web/product/big/202605/021f3e05962325f308a8e83ebc946676.jpg',
+            "https://ecimg.cafe24img.com/pg1589b23882635070/urbanstoff001/web/product/big/20260814/4b5545c94d305a76f71243c745419284.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://filluminate.com/product/detail.html?product_no=11734',
+      "https://urbanstoff.com/product/detail.html?product_no=517",
       live: LiveCompareExpected(
-        name: '나일론 투 턱 테크 팬츠-5Color',
-        price: 49000,
-        image:
-            'https://filluminate.com/web/product/big/202605/23d6cd3a632f239f5eb0ae3ffd12a969.jpg',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://filluminate.com/product/detail.html?product_no=11736',
-      live: LiveCompareExpected(
-        name: 'FLM 스몰 로고 피그먼트 티셔츠-차콜',
+        name: "밀키 웨이 엠브로이더리 티 (챠콜)",
         price: 45000,
         image:
-            'https://filluminate.com/web/product/big/202605/3f5b1e325de69cfc0a482c430366916d.jpg',
+            "https://ecimg.cafe24img.com/pg1589b23882635070/urbanstoff001/web/product/big/20260814/944ed7927b8c6d748296347104236706.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://urbanstoff.com/product/detail.html?product_no=516",
+      live: LiveCompareExpected(
+        name: "체크 도트 아플리케 티 (화이트)",
+        price: 45000,
+        image:
+            "https://ecimg.cafe24img.com/pg1589b23882635070/urbanstoff001/web/product/big/20260814/161715ce5b8944fa95a0c9ce55bb84e5.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('어반스터프', [
+  LiveCompareMall("낫포유", [
     LiveCompareProduct(
-      'https://urbanstoff.com/product/detail.html?product_no=507',
+      "https://not4u.kr/product/detail.html?product_no=548",
       live: LiveCompareExpected(
-        name: '로우 썬 아트워크 버뮤다 스웨트 팬츠 (멜란지)',
-        price: 69000,
+        name: "[1+1/리뉴얼] 클리어 PDRN NAD+ 장벽 강화 바디워시 500ml",
+        price: 17800,
         image:
-            'https://ecimg.cafe24img.com/pg1589b23882635070/urbanstoff001/web/product/big/20260427/3ccc7f264e8bd398c7633b7f4eaf94c7.jpg',
-        brand: '어반스터프',
+            "https://not4u.kr/web/product/big/202608/fbd24b58532fff8dc474e69050f18461.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://urbanstoff.com/product/detail.html?product_no=506',
+      "https://not4u.kr/product/detail.html?product_no=497",
       live: LiveCompareExpected(
-        name: '버티컬 데님 버뮤다 팬츠 (다크 네이비)',
-        price: 82000,
+        name: "[리뉴얼] 등드름/가드름 클리어 PDRN NAD+ 장벽 강화 바디워시500ml 기획(본품+리필 50ml)",
+        price: 16900,
         image:
-            'https://ecimg.cafe24img.com/pg1589b23882635070/urbanstoff001/web/product/big/20260427/4336fbdace68a0b178e9ccc07dec3e0c.jpg',
-        brand: '어반스터프',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://urbanstoff.com/product/detail.html?product_no=505',
-      live: LiveCompareExpected(
-        name: '백 포켓 아트워크 버뮤다 팬츠 (인디고)',
-        price: 79000,
-        image:
-            'https://ecimg.cafe24img.com/pg1589b23882635070/urbanstoff001/web/product/big/20260427/08284f2f3ed28a922eeb4a73c8831609.jpg',
-        brand: '어반스터프',
+            "https://not4u.kr/web/product/big/202608/508767dc7a6b8b4edac928dbd2537552.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('낫포유', [
+  LiveCompareMall("인사일런스", [
     LiveCompareProduct(
-      'https://not4u.kr/product/detail.html?product_no=261',
+      "https://insilence.co.kr/product/detail.html?product_no=7482",
       live: LiveCompareExpected(
-        name: '소프트 바디 미스트 115ml',
-        price: 15900,
-        image:
-            'https://not4u.kr/web/product/big/202402/a68857d33d5c671568a528494b17b42c.jpg',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://not4u.kr/product/detail.html?product_no=262',
-      live: LiveCompareExpected(
-        name: '샤워 호스 1.7m',
-        price: 12000,
-        image:
-            'https://not4u.kr/web/product/big/202402/a2d643a170ffa65d4cc77a17224d3416.jpg',
-      ),
-    ),
-  ]),
-  LiveCompareMall('인사일런스', [
-    LiveCompareProduct(
-      'https://insilence.co.kr/product/detail.html?product_no=7481',
-      live: LiveCompareExpected(
-        name: '스탠실 그래픽 티셔츠 CHARCOAL',
+        name: "스탠실 그래픽 티셔츠 MELANGE GREY",
         price: 59000,
         image:
-            'https://insilence.co.kr/web/product/big/202604/2e364b4c8c01e02e418313635db74694.jpg',
+            "https://insilence.co.kr/web/product/big/202604/4a5eec3507b656d37f41be5694312c5b.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://insilence.co.kr/product/detail.html?product_no=7303',
+      "https://insilence.co.kr/product/detail.html?product_no=7680",
       live: LiveCompareExpected(
-        name: '개리슨 벨트 BLACK',
+        name: "¥¥¥¥*",
         price: 49000,
         image:
-            'https://insilence.co.kr/web/product/big/202602/153251e5f2e00b8728d1781124ccb650.jpg',
+            "https://insilence.co.kr/web/product/big/202606/cd704dd88dcbc5389bdd6426647ed7bc.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://insilence.co.kr/product/detail.html?product_no=7483',
+      "https://insilence.co.kr/product/detail.html?product_no=7180",
       live: LiveCompareExpected(
-        name: '스탠실 그래픽 티셔츠 WHITE',
-        price: 59000,
+        name: "엔지니어핏 데님 팬츠 RINSED INDIGO",
+        price: 149000,
         image:
-            'https://insilence.co.kr/web/product/big/202604/44862852e0fb5f9d0abbfad9cdb324da.jpg',
+            "https://insilence.co.kr/web/product/big/202605/353d6a80825ba133beac3005925347cc.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('파브레가', [
+  LiveCompareMall("파브레가", [
     LiveCompareProduct(
-      'https://fabregat.kr/product/detail.html?product_no=1038',
+      "https://fabregat.kr/product/detail.html?product_no=1033",
       live: LiveCompareExpected(
-        name: 'Brom Carabiner Leather Keyring (Black)',
+        name: "Brom Carabiner Leather Keyring (Dark Brown)",
         price: 44000,
         image:
-            'https://fabregat.kr/web/product/big/202605/872e33be2937be1918aa6ba242351d78.jpg',
-        brand: '파브레가',
+            "https://fabregat.kr/web/product/big/202605/8033f6a93c8f90ce25de57f9e515d602.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://fabregat.kr/product/detail.html?product_no=1030",
+      live: LiveCompareExpected(
+        name: "Bone Pig-Dyeing Check Half Shirt (Indi Pink)",
+        price: 77000,
+        image:
+            "https://fabregat.kr/web/product/big/202605/1052ddd7d76a3a204b71d6cceebbea51.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://fabregat.kr/product/detail.html?product_no=1029",
+      live: LiveCompareExpected(
+        name: "Bone Pig-Dyeing Check Half Shirt (Black)",
+        price: 77000,
+        image:
+            "https://fabregat.kr/web/product/big/202605/3a7808547d17f7a1f9d6bd9d06e36d30.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('핫핑', [
+  LiveCompareMall("핫핑", [
     LiveCompareProduct(
-      'https://hotping.co.kr/product/detail.html?product_no=29570',
+      "https://hotping.co.kr/product/detail.html?product_no=39923",
       live: LiveCompareExpected(
-        name: '나의베스트 밴딩와이드팬츠',
-        price: 24800,
-        image:
-            'https://hotping.co.kr/web/product/big/202405/43f2cf982d53323afb04e75ab28e62c9.jpg',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://hotping.co.kr/product/detail.html?product_no=36728',
-      live: LiveCompareExpected(
-        name: '클로이 단가라 골지니트 나시',
+        name:
+            "[컬러추가💗][2기장][데일리필수][MADE] 에디션 기본&숏 슬리브리스 이너티 (44~110) (빅사이즈나시-이너나시-데일리나시-베이직나시-무지나시-크롭나시-데일리-랍빠-꾸안꾸룩-흠뻑쇼-페스티벌)",
         price: 14800,
         image:
-            'https://hotping.co.kr/web/product/big/202507/e8efd2f4c8fbd18ffd374d0016bf6cd2.jpg',
+            "https://hotping.co.kr/web/product/big/202505/77a0f965457d5d0e63d00de2f3880ecc.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://hotping.co.kr/product/detail.html?product_no=37586',
+      "https://hotping.co.kr/product/detail.html?product_no=43640",
       live: LiveCompareExpected(
-        name: '하나쯤필수 크롭 브라탑나시',
-        price: 19800,
+        name:
+            "[🌈11컬러] 르나스 라운드넥 베이직 반팔티셔츠 (44~99) (간절기신상-루즈핏티셔츠-봄코디-베이직-박시핏-빅사이즈티-데일리룩-캐주얼룩-일상룩-꾸안꾸룩-레몬코어)",
+        price: 8280,
         image:
-            'https://hotping.co.kr/web/product/big/202505/44473a3294cfa586e26f16a9ddcb1bbc.jpg',
+            "https://hotping.co.kr/web/product/big/202607/70b2810e89c885e7502a2e0ddb703fbe.jpg",
       ),
     ),
-  ]),
-  LiveCompareMall('유니클로', [
     LiveCompareProduct(
-      'https://www.uniqlo.com/kr/ko/products/E486612-000/00?colorDisplayCode=65&sizeDisplayCode=005',
-    ),
-  ]),
-  LiveCompareMall('SSG', [
-    LiveCompareProduct(
-      'https://www.ssg.com/item/itemView.ssg?itemId=1000571660298',
-    ),
-    LiveCompareProduct(
-      'https://www.ssg.com/item/itemView.ssg?itemId=1000277700787',
-    ),
-  ]),
-  LiveCompareMall('더현대Hi', [
-    LiveCompareProduct(
-      'https://hi.thehyundai.com/product/40B1406274?sectId=1031',
-    ),
-  ]),
-  LiveCompareMall('에이블리', [
-    LiveCompareProduct('https://mobile.a-bly.com/goods/74156532'),
-  ]),
-  LiveCompareMall('지그재그', [
-    LiveCompareProduct('https://zigzag.kr/catalog/products/144255443'),
-  ]),
-  LiveCompareMall('KREAM', [
-    LiveCompareProduct('https://kream.co.kr/products/1012767'),
-    LiveCompareProduct('https://kream.co.kr/products/748804'),
-  ]),
-  LiveCompareMall('게스', [
-    LiveCompareProduct(
-      'https://www.guesskorea.com/product/detail.html?product_no=45471',
+      "https://hotping.co.kr/product/detail.html?product_no=48324",
       live: LiveCompareExpected(
-        name: '남성 데님 프린트 삼각 반팔 티셔츠_LIGHT GREY',
-        price: 39000,
+        name:
+            "[여리슬림핏/-3kg/팔뚝살커버][MADE] 라플린 카라 딥브이넥 랩 반팔 니트가디건 (44~110) (빅사이즈니트-쿨링니트-카라니트-브이넥니트-랩니트-체형커버-캐주얼-데일리-출근룩-오피스룩-하객룩-페미닌-일체형-스판니트)",
+        price: 32800,
         image:
-            'https://www.guesskorea.com/web/product/big/202603/cea6a7276868637421b68e8fb91a7274.jpg',
-        brand: '게스',
+            "https://hotping.co.kr/web/product/big/202608/6e25bd612ee674c28d19c19afc5edd51.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("유니클로", []),
+  LiveCompareMall("SSG", [
+    LiveCompareProduct(
+      "https://www.ssg.com/item/dealItemView.ssg?itemId=1000625754372&siteNo=7009&salestrNo=2551",
+      live: LiveCompareExpected(
+        name: "(~50%) 한우 등심/국거리 등",
+        price: 29835,
+        image:
+            "https://sitem.ssgcdn.com/72/43/75/item/1000625754372_i1_250.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://www.guesskorea.com/product/detail.html?product_no=45470',
+      "https://www.ssg.com/item/dealItemView.ssg?itemId=1000870953111&siteNo=6001&salestrNo=2037",
       live: LiveCompareExpected(
-        name: '남녀공용 GUESS 미니 로고 반팔티셔츠_BLUE',
+        name: "토종닭/볶음탕용~30%",
+        price: 15980,
+        image:
+            "https://sitem.ssgcdn.com/11/31/95/item/1000870953111_i1_250.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.ssg.com/item/dealItemView.ssg?itemId=1000021236556&siteNo=6001&salestrNo=2037&advertBidId=1020473523&advertExtensTeryDivCd=10",
+      live: LiveCompareExpected(
+        name: "청정원x종가 역대급 할인릴레이",
+        price: 5280,
+        image:
+            "https://sitem.ssgcdn.com/56/65/23/item/1000021236556_i1_250.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("더현대Hi", [
+    LiveCompareProduct(
+      "https://hi.thehyundai.com/product/60B1084782?sectId=1031",
+      live: LiveCompareExpected(
+        name: "소가죽 오픈토 뮬 BE26S3FSP0251",
+        price: 18100,
+        image: "https://image.thehyundai.com/8/7/4/08/B1/60B1084782_0.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://hi.thehyundai.com/product/60A2104589?sectId=1031",
+      live: LiveCompareExpected(
+        name: "14K 골드 포인트 플레어 팔찌 TBSK4G222075M",
+        price: 3000,
+        image: "https://image.thehyundai.com/8/5/4/10/A2/60A2104589_0.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://hi.thehyundai.com/product/2229774639?sectId=1031",
+      live: LiveCompareExpected(
+        name: "VW-5074-001",
+        price: 3000,
+        image: "https://image.thehyundai.com/3/6/4/77/29/2229774639_0.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("에이블리", []),
+  LiveCompareMall("지그재그", [
+    LiveCompareProduct(
+      "https://zigzag.kr/catalog/products/159126270",
+      live: LiveCompareExpected(
+        name: "모어렌 [MADE] [3만장/컬러추가] 캡내장 로브닝 레이스 슬리브리스",
+        price: 15300,
+        image:
+            "https://cf.product-image.s.zigzag.kr/original/c/15/912/627/159126270-7158693702236622361.jpeg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://zigzag.kr/catalog/products/168362278",
+      live: LiveCompareExpected(
+        name: "화이트랩스 화이트랩스 치아미백기 LED 셀프 자가 치아미백기계 &amp; 치아미백젤 세트 (1인용)",
+        price: 159000,
+        image:
+            "https://cf.product-image.s.zigzag.kr/original/d/2026/2/3/59382_202602031710060884_61349.jpeg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://zigzag.kr/catalog/products/161980550",
+      live: LiveCompareExpected(
+        name: "뷰티크 🌹뷰티페스타 특가🌹 [조말론] 블랙베리 앤 베이 코롱 100ml (블랙베리향) (+선물포장)",
+        price: 185580,
+        image:
+            "https://cf.product-image.s.zigzag.kr/original/d/2026/7/16/40976_202607161436522871_71643.jpeg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("KREAM", [
+    LiveCompareProduct(
+      "https://kream.co.kr/products/1036058",
+      live: LiveCompareExpected(
+        name:
+            "Black Yak Climbing Stone Master Light Down Jacket #3 Cloud Dancer",
+        price: 251000,
+        image:
+            "https://kream-phinf.pstatic.net/MjAyNjA4MDZfMTU2/MDAxNzg1OTg3OTIyNDE0.MvVCq7uwCf35x4bhxgKGcVAM73NkEdP1hZfFMXpav3wg.nmN6pqpw1IZfpmVdvFQI0uIjCXM27Yhg1dW1Wz9hWJ8g.PNG/a_3d99b8d5e51a4b17a64024ad9401bf7a.png",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://kream.co.kr/products/1039844",
+      live: LiveCompareExpected(
+        name:
+            "Adidas Liverpool FC Teamgeist 26 Longsleeve T-Shirt White - KR Sizing (Non Marking Ver.)",
+        price: 134000,
+        image:
+            "https://kream-phinf.pstatic.net/MjAyNjA4MTBfNyAg/MDAxNzg2MzMwNzU3ODgy._8r6nHi5eZTeaChA9U5Wwa56SAADirrvypw_2TGcLIsg.i6DHTG-pkiRCdkwW4RH7-BRkokBCzrxB89IKoA79K2sg.PNG/a_9c94b1c451a647ee8c0d95581a46843f.png",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://kream.co.kr/products/1035900",
+      live: LiveCompareExpected(
+        name: "thisisneverthat x Fragment Design Hoodie Off Black",
+        price: 190000,
+        image:
+            "https://kream-phinf.pstatic.net/MjAyNjA4MDZfMTI1/MDAxNzg1OTg3MjM1MTc4.VC-3K8lsyt2eI1wwr74XSC55IJ8hlGvYCcmpfkmyq-Ig.s4hKPRWeCA3cVOfYu2I0UEF0A61Z4kHUjLfeMnCpgFQg.PNG/a_4b2f5643d3aa4b5fb8a1982c27b5dd33.png",
+      ),
+    ),
+  ]),
+  LiveCompareMall("게스", [
+    LiveCompareProduct(
+      "https://www.guesskorea.com/product/detail.html?product_no=49568",
+      live: LiveCompareExpected(
+        name: "여성 인디고 플레어 부츠컷_DARK BLUE",
+        price: 259000,
+        image:
+            "https://www.guesskorea.com/web/product/big/202608/93f2a25aae82f56dda87640e8aaf7cd5.png",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.guesskorea.com/product/detail.html?product_no=51217",
+      live: LiveCompareExpected(
+        name: "여성 체인장식 와이드_MEDIUM BLUE",
+        price: 239000,
+        image:
+            "https://www.guesskorea.com/web/product/big/202608/acadd420d4df47952048ec429df05445.png",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.guesskorea.com/product/detail.html?product_no=52432",
+      live: LiveCompareExpected(
+        name: "여성 헨리넥 반팔 카라티_WHITE",
+        price: 79000,
+        image:
+            "https://www.guesskorea.com/web/product/big/202607/4fc0b81c840da87713777140bc8b62c9.png",
+      ),
+    ),
+  ]),
+  LiveCompareMall("반스", []),
+  LiveCompareMall("커버낫", [
+    LiveCompareProduct(
+      "https://covernat.co.kr/product/detail.html?product_no=8321",
+      live: LiveCompareExpected(
+        name: "패스포트 티셔츠 화이트",
         price: 29000,
         image:
-            'https://www.guesskorea.com/web/product/big/202601/7d727b195895b3c75888c0e97f668294.png',
-        brand: '게스',
+            "https://covernat.co.kr/web/product/big/202407/f2a03bcb0b5292af8cb08f575687e1c8.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://www.guesskorea.com/product/detail.html?product_no=45472',
+      "https://covernat.co.kr/product/detail.html?product_no=8113",
       live: LiveCompareExpected(
-        name: '남녀공용 해변 프린트 반팔 티셔츠_LIGHT YELLOW',
+        name: "[2PACK] 엑티브 티셔츠 Black+White",
+        price: 39000,
+        image:
+            "https://covernat.co.kr/web/product/big/202605/0c6ea70b2a072b9cf502b9340129f48a.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://covernat.co.kr/product/detail.html?product_no=7686",
+      live: LiveCompareExpected(
+        name: "[2PACK] 우먼 쿨 코튼 에센셜 티셔츠 Ecru+Surf Green",
         price: 29000,
         image:
-            'https://www.guesskorea.com/web/product/big/202603/439646938f8f472889c00581fb264ac9.jpg',
-        brand: '게스',
+            "https://covernat.co.kr/web/product/big/202605/eaefad3ae7fa8516abd5a17fbe4ef815.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('반스', [
+  LiveCompareMall("코드그라피", []),
+  LiveCompareMall("후아유", [
     LiveCompareProduct(
-      'https://www.vans.co.kr/PRODUCT/VN000D6WBOM',
+      "https://whoau.com/product/detail.html?product_no=4457",
       live: LiveCompareExpected(
-        name: '올드스쿨',
-        price: 57000,
-        image: 'https://img.vans.com/image/upload/VN000D6WBOM-HERO.jpg',
-        brand: 'VANS',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://www.vans.co.kr/PRODUCT/VN000D9NBLK',
-      live: LiveCompareExpected(
-        name: '반스 프리미엄 어센틱 44 컴뱃',
-        price: 135000,
-        image: 'https://img.vans.com/image/upload/VN000D9NBLK-HERO.jpg',
-        brand: 'VANS',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://www.vans.co.kr/PRODUCT/VN000VB2HO8',
-      live: LiveCompareExpected(
-        name: '토들러 올드스쿨 벨크로 레오파드',
-        price: 55000,
+        name: "Signature Patch Hood Zip-up",
+        price: 34950,
         image:
-            'https://image.vans.co.kr/cmsstatic/product/43320/VN000VB2HO8-HERO.jpg',
-        brand: 'VANS',
+            "https://cafe24.poxo.com/ec01/whoaukr/3JPAsJn/jGkesyYvH/tEacJ//FpiOmI0G0IBVoMAo1XCOUL3mT6Caj09FWLKVeGQ1kJx/IhRfpWw9NNnns5vjA==/_/web/product/big/202605/b3b8d13d2af1478d442cf875d9ac2ea9.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://whoau.com/product/detail.html?product_no=4466",
+      live: LiveCompareExpected(
+        name: "Steve Cable Cardigan",
+        price: 29950,
+        image:
+            "https://cafe24.poxo.com/ec01/whoaukr/3JPAsJn/jGkesyYvH/tEacJ//FpiOmI0G0IBVoMAo1XCOUL3mT6Caj09FWLKVeGQ1kJx/IhRfpWw9NNnns5vjA==/_/web/product/big/202602/f70fa54424b38b17fd8938dfc078dc1c.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://whoau.com/product/detail.html?product_no=4527",
+      live: LiveCompareExpected(
+        name: "Campus Patch Sweatshirt",
+        price: 34900,
+        image:
+            "https://cafe24.poxo.com/ec01/whoaukr/3JPAsJn/jGkesyYvH/tEacJ//FpiOmI0G0IBVoMAo1XCOUL3mT6Caj09FWLKVeGQ1kJx/IhRfpWw9NNnns5vjA==/_/web/product/big/202602/6a7e86bb7eb5dd2784faed793c87c80a.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('커버낫', [
+  LiveCompareMall("Aritzia", []),
+  LiveCompareMall("노이아고", [
     LiveCompareProduct(
-      'https://covernat.co.kr/product/detail.html?product_no=5996',
+      "https://noirer.com/product/detail.html?product_no=2497",
       live: LiveCompareExpected(
-        name: '케이블 라운드 하프 니트 네이비',
+        name: "코튼 롱 슬리브리스 티셔츠 (차콜)",
+        price: 65000,
+        image:
+            "https://noirer.com/web/product/big/202608/094b8074ab4cdc63466a77a92e2b227b.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://noirer.com/product/detail.html?product_no=2496",
+      live: LiveCompareExpected(
+        name: "코튼 롱 슬리브리스 티셔츠 (아이보리)",
+        price: 65000,
+        image:
+            "https://noirer.com/web/product/big/202608/8603d67bd5ee124e83e36c2ef5c6ef78.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://noirer.com/product/detail.html?product_no=2495",
+      live: LiveCompareExpected(
+        name: "코튼 롱 슬리브리스 티셔츠 (멜란지그레이)",
+        price: 65000,
+        image:
+            "https://noirer.com/web/product/big/202608/85b4975a54e03a70f7554f8e9d796640.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("립합", [
+    LiveCompareProduct(
+      "https://liphop.com/product/detail.html?product_no=17844",
+      live: LiveCompareExpected(
+        name: "KIM BAG Shoulder Silver",
+        price: 385000,
+        image:
+            "https://liphop.com/web/product/big/202404/43c0297f7308640505e6eaa364c2f4a4.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://liphop.com/product/detail.html?product_no=17843",
+      live: LiveCompareExpected(
+        name: "KIM BAG Shoulder Black",
+        price: 385000,
+        image:
+            "https://liphop.com/web/product/big/202404/303f5edb1a769af549b58e160c40bdcd.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://liphop.com/product/detail.html?product_no=17827",
+      live: LiveCompareExpected(
+        name: "BIG RIBBON SWEATSHIRT Cream",
+        price: 115000,
+        image:
+            "https://liphop.com/web/product/big/202404/d5e52403a289802dbedd1ce2b0b2a44d.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("마하그리드", [
+    LiveCompareProduct(
+      "https://mahagrid.com/product/detail.html?product_no=3853",
+      live: LiveCompareExpected(
+        name: "TWO POCKET BACKPACK[BLACK]",
+        price: 99000,
+        image:
+            "https://mahagrid.com/web/product/big/202302/e1a99120e5e831f2c8797bce813c1a06.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://mahagrid.com/product/detail.html?product_no=3852",
+      live: LiveCompareExpected(
+        name: "WASHED BUM BAG[BLACK]",
+        price: 59000,
+        image:
+            "https://mahagrid.com/web/product/big/202302/6e6076124c1154bea2cc19794839e10f.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://mahagrid.com/product/detail.html?product_no=3909",
+      live: LiveCompareExpected(
+        name: "CORP TEE[BLACK]",
         price: 39000,
-        image: 'https://covernat.co.kr/web/product/big/CO2302KT23NA_1.jpg',
-        brand: '커버낫',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://covernat.co.kr/product/detail.html?product_no=18025',
-      live: LiveCompareExpected(
-        name: '우먼 레이어드 슬리브리스 원피스 블랙',
-        price: 125100,
         image:
-            'https://covernat.co.kr/web/product/big/202605/9ef7df29644ea4f1a9a5a693142b66fa.jpg',
-        brand: '커버낫',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://covernat.co.kr/product/detail.html?product_no=8581',
-      live: LiveCompareExpected(
-        name: '서퍼샵 티셔츠 화이트',
-        price: 19000,
-        image:
-            'https://covernat.co.kr/web/product/big/202409/07b0db05c4d274549d1bd9161a8dbba2.jpg',
-        brand: '커버낫',
+            "https://mahagrid.com/web/product/big/202404/31ecada2304b90e5db954a98e12d2eb5.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('코드그라피', [
+  LiveCompareMall("비바스튜디오", [
     LiveCompareProduct(
-      'https://code-graphy.com/product/detail.html?product_no=6388',
+      "https://vivastudio.co.kr/product/detail.html?product_no=5476",
       live: LiveCompareExpected(
-        name: '버뮤다 카펜터 코튼 팬츠_베이지',
-        price: 70300,
+        name: "BARRIO LEATHER STADIUM JACKET [BLACK]",
+        price: 179000,
         image:
-            'https://cafe24.poxo.com/ec01/cgraphy/nDa3+VeoMR5vyddRVokF8ltOczmmZefMqiQFCv903NO3uqDUY03GsJUYRdWtWSXw916shfsw86QFrSvagfRRrA==/_/web/product/big/202504/e3986480c1dc868d19a4a44b2c3861cb.jpg',
+            "https://vivastudio.co.kr/web/product/big/202502/3d6153bdd40066d2c23d5c273ab0619c.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://vivastudio.co.kr/product/detail.html?product_no=5478",
+      live: LiveCompareExpected(
+        name: "BARRIO SINGLE RIDER JACKET [BLACK]",
+        price: 179000,
+        image:
+            "https://vivastudio.co.kr/web/product/big/202502/62fbf2039cbba4140b8db521b7f22e5c.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://vivastudio.co.kr/product/detail.html?product_no=5546",
+      live: LiveCompareExpected(
+        name: "WOMAN BARRIO SINGLE RIDER JACKET [BLACK]",
+        price: 179000,
+        image:
+            "https://vivastudio.co.kr/web/product/big/202502/77fc82420411ae80ad09462a809f7654.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('후아유', [
+  LiveCompareMall("아모멘토", [
     LiveCompareProduct(
-      'https://whoau.com/product/detail.html?product_no=4852',
+      "https://amomento.co/product/detail.html?product_no=1642",
       live: LiveCompareExpected(
-        name: 'USA Printing T-shirt',
-        price: 19900,
-        image:
-            'https://cafe24.poxo.com/ec01/whoaukr/3JPAsJn/jGkesyYvH/tEacJ//FpiOmI0G0IBVoMAo1XCOUL3mT6Caj09FWLKVeGQ1kJx/IhRfpWw9NNnns5vjA==/_/web/product/big/202605/1abcbd56ea4c53df7a822552aaac74f5.jpg',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://whoau.com/product/detail.html?product_no=4847',
-      live: LiveCompareExpected(
-        name: 'Steve Collar T-Shirt',
-        price: 27900,
-        image:
-            'https://cafe24.poxo.com/ec01/whoaukr/3JPAsJn/jGkesyYvH/tEacJ//FpiOmI0G0IBVoMAo1XCOUL3mT6Caj09FWLKVeGQ1kJx/IhRfpWw9NNnns5vjA==/_/web/product/big/202605/b7a4990afb8b49eb0649eee27a9315ea.jpg',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://whoau.com/product/detail.html?product_no=4853',
-      live: LiveCompareExpected(
-        name: 'USA Logo T-shirt',
-        price: 19900,
-        image:
-            'https://cafe24.poxo.com/ec01/whoaukr/3JPAsJn/jGkesyYvH/tEacJ//FpiOmI0G0IBVoMAo1XCOUL3mT6Caj09FWLKVeGQ1kJx/IhRfpWw9NNnns5vjA==/_/web/product/big/202603/06394434e4fa194796b9a1a320c653f9.jpg',
-      ),
-    ),
-  ]),
-  LiveCompareMall('Aritzia', [
-    LiveCompareProduct(
-      'https://www.aritzia.com/intl/en/product/airbutter%E2%84%A2-repose-longsleeve/133550.html?color=35023',
-    ),
-    LiveCompareProduct(
-      'https://www.aritzia.com/intl/en/product/technique-dress/124784.html',
-    ),
-  ]),
-  LiveCompareMall('노이아고', [
-    LiveCompareProduct(
-      'https://noirer.com/product/detail.html?product_no=2141',
-      live: LiveCompareExpected(
-        name: '멀티 웨일 코듀로이 블루종 (딥브라운)',
-        price: 219000,
-        image:
-            'https://noirer.com/web/product/big/202509/898f768eacf0492bc86b7c3d15e95b6d.jpg',
-        brand: 'NOIRER',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://noirer.com/product/detail.html?product_no=2140',
-      live: LiveCompareExpected(
-        name: '헤어리 투 톤 퍼 자켓 (베이지)',
-        price: 245000,
-        image:
-            'https://noirer.com/web/product/big/202509/dd2bc1cae8e76b778c41c5fde0ee2370.jpg',
-        brand: 'NOIRER',
-      ),
-    ),
-    LiveCompareProduct(
-      'https://noirer.com/product/detail.html?product_no=2142',
-      live: LiveCompareExpected(
-        name: '캐시미어 더블 브레스티드 맥시 코트 (블랙)',
-        price: 425000,
-        image:
-            'https://noirer.com/web/product/big/202509/7caed779efc9de3bd9fc82187fe4fee0.jpg',
-        brand: 'NOIRER',
-      ),
-    ),
-  ]),
-  LiveCompareMall('립합', [
-    LiveCompareProduct(
-      'https://liphop.com/product/detail.html?product_no=17849',
-      live: LiveCompareExpected(
-        name: 'BLACK WEDGE SLIPPERS',
-        price: 290000,
-        image:
-            'https://liphop.com/web/product/big/202406/ed7b52e91003133082ed4b85ab5e54e4.jpg',
-      ),
-    ),
-  ]),
-  LiveCompareMall('마하그리드', [
-    LiveCompareProduct(
-      'https://mahagrid.com/product/detail.html?product_no=3854',
-      live: LiveCompareExpected(
-        name: 'THIRD LOGO BACKPACK[BLACK]',
-        price: 109000,
-        image:
-            'https://mahagrid.com/web/product/big/202602/c9908ec067fc6dd75124f9ed69c164a7.jpg',
-      ),
-    ),
-  ]),
-  LiveCompareMall('비바스튜디오', [
-    LiveCompareProduct(
-      'https://vivastudio.co.kr/product/detail.html?product_no=5485',
-    ),
-  ]),
-  LiveCompareMall('아모멘토', [
-    LiveCompareProduct(
-      'https://amomento.co/product/button-neck-knit-2colors/1642/',
-      live: LiveCompareExpected(
-        name: 'BUTTON NECK KNIT (2COLORS)',
+        name: "BUTTON NECK KNIT (2COLORS)",
         price: 249000,
         image:
-            'https://cafe24.poxo.com/ec01/amomentoweb/S6XixLXKQIBS6XUNf2tKGojORIH3PPuABxGbuJPvDdnCZ/1q6lF/ulSM9K1X+EnNoFwo9ozOPtj4s2Rf+txSew==/_/web/product/big/202501/1652618da0b72a1a986b47a538eb7666.jpg',
+            "https://cafe24.poxo.com/ec01/amomentoweb/S6XixLXKQIBS6XUNf2tKGojORIH3PPuABxGbuJPvDdnCZ/1q6lF/ulSM9K1X+EnNoFwo9ozOPtj4s2Rf+txSew==/_/web/product/big/202501/1652618da0b72a1a986b47a538eb7666.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://amomento.co/product/detail.html?product_no=1643',
+      "https://amomento.co/product/detail.html?product_no=1863",
       live: LiveCompareExpected(
-        name: 'CLASSIC LOAFER',
+        name: "HOODED DOWN PUFFER (2COLORS)",
+        price: 529000,
+        image:
+            "https://cafe24.poxo.com/ec01/amomentoweb/S6XixLXKQIBS6XUNf2tKGojORIH3PPuABxGbuJPvDdnCZ/1q6lF/ulSM9K1X+EnNoFwo9ozOPtj4s2Rf+txSew==/_/web/product/big/202501/217c11f29b2adb120f10ca04b9dfb6f3.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://amomento.co/product/detail.html?product_no=1866",
+      live: LiveCompareExpected(
+        name: "[EXCLUSIVE] CROPPED DOWN PUFFER (2COLORS)",
         price: 479000,
         image:
-            'https://cafe24.poxo.com/ec01/amomentoweb/S6XixLXKQIBS6XUNf2tKGojORIH3PPuABxGbuJPvDdnCZ/1q6lF/ulSM9K1X+EnNoFwo9ozOPtj4s2Rf+txSew==/_/web/product/big/202408/b8e5f6e4da18556b7e158ebb8910f65a.jpg',
+            "https://cafe24.poxo.com/ec01/amomentoweb/S6XixLXKQIBS6XUNf2tKGojORIH3PPuABxGbuJPvDdnCZ/1q6lF/ulSM9K1X+EnNoFwo9ozOPtj4s2Rf+txSew==/_/web/product/big/202501/84463cf683cb2fc45c116d9838c45968.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('앤더슨벨', [
+  LiveCompareMall("앤더슨벨", [
     LiveCompareProduct(
-      'https://www.anderssonbell.com/product/detail.html?product_no=10605',
+      "https://www.anderssonbell.com/product/detail.html?product_no=10279",
       live: LiveCompareExpected(
-        name: 'UNISEX LOVE T-SHIRT atb1252u(RED)',
-        price: 95000,
+        name: "DENIM TROMPE L`OEIL PLEATS LONG SKIRT apa766w(BLUE)",
+        price: 548000,
         image:
-            'https://www.anderssonbell.com/web/product/big/202602/1fbc361c12d31cf13b0a3e5b7c1cfb23.jpg',
-        brand: '앤더슨벨',
+            "https://www.anderssonbell.com/web/product/big/202508/706e61a33cb004e663baac606c0f21a6.jpg",
       ),
     ),
-  ]),
-  LiveCompareMall('예일', [
     LiveCompareProduct(
-      'https://yaleapparel.co.kr/product/detail.html?product_no=18179',
+      "https://www.anderssonbell.com/product/detail.html?product_no=10277",
       live: LiveCompareExpected(
-        name: '스몰 아치 스트라이프 후드 집업_라이트 그레이',
-        price: 79900,
+        name: "EMBROIDERY PADDED SKIRT apa764w(D/BROWN)",
+        price: 335000,
         image:
-            'https://yaleapparel.co.kr/web/product/big/202602/4bd91aef3f8b85c0a2d36f5da861e85e.jpg',
-        brand: 'Yale',
+            "https://www.anderssonbell.com/web/product/big/202508/6b874e14ca71c0e1b8407fdc15c26acc.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://yaleapparel.co.kr/product/detail.html?product_no=18180',
+      "https://www.anderssonbell.com/product/detail.html?product_no=10018",
       live: LiveCompareExpected(
-        name: '스몰 아치 스트라이프 후드 집업_그레이',
-        price: 79900,
+        name: "DENIM COMBO RACING LEATHER SKIRTS apa704w(BROWN)",
+        price: 395000,
         image:
-            'https://yaleapparel.co.kr/web/product/big/202602/f4cc7fb241213f262c09f9f8047866cf.jpg',
-        brand: 'Yale',
+            "https://www.anderssonbell.com/web/product/big/202508/e1261775cac1a1bdf36e2725fab8a6c9.jpg",
       ),
     ),
+  ]),
+  LiveCompareMall("예일", [
     LiveCompareProduct(
-      'https://yaleapparel.co.kr/product/detail.html?product_no=18178',
+      "https://yaleapparel.co.kr/product/detail.html?product_no=18328",
       live: LiveCompareExpected(
-        name: '불독스 후드_네이비',
-        price: 69900,
+        name: "체크 투톤아치 티셔츠_라이트 그레이",
+        price: 25900,
         image:
-            'https://yaleapparel.co.kr/web/product/big/202602/604898fe05f58561a8491aebe1bef9ed.jpg',
-        brand: 'Yale',
+            "https://yaleapparel.co.kr/web/product/big/202604/e15657e2c7d81d50d15d5d9b1a6c5220.jpg",
       ),
     ),
-  ]),
-  LiveCompareMall('위드윤', [
     LiveCompareProduct(
-      'https://withyoon.com/product/detail.html?product_no=19342',
+      "https://yaleapparel.co.kr/product/detail.html?product_no=18538",
       live: LiveCompareExpected(
-        name: '모노 린넨 가디건',
-        price: 68000,
+        name: "[SET] 우먼즈 크롭 아플리케 반팔티셔츠 + 우먼즈 아플리케 숏팬츠",
+        price: 88000,
         image:
-            'https://cafe24img.poxo.com/choiwjddbs/web/product/big/202607/4deb71bbfca1720eb1c187d72f550144.webp',
+            "https://yaleapparel.co.kr/web/product/big/202606/6793a7cfb36ae9579c1dcc11c2c52e59.jpg",
       ),
     ),
     LiveCompareProduct(
-      'https://withyoon.com/product/detail.html?product_no=19341',
+      "https://yaleapparel.co.kr/product/detail.html?product_no=18534",
       live: LiveCompareExpected(
-        name: '리브 셔링 블라우스',
-        price: 49800,
+        name: "[1+1] 체크 투톤아치 티셔츠 + 우먼즈 시어서커 체크 투톤 아치 티셔츠",
+        price: 99800,
         image:
-            'https://cafe24img.poxo.com/choiwjddbs/web/product/big/202607/ac04d377e65f83e32f0b40b8779ff67e.webp',
+            "https://yaleapparel.co.kr/web/product/big/202606/31db2eb67a4e1f3165f0e9879df9ca11.jpg",
       ),
     ),
+  ]),
+  LiveCompareMall("위드윤", [
     LiveCompareProduct(
-      'https://withyoon.com/product/detail.html?product_no=19343',
+      "https://withyoon.com/product/detail.html?product_no=19325",
       live: LiveCompareExpected(
-        name: '브루노 린넨 슬리브리스 블라우스',
-        price: 38900,
+        name: "오닉 코튼 보트넥 나시",
+        price: 23900,
         image:
-            'https://cafe24img.poxo.com/choiwjddbs/web/product/big/202607/08a677682df74d6ce2efb8ad0ab03f69.webp',
+            "https://cafe24img.poxo.com/choiwjddbs/web/product/big/202607/8c49c33503f5da4d7ff0787df0857231.webp",
       ),
     ),
-  ]),
-  LiveCompareMall('패션플러스', [
     LiveCompareProduct(
-      'https://www.fashionplus.co.kr/goods/detail/418168398',
-    ),
-  ]),
-  LiveCompareMall('프롬비기닝', [
-    LiveCompareProduct(
-      'https://frombeginning.co.kr/product/detail.html?product_no=22025',
+      "https://withyoon.com/product/detail.html?product_no=19333",
       live: LiveCompareExpected(
-        name: '앤디 스트링 이지 밴딩 팬츠',
-        price: 61000,
+        name: "[💛여름데일리추천] 홀터 캡내장 나시",
+        price: 19800,
         image:
-            'https://ecimg.cafe24img.com/pg1985b57457872046/frombegining/web/product/big/20260807/fb65743388ee09aabee7aea26b0ea272.gif',
-        brand: '프롬비기닝',
+            "https://cafe24img.poxo.com/choiwjddbs/web/product/big/202607/ed806c10535ebc5a4f29b59e83ceba2c.webp",
       ),
     ),
     LiveCompareProduct(
-      'https://frombeginning.co.kr/product/detail.html?product_no=22026',
+      "https://withyoon.com/product/detail.html?product_no=19251",
       live: LiveCompareExpected(
-        name: '블로우 스퀘어 미니 숄더백',
-        price: 63000,
+        name: "[🚚오늘출고] [🏆BestSelling][자체제작] 썸머 핀턱 와이드 슬랙스",
+        price: 52000,
         image:
-            'https://ecimg.cafe24img.com/pg1985b57457872046/frombegining/web/product/big/20260807/c1c6e9d86f178bfcc0df7d78cdce917d.gif',
-        brand: '프롬비기닝',
+            "https://cafe24img.poxo.com/choiwjddbs/web/product/big/202605/c1601edebbec34fb4b84df715df98daf.webp",
       ),
     ),
   ]),
-  LiveCompareMall('나이키', [
+  LiveCompareMall("패션플러스", [
     LiveCompareProduct(
-      'https://www.nike.com/kr/t/나이키-에어-포스-1-07-남성-신발-qdjlTENZ/IH1698-100',
+      "https://www.fashionplus.co.kr/goods/detail/429636922",
       live: LiveCompareExpected(
-        name: "에어 포스 1 '07",
-        price: 134100,
-        image:
-            'https://static.nike.com/a/images/t_default/6a864f6a-d44d-4778-af91-2d24ee5bab06/AIR+FORCE+1+%2707.png',
-        brand: '나이키',
+        name: "[신규입점 EVENT] 티셔츠ㅣ팬츠 외 1만원대부터",
+        price: 29000,
+        image: "https://img.fashionplus.co.kr/dev_test/og_200x200.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.fashionplus.co.kr/goods/detail/411701285",
+      live: LiveCompareExpected(
+        name: "콘드로이친/오메가 방송특가 딜",
+        price: 164500,
+        image: "https://img.fashionplus.co.kr/dev_test/og_200x200.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.fashionplus.co.kr/goods/detail/319807873",
+      live: LiveCompareExpected(
+        name: "유한킴벌리 BEST 화장지 외 생필품 모음전",
+        price: 20800,
+        image: "https://img.fashionplus.co.kr/dev_test/og_200x200.jpg",
       ),
     ),
   ]),
-  LiveCompareMall('올리브영', [
+  LiveCompareMall("프롬비기닝", [
     LiveCompareProduct(
-      'https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000260600',
+      "https://frombeginning.co.kr/product/detail.html?product_no=22012",
+      live: LiveCompareExpected(
+        name: "[MADE]페이퍼 후드 바람막이 점퍼",
+        price: 80000,
+        image:
+            "https://ecimg.cafe24img.com/pg1985b57457872046/frombegining/web/product/big/20260810/c7afff9b16e97d72afc2a73b2e1198a6.gif",
+      ),
     ),
     LiveCompareProduct(
-      'https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000210792',
+      "https://frombeginning.co.kr/product/detail.html?product_no=22023",
+      live: LiveCompareExpected(
+        name: "보트넥 셔링 롱슬리브 티셔츠",
+        price: 39000,
+        image:
+            "https://ecimg.cafe24img.com/pg1985b57457872046/frombegining/web/product/big/20260807/a5d68111d7ff6a08ed006a54e4dad302.gif",
+      ),
     ),
     LiveCompareProduct(
-      'https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000171427',
+      "https://frombeginning.co.kr/product/detail.html?product_no=21574",
+      live: LiveCompareExpected(
+        name: "레이어 버튼 브이 반팔 니트",
+        price: 45000,
+        image:
+            "https://ecimg.cafe24img.com/pg1985b57457872046/frombegining/web/product/big/20260706/436c8f29a2b30570374aacf3a4f75753.gif",
+      ),
     ),
   ]),
-  LiveCompareMall('퀸잇', [
+  LiveCompareMall("나이키", [
     LiveCompareProduct(
-      'https://web.queenit.kr/product/421b849e05731238976b9f01d96c7e31',
+      "https://www.nike.com/kr/t/acg-%EB%8F%8C%EB%A1%9C%EB%AF%B8%ED%8B%B0-%EC%BD%94%EB%93%80%EB%A1%9C%EC%9D%B4-%EC%9E%AC%ED%82%B7-6afaYkrC/IM4254-104",
+      live: LiveCompareExpected(
+        name: "ACG '돌로미티' 코듀로이 재킷",
+        price: 99000,
+        image:
+            "https://static.nike.com/a/images/t_default/u_9ddf04c7-2a9a-4d76-add1-d15af8f0263d,c_scale,fl_relative,w_1.0,h_1.0,fl_layer_apply/02416b55-9304-42b2-95fc-12ff75aada31/AS+U+ACG+DOLOMITI+YUNNAN+CORD.png",
+      ),
     ),
-  ]),
-  LiveCompareMall('브랜디', [
-    LiveCompareProduct('https://www.brandi.co.kr/products/158997563'),
-  ]),
-  LiveCompareMall('CJ온스타일', [
-    LiveCompareProduct('https://display.cjonstyle.com/p/item/2078847097'),
-  ]),
-  LiveCompareMall('4910', [
-    LiveCompareProduct('https://4910.kr/desktop/goods/64333542'),
-  ]),
-  LiveCompareMall('SSF샵', [
-    LiveCompareProduct('https://www.ssfshop.com/GOOD-ON/GPCX25041604994/good'),
-  ]),
-  LiveCompareMall('이랜드몰', [
     LiveCompareProduct(
-      'https://www.elandmall.co.kr/i/item?itemNo=2607498077&lowerVendNo=LV25019098',
+      "https://www.nike.com/kr/t/acg-%EB%8F%8C%EB%A1%9C%EB%AF%B8%ED%8B%B0-%EC%BD%94%EB%93%80%EB%A1%9C%EC%9D%B4-%EC%87%BC%EC%B8%A0-wqfRDNM2/IM4222-104",
+      live: LiveCompareExpected(
+        name: "ACG '돌로미티' 코듀로이 쇼츠",
+        price: 65000,
+        image:
+            "https://static.nike.com/a/images/t_default/u_9ddf04c7-2a9a-4d76-add1-d15af8f0263d,c_scale,fl_relative,w_1.0,h_1.0,fl_layer_apply/1ca8ce9e-fa71-4dd0-a7ec-722906e781da/AS+U+ACG+DOLOMITI+YUNNAN+CRD+S.png",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://www.nike.com/kr/t/%EB%82%98%EC%9D%B4%ED%82%A4-%ED%8E%98%EA%B0%80%EC%88%98%EC%8A%A4-42-%EC%97%AC%EC%84%B1-%EB%A1%9C%EB%93%9C-%EB%9F%AC%EB%8B%9D%ED%99%94-J3FQiYIc/IB1881-106",
+      live: LiveCompareExpected(
+        name: "나이키 페가수스 42 여성 로드 러닝화",
+        price: 169000,
+        image:
+            "https://static.nike.com/a/images/t_default/u_9ddf04c7-2a9a-4d76-add1-d15af8f0263d,c_scale,fl_relative,w_1.0,h_1.0,fl_layer_apply/522aebea-2c93-411d-a8ef-cad78715368a/W+NIKE+AIR+ZOOM+PEGASUS+42.png",
+      ),
     ),
   ]),
+  LiveCompareMall("올리브영", []),
+  LiveCompareMall("퀸잇", []),
+  LiveCompareMall("브랜디", []),
+  LiveCompareMall("CJ온스타일", [
+    LiveCompareProduct(
+      "https://display.cjonstyle.com/p/item/2082445074?channelCode=30002002",
+      live: LiveCompareExpected(
+        name: "[론칭] PRE-FALL 실크100 쉬머 레이어드 스카프",
+        price: 129000,
+        image:
+            "http://itemimage.cjonstyle.net/goods_images/20/074/2082445074L.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://display.cjonstyle.com/p/item/2070029628?channelCode=30002002",
+      live: LiveCompareExpected(
+        name: "최신상 배종옥 레몬꿀팩 레몬허니워시오프팩 6통+타올1매",
+        price: 99000,
+        image:
+            "http://itemimage.cjonstyle.net/goods_images/20/628/2070029628L.jpg",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://display.cjonstyle.com/p/item/2018074756?channelCode=30002002",
+      live: LiveCompareExpected(
+        name: "신라명과 호밀빵 430g 3봉",
+        price: 15500,
+        image:
+            "http://itemimage.cjonstyle.net/goods_images/20/756/2018074756L.jpg",
+      ),
+    ),
+  ]),
+  LiveCompareMall("4910", [
+    LiveCompareProduct(
+      "https://4910.kr/desktop/goods/44678113",
+      live: LiveCompareExpected(
+        name: "그루브스텝 [2PACK] 1+1 랩스타미니 라운드 반팔 티셔츠 S0217 - 4910 | 사고 싶은 스타일의 발견",
+        price: 1000,
+        image:
+            "https://d3ha2047wt6x28.cloudfront.net/FA45r5mdpZY/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjYwNTIyXzE3Nzk0NTI1Mjg0MTgwOTdtLnBuZw",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://4910.kr/desktop/goods/71195041",
+      live: LiveCompareExpected(
+        name: "모즈모즈 [단독1+1] 무지 배색 롤업 반팔티셔츠 - 4910 | 사고 싶은 스타일의 발견",
+        price: 1690,
+        image:
+            "https://d3ha2047wt6x28.cloudfront.net/YL2tLW-EPb0/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjYwNjE4XzE3ODE3NjU3OTQ1MzAyMDJtLmpwZw",
+      ),
+    ),
+    LiveCompareProduct(
+      "https://4910.kr/desktop/goods/3954236",
+      live: LiveCompareExpected(
+        name: "플루크 캠퍼밴 투어 피그먼트 반팔티셔츠 FST710 / 4color W - 4910 | 사고 싶은 스타일의 발견",
+        price: 1000,
+        image:
+            "https://d3ha2047wt6x28.cloudfront.net/z6T_-U60HFk/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjMwODA5XzE2OTE1NjQwMDAwMzI1MTZtLmpwZw",
+      ),
+    ),
+  ]),
+  LiveCompareMall("SSF샵", []),
+  LiveCompareMall("이랜드몰", []),
 ];
