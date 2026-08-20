@@ -337,9 +337,13 @@ const String productExtractJs = r'''
     if(scriptP!=null&&scriptP!==base)return null;
     var fromLd=false;
     if(sets.length===1){
-      if(!sets[0].includes(base))return null;
-      if(sets[0].length>2)return null;
-      fromLd=true;
+      if(sets[0].includes(base)){
+        if(sets[0].length>2)return null;
+        fromLd=true;
+      }else if(scriptP===base){
+        // LD가 옵션가 등 다른 값만 있어도 Cafe24 정가는 product_price / meta price
+        if(sets[0].length>2)return null;
+      }else return null;
     }else if(!sets.length){
       var display=shown.length===1?shown[0]:(custom.length===1?custom[0]:null);
       if(display!=null&&display!==base&&(sale==null||display!==sale))return null;
@@ -446,14 +450,14 @@ const String productExtractJs = r'''
       'marithe-official.com':['marithe','장바구니 담기'],
       'amomento.co':['amomento','Add To Bag'],'anderssonbell.com':['anderssonbell','ADD TO BAG'],
       'yaleapparel.co.kr':['yale','구매하기'],'withyoon.com':['withyoon','Buy It Now'],
-      '66girls.co.kr':['66girls','바로 구매하기'],'partimento.com':['partimento','Add to Cart'],
-      'frombeginning.co.kr':['frombeginning','바로구매']
+      '66girls.co.kr':['66girls','바로 구매하기'],'partimento.com':['partimento','Add to Cart']
     };
     for(var metaDomain in metaSaleSites)if(hostIs(metaDomain))return cafe24MetaSale(metaSaleSites[metaDomain][0],metaSaleSites[metaDomain][1]);
     // 회원가 몰: 정가(list) 채택
     var metaListSites={
       'leekorea.co.kr':['lee','바로 구매하기'],
-      'vivastudio.co.kr':['vivastudio',null]
+      'vivastudio.co.kr':['vivastudio',null],
+      'frombeginning.co.kr':['frombeginning','바로구매']
     };
     for(var listDomain in metaListSites)if(hostIs(listDomain))return cafe24MetaList(metaListSites[listDomain][0],metaListSites[listDomain][1]);
     if(hostIs('dailyjou.com'))return cafe24Offer('dailyjou','high',false);
@@ -674,7 +678,19 @@ const String productExtractJs = r'''
     }
 
     if(hostIs('cjonstyle.com')){
-      var cj=products();if(cj.length!==1)return null;var co=productOffers(cj[0]);if(co.length!==1||co[0].priceCurrency!=='KRW'||!availability(co[0].availability).endsWith('instock'))return null;sale=toPrice(co[0].price);var ccode=String(cj[0].sku||cj[0].productID||''),ct=pageText();if(!sale||ct.indexOf(Number(sale).toLocaleString('en-US'))<0||ct.indexOf('판매가격')<0||ct.indexOf('장바구니')<0||ct.indexOf('바로구매')<0||(ccode&&ct.indexOf(ccode)<0))return null;
+      // 일부 SKU는 바로구매 없이 장바구니만, Offer가 ListPrice/SalePrice로 여러 줄일 수 있다.
+      var cjList=products().filter(function(p){return productOffers(p).some(function(o){return toPrice(o.price);});});
+      if(cjList.length!==1)return null;
+      var cj=cjList[0],prices=uniqueRows(productOffers(cj).map(function(o){
+        if(o.priceCurrency&&o.priceCurrency!=='KRW')return null;
+        var av=availability(o.availability);
+        if(av&&!av.endsWith('instock'))return null;
+        return toPrice(o.price);
+      }).filter(Boolean));
+      if(prices.length!==1)return null;
+      sale=prices[0];
+      var ccode=String(cj.sku||cj.productID||''),ct=pageText();
+      if(!sale||ct.indexOf(Number(sale).toLocaleString('en-US'))<0||ct.indexOf('판매가격')<0||(ct.indexOf('장바구니')<0&&ct.indexOf('바로구매')<0)||(ccode&&ct.indexOf(ccode)<0))return null;
       return result('cjonstyle',sale,null,'Product.offers.price',null,{priceConfidence:'medium',optionDependent:false});
     }
 

@@ -14,13 +14,13 @@ FLUTTER = r"C:\Dev\0.sdk\flutter\bin\flutter.bat"
 APP_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\flutter_app")
 LOG_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\audit-logs")
 
-# W컨셉 #1 카탈로그 정가/판매가 갱신 재검증
+# CJ #2 price_ambiguous 재검증
 MALLS = [
-    "W컨셉",
+    "CJ온스타일",
 ]
 
 COOLDOWN_SEC = 12
-EXTRACT_TIMEOUT_SEC = 360
+EXTRACT_TIMEOUT_SEC = 480
 
 
 def log(msg: str, log_path: Path) -> None:

@@ -36,6 +36,16 @@ void main() {
     );
   });
 
+  test('따옴표만 달라도 같은 상품명으로 본다', () {
+    expect(
+      namesMatch(
+        engineName: 'ACG 돌로미티 코듀로이 재킷',
+        liveName: "ACG '돌로미티' 코듀로이 재킷",
+      ),
+      isTrue,
+    );
+  });
+
   test('가격은 조건 없는 판매가를 그대로 비교한다', () {
     expect(pricesMatch(30400, 30400), isTrue);
     expect(pricesMatch(21280, 30400), isFalse);

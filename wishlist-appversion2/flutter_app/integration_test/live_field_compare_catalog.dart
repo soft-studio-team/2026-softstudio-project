@@ -1225,10 +1225,10 @@ const liveCompareMalls = <LiveCompareMall>[
     LiveCompareProduct(
       "https://frombeginning.co.kr/product/detail.html?product_no=21574",
       live: LiveCompareExpected(
-        name: "레이어 버튼 브이 반팔 니트",
+        name: "[긴팔/반팔]레이어 버튼 브이 니트",
         price: 45000,
         image:
-            "https://ecimg.cafe24img.com/pg1985b57457872046/frombegining/web/product/big/20260706/436c8f29a2b30570374aacf3a4f75753.gif",
+            "https://ecimg.cafe24img.com/pg1985b57457872046/frombegining/web/product/big/20260819/5fb915baa5bac76b2ad8e0312d7fb993.gif",
       ),
     ),
   ]),
@@ -1237,7 +1237,7 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://www.nike.com/kr/t/acg-%EB%8F%8C%EB%A1%9C%EB%AF%B8%ED%8B%B0-%EC%BD%94%EB%93%80%EB%A1%9C%EC%9D%B4-%EC%9E%AC%ED%82%B7-6afaYkrC/IM4254-104",
       live: LiveCompareExpected(
         name: "ACG '돌로미티' 코듀로이 재킷",
-        price: 99000,
+        price: 189000,
         image:
             "https://static.nike.com/a/images/t_default/u_9ddf04c7-2a9a-4d76-add1-d15af8f0263d,c_scale,fl_relative,w_1.0,h_1.0,fl_layer_apply/02416b55-9304-42b2-95fc-12ff75aada31/AS+U+ACG+DOLOMITI+YUNNAN+CORD.png",
       ),
@@ -1246,7 +1246,7 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://www.nike.com/kr/t/acg-%EB%8F%8C%EB%A1%9C%EB%AF%B8%ED%8B%B0-%EC%BD%94%EB%93%80%EB%A1%9C%EC%9D%B4-%EC%87%BC%EC%B8%A0-wqfRDNM2/IM4222-104",
       live: LiveCompareExpected(
         name: "ACG '돌로미티' 코듀로이 쇼츠",
-        price: 65000,
+        price: 115000,
         image:
             "https://static.nike.com/a/images/t_default/u_9ddf04c7-2a9a-4d76-add1-d15af8f0263d,c_scale,fl_relative,w_1.0,h_1.0,fl_layer_apply/1ca8ce9e-fa71-4dd0-a7ec-722906e781da/AS+U+ACG+DOLOMITI+YUNNAN+CRD+S.png",
       ),
@@ -1354,7 +1354,7 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://display.cjonstyle.com/p/item/2082445074?channelCode=30002002",
       live: LiveCompareExpected(
         name: "[론칭] PRE-FALL 실크100 쉬머 레이어드 스카프",
-        price: 129000,
+        price: 169000,
         image:
             "http://itemimage.cjonstyle.net/goods_images/20/074/2082445074L.jpg",
       ),

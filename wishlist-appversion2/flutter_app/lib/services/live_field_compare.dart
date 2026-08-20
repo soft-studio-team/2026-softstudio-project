@@ -33,6 +33,7 @@ class LiveFieldCompareResult {
 String normalizeProductName(String raw) {
   var text = raw.toLowerCase();
   text = text.replaceAll(RegExp(r'[\u2117\u00ae\u2122]'), '');
+  text = text.replaceAll(RegExp(r'''['"`´‘’“”]'''), '');
   text = text.replaceAll(RegExp(r'[\[\](){}【】]'), ' ');
   text = text.replaceAll(RegExp(r'[_/,|·•~-]+'), ' ');
   text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
