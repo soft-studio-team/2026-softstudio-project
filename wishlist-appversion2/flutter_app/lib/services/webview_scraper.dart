@@ -457,7 +457,14 @@ class WebViewScraper {
 
   static const String _desktopUa =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-      '(KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36';
+      '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+  /// 모바일 상품 URL(m.a-bly.com 등)은 데스크톱 UA면 로드가 안 끝나거나 빈 페이지가 된다.
+  static const String mobileUa =
+      'Mozilla/5.0 (Linux; Android 13; SM-T870) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+
+  static const String desktopUa = _desktopUa;
 
   static final InAppWebViewSettings extractSettings = InAppWebViewSettings(
     userAgent: _desktopUa,
@@ -485,7 +492,9 @@ class WebViewScraper {
     final requestHost = Uri.tryParse(url)?.host.toLowerCase() ?? '';
     final effectiveMaxWait = requestHost.endsWith('anderssonbell.com')
         ? const Duration(seconds: 20)
-        : maxWait;
+        : (requestHost == 'a-bly.com' || requestHost.endsWith('.a-bly.com')
+            ? const Duration(seconds: 28)
+            : maxWait);
 
     final host = WebViewExtractHost.maybeInstance;
     if (host != null) {
@@ -497,7 +506,7 @@ class WebViewScraper {
     HeadlessInAppWebView? headless;
     final firstLoadTimeout = requestHost == 'a-bly.com' ||
             requestHost.endsWith('.a-bly.com')
-        ? const Duration(seconds: 25)
+        ? const Duration(seconds: 40)
         : const Duration(seconds: 15);
     final loop = WebViewExtractLoop(
       clock: _clock,

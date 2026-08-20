@@ -35,6 +35,7 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
   WebViewExtractLoop? _loop;
   Completer<void>? _blankReady;
   String? _activeRequestUrl;
+  bool _acceptAnyHostLoad = false;
   final Completer<InAppWebViewController> _created =
       Completer<InAppWebViewController>();
 
@@ -75,9 +76,10 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
     }
     _busy = true;
     final requestHost = Uri.tryParse(url)?.host.toLowerCase() ?? '';
-    final firstLoadTimeout = requestHost == 'a-bly.com' ||
-            requestHost.endsWith('.a-bly.com')
-        ? const Duration(seconds: 25)
+    final isAbly = requestHost == 'a-bly.com' ||
+        requestHost.endsWith('.a-bly.com');
+    final firstLoadTimeout = isAbly
+        ? const Duration(seconds: 40)
         : const Duration(seconds: 15);
     final loop = WebViewExtractLoop(
       clock: clock,
@@ -93,9 +95,21 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
       // about:blank onLoadStop까지 기다린 뒤에만 대상 URL을 연다.
       _loop = null;
       _activeRequestUrl = null;
+      _acceptAnyHostLoad = false;
       await _resetToBlank(controller);
       _activeRequestUrl = url;
+      // 에이블리는 봇 챌린지/중간 호스트로 리다이렉트되며 same-site 필터에
+      // 막히면 onLoadStop이 루프에 안 들어온다.
+      _acceptAnyHostLoad = isAbly;
       _loop = loop;
+      try {
+        await controller.setSettings(
+          settings: InAppWebViewSettings(
+            userAgent:
+                isAbly ? WebViewScraper.mobileUa : WebViewScraper.desktopUa,
+          ),
+        );
+      } catch (_) {}
       await controller.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
       return loop.run(
         requestUrl: url,
@@ -118,6 +132,7 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
     } finally {
       _loop = null;
       _activeRequestUrl = null;
+      _acceptAnyHostLoad = false;
       _busy = false;
     }
   }
@@ -160,6 +175,7 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
     if (isAboutBlankUrl(url)) return false;
     final active = _activeRequestUrl;
     if (active == null) return false;
+    if (_acceptAnyHostLoad) return true;
     if (url == null || url.isEmpty) return true;
     return isSameExtractSite(active, url);
   }

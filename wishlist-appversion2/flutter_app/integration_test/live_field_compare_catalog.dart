@@ -1098,12 +1098,12 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
     LiveCompareProduct(
-      "https://www.anderssonbell.com/product/detail.html?product_no=10277",
+      "https://www.anderssonbell.com/product/detail.html?product_no=10280",
       live: LiveCompareExpected(
-        name: "EMBROIDERY PADDED SKIRT apa764w(D/BROWN)",
-        price: 335000,
+        name: "DENIM TROMPE L`OEIL LAYERED TYING PANTS apa768w(WASHED BLUE)",
+        price: 450000,
         image:
-            "https://www.anderssonbell.com/web/product/big/202508/6b874e14ca71c0e1b8407fdc15c26acc.jpg",
+            "https://www.anderssonbell.com/web/product/big/202409/84874fa56159bb7dd761a7d003174c8e.jpg",
       ),
     ),
     LiveCompareProduct(

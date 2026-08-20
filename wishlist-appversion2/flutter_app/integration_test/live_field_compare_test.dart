@@ -18,11 +18,23 @@ import 'live_field_compare_catalog.dart';
 ///     -d R3CY10LF2HE --no-uninstall
 ///     --dart-define=LIVE_COMPARE_MALLS=무신사,반스,나이키
 Future<OnDeviceExtract?> _extract(WidgetTester tester, String url) async {
+  final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+  final isAbly = host == 'a-bly.com' || host.endsWith('.a-bly.com');
+  final isAndersson = host.endsWith('anderssonbell.com');
+  // WebViewScraper도 호스트별 maxWait를 쓰지만, 여기서 명시해 대조 러너와 맞춘다.
+  final maxWait = isAbly
+      ? const Duration(seconds: 28)
+      : (isAndersson
+          ? const Duration(seconds: 20)
+          : const Duration(seconds: 12));
+  // 에이블리는 firstLoad(40s)+maxWait까지 갈 수 있어 하드 타임아웃을 넉넉히 둔다.
+  final hardTimeout =
+      isAbly ? const Duration(seconds: 90) : const Duration(seconds: 45);
   var done = false;
   final future = WebViewScraper()
-      .extract(url, maxWait: const Duration(seconds: 12))
+      .extract(url, maxWait: maxWait)
       .timeout(
-        const Duration(seconds: 45),
+        hardTimeout,
         onTimeout: () => null,
       )
       .whenComplete(() => done = true);
