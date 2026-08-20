@@ -68,7 +68,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 하지 말 것: 리바이스 대기 늘리기, 관리 몰 범용 가격 우회, **대조 완료 전** 엔진 패치(이제 패치 단계), PR 머지.
 
-다음: §0.13. **더현대Hi MATCH 3**(dcPrc 할인가 + live/카탈로그 교정). **4910** live 가격은 교정했으나 Tab WebView는 여전히 `price_ambiguous`. 남음: 4910 WebView NEXT_DATA, 에이블리 로드, SSG, 회원가 정책.
+다음: §0.13. **더현대Hi MATCH 3**, **4910 MATCH 3**(가격이 SSR `__NEXT_DATA__`에만 있어 `innerHTML` 검증으로 수정). 남음: 에이블리 로드, SSG, 회원가 정책.
 
 ## 0.12 2026-08-18 신규 3상품 정답지 + 엔진 대조
 

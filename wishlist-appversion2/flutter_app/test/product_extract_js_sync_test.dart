@@ -169,5 +169,9 @@ void main() {
       productExtractJs,
       contains('if(!fops.length) fops=[sale];'),
     );
+    expect(
+      productExtractJs,
+      contains('4910은 SSR 시 판매가가 __NEXT_DATA__에만 있고'),
+    );
   });
 }

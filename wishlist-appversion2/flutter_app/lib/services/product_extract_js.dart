@@ -589,7 +589,8 @@ const String productExtractJs = r'''
             var d=q&&q.state&&q.state.data,g=d&&d.goods,f=g&&g.first_page_rendering,l=g&&g.linked_option;
             if(!g||!f)return;if(sno&&String(g.sno)!==String(sno))return;
             sale=toPrice(g.price);regular=toPrice(f.original_price);
-            if(sale&&toPrice(f.price)===sale&&(!l||toPrice(l.price)===sale)&&g.is_soldout===false&&(!l||l.is_soldout!==true)&&(!regular||regular>=sale))
+            // boolean/string 모두 허용
+            if(sale&&toPrice(f.price)===sale&&(!l||toPrice(l.price)===sale)&&g.is_soldout!==true&&g.is_soldout!=='true'&&(!l||(l.is_soldout!==true&&l.is_soldout!=='true'))&&(!regular||regular>=sale))
               fr.push([firstStr(f.goods_name)||firstStr(g.name),sale,regular||sale]);
           });
         }catch(e){}
@@ -607,8 +608,9 @@ const String productExtractJs = r'''
         }
       }
       fr=uniqueRows(fr);if(fr.length<1)return null;var pt=pageText();var saleVals=uniqueRows(fr.map(function(x){return x[1];}));if(saleVals.length!==1)return null;sale=saleVals[0];if(!sale)return null;var regVals=uniqueRows(fr.map(function(x){return x[2];}).filter(function(x){return x!=null;}));regular=regVals.length?Math.max.apply(null,regVals):null;if(regular!=null&&regular<sale)regular=null;var saleStrEn=Number(sale).toLocaleString('en-US');var saleStr=String(Number(sale));
-      // WebView에서는 CTA 문구가 늦게 붙는 경우가 있어, sno 확정 가격+화면 숫자가 있으면 통과.
-      if(pt.indexOf(saleStrEn)<0&&pt.indexOf(saleStr)<0)return null;
+      // 4910은 SSR 시 판매가가 __NEXT_DATA__에만 있고 body.innerText에는 없는 경우가 많다.
+      var htmlAll=document.documentElement?document.documentElement.innerHTML:'';
+      if(pt.indexOf(saleStrEn)<0&&pt.indexOf(saleStr)<0&&htmlAll.indexOf(saleStr)<0)return null;
       return result('4910',sale,regular&&regular>sale?regular:null,'goods.price','goods.first_page_rendering.original_price',{priceConfidence:'medium',optionDependent:false});
     }
 
