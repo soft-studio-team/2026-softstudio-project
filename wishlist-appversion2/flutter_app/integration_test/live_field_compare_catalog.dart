@@ -1263,28 +1263,28 @@ const liveCompareMalls = <LiveCompareMall>[
   ]),
   LiveCompareMall("올리브영", [
     LiveCompareProduct(
-      "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000262781",
+      "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000260600",
       live: LiveCompareExpected(
-        name: "프로티원 단백질쉐이크 파우치형 40g 7입 6종",
-        price: 19900,
+        name: "[리뷰이벤트/트러블1등] 셀라딕스 세범 리밸런싱 131 앰플 30ml 기획 (+미니언즈 키링) (미니언즈 콜라보)",
+        price: 28900,
         image:
-            "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0026/A00000026278108ko.jpg",
+            "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0026/A00000026060006ko.jpg",
       ),
     ),
     LiveCompareProduct(
-      "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000247884",
+      "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000260602",
       live: LiveCompareExpected(
-        name: "[8월 올영픽/수면 효율증가]대원제약 대원헬스 꿀잠샷 20gX12포 (+2포+수면안대) (14일분)",
-        price: 18900,
+        name: "[한정기획/반다나] 스너글 섬유탈취제 150ml 2종 허거블 기획 (+ 반다나 증정)",
+        price: 1,
         image:
-            "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0024/A00000024788476ko.jpg",
+            "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0026/A00000026060226ko.png",
       ),
     ),
     LiveCompareProduct(
       "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000250742",
       live: LiveCompareExpected(
         name: "[긴장완화] 대원제약 대원헬스 스트레스샷 20g x 12포 (+2포 증정) (14일분)",
-        price: 16400,
+        price: 23900,
         image:
             "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0025/A00000025074205ko.jpg",
       ),
