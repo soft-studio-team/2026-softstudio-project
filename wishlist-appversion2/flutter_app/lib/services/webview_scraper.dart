@@ -494,7 +494,9 @@ class WebViewScraper {
         ? const Duration(seconds: 20)
         : (requestHost == 'a-bly.com' || requestHost.endsWith('.a-bly.com')
             ? const Duration(seconds: 28)
-            : maxWait);
+            : (requestHost == '4910.kr' || requestHost.endsWith('.4910.kr')
+                ? const Duration(seconds: 20)
+                : maxWait));
 
     final host = WebViewExtractHost.maybeInstance;
     if (host != null) {

@@ -460,7 +460,9 @@ const String productExtractJs = r'''
     }
 
     if(hostIs('hi.thehyundai.com')){
-      var nh=raw;for(i=0;i<4;i++)nh=nh.replace(/\\"/g,'"');var reHy=/"slitmCd"\s*:\s*"([A-Za-z0-9]+)"\s*,\s*"slitmNm"\s*:\s*"([^"]+)"/g,mhy,textH=pageText();while((mhy=reHy.exec(nh))){var frag=nh.slice(mhy.index,mhy.index+30000);if(frag.slice(0,1500).indexOf('"itemGbcd"')<0)continue;function hf(n){var q=new RegExp('"'+n+'"\\s*:\\s*"([^"]+)"').exec(frag);return q&&q[1];}var qty=/"sellPossQty"\s*:\s*(\d+)/.exec(frag),pr=/"prcInfo"\s*:\s*\{[^}]*?"sellPrc"\s*:\s*(\d+)[^}]*?"dcPrc"\s*:\s*(\d+)[^}]*?"maxDcPrc"\s*:\s*(\d+)/.exec(frag);if(!qty||Number(qty[1])<=0||!pr)continue;sale=Number(pr[1]);regular=Number(pr[2]);if(['empBuyLimtYn','empDcYn','clsrMallItemYn','ostkYn'].some(function(n){return hf(n)!=='0';})||hf('sellMdaPossYn')!=='1'||regular<sale||Number(pr[3])!==regular||mhy[2].indexOf('임직원')>=0)continue;if(textH.indexOf(mhy[2])>=0&&textH.indexOf(won(regular))>=0&&textH.indexOf(won(sale))>=0)rows.push([sale,regular]);}rows=uniqueRows(rows);return rows.length===1?result('thehyundai',rows[0][0],rows[0][1],'prcInfo.sellPrc','prcInfo.dcPrc',{priceConfidence:'medium'}):null;
+      var nh=raw;for(i=0;i<4;i++)nh=nh.replace(/\\"/g,'"');var reHy=/"slitmCd"\s*:\s*"([A-Za-z0-9]+)"\s*,\s*"slitmNm"\s*:\s*"([^"]+)"/g,mhy,textH=pageText();while((mhy=reHy.exec(nh))){var frag=nh.slice(mhy.index,mhy.index+30000);if(frag.slice(0,1500).indexOf('"itemGbcd"')<0)continue;function hf(n){var q=new RegExp('"'+n+'"\\s*:\\s*"([^"]+)"').exec(frag);return q&&q[1];}var qty=/"sellPossQty"\s*:\s*(\d+)/.exec(frag),pr=/"prcInfo"\s*:\s*\{[^}]*?"sellPrc"\s*:\s*(\d+)[^}]*?"dcPrc"\s*:\s*(\d+)[^}]*?"maxDcPrc"\s*:\s*(\d+)/.exec(frag);if(!qty||Number(qty[1])<=0||!pr)continue;var sellPrc=Number(pr[1]),dcPrc=Number(pr[2]),maxDc=Number(pr[3]);
+        // sellPrc=정상가, dcPrc/maxDcPrc=할인가(실제 구매가). sellMdaPossYn 누락 시에도 Hi 몰은 통과.
+        if(maxDc!==dcPrc||dcPrc<=0||sellPrc<dcPrc)continue;sale=dcPrc;regular=sellPrc;var mda=hf('sellMdaPossYn');if(mda!=null&&mda!=='1')continue;if(['empBuyLimtYn','empDcYn','clsrMallItemYn','ostkYn'].some(function(n){return hf(n)!=='0';})||mhy[2].indexOf('임직원')>=0)continue;if(textH.indexOf(mhy[2])>=0&&textH.indexOf(won(regular))>=0&&textH.indexOf(won(sale))>=0)rows.push([sale,regular]);}rows=uniqueRows(rows);return rows.length===1?result('thehyundai',rows[0][0],rows[0][1],'prcInfo.dcPrc','prcInfo.sellPrc',{priceConfidence:'medium'}):null;
     }
 
     if(hostIs('a-bly.com')){
@@ -576,8 +578,38 @@ const String productExtractJs = r'''
     }
 
     if(hostIs('4910.kr')){
-      var fs=document.querySelector('script#__NEXT_DATA__');if(!fs)return null;try{state=JSON.parse(fs.textContent);var fq=state.props.serverQueryClient.queries;}catch(e){return null;}var fr=[];asArray(fq).forEach(function(q){var d=q&&q.state&&q.state.data,g=d&&d.goods,f=g&&g.first_page_rendering,l=g&&g.linked_option;if(!g||!f)return;sale=toPrice(g.price);regular=toPrice(f.original_price);if(sale&&toPrice(f.price)===sale&&(!l||toPrice(l.price)===sale)&&g.is_soldout===false&&(!l||l.is_soldout!==true)&&regular>=sale)fr.push([firstStr(f.goods_name),sale,regular]);});fr=uniqueRows(fr);if(fr.length<1)return null;var pt=pageText();var saleVals=uniqueRows(fr.map(function(x){return x[1];}));if(saleVals.length!==1)return null;var sale=saleVals[0];if(!sale)return null;var regVals=uniqueRows(fr.map(function(x){return x[2];}).filter(function(x){return x!=null;}));var regular=regVals.length?Math.max.apply(null,regVals):null;if(regular!=null&&regular<sale)regular=null;var saleStrEn=Number(sale).toLocaleString('en-US');var saleStr=String(Number(sale));if(pt.indexOf('구매하기')<0)return null;if(pt.indexOf(saleStrEn)<0&&pt.indexOf(saleStr)<0)return null;
-      return result('4910',sale,regular,'goods.price','goods.first_page_rendering.original_price',{priceConfidence:'medium',optionDependent:false});
+      var sno=(location.pathname.match(/\/goods\/(\d+)/)||[])[1];
+      var fr=[];
+      var fs=document.querySelector('script#__NEXT_DATA__');
+      if(fs){
+        try{
+          state=JSON.parse(fs.textContent);
+          var fq=state.props&&state.props.serverQueryClient&&state.props.serverQueryClient.queries;
+          asArray(fq).forEach(function(q){
+            var d=q&&q.state&&q.state.data,g=d&&d.goods,f=g&&g.first_page_rendering,l=g&&g.linked_option;
+            if(!g||!f)return;if(sno&&String(g.sno)!==String(sno))return;
+            sale=toPrice(g.price);regular=toPrice(f.original_price);
+            if(sale&&toPrice(f.price)===sale&&(!l||toPrice(l.price)===sale)&&g.is_soldout===false&&(!l||l.is_soldout!==true)&&(!regular||regular>=sale))
+              fr.push([firstStr(f.goods_name)||firstStr(g.name),sale,regular||sale]);
+          });
+        }catch(e){}
+        // JSON 전체 파싱이 실패하거나 queries가 비면 sno 주변 price를 직접 읽는다.
+        if(!fr.length&&sno){
+          var rawNext=fs.textContent||'';
+          var reSno=new RegExp('"sno"\\s*:\\s*'+sno+'([\\s\\S]{0,1800}?)(?="sno"\\s*:|$)');
+          var block=reSno.exec(rawNext);
+          if(block){
+            var pGoods=/"price"\s*:\s*(\d+)/.exec(block[1]);
+            var pOrig=/"original_price"\s*:\s*(\d+)/.exec(block[1]);
+            sale=pGoods?toPrice(pGoods[1]):null;regular=pOrig?toPrice(pOrig[1]):null;
+            if(sale&&(!regular||regular>=sale))fr.push([null,sale,regular||sale]);
+          }
+        }
+      }
+      fr=uniqueRows(fr);if(fr.length<1)return null;var pt=pageText();var saleVals=uniqueRows(fr.map(function(x){return x[1];}));if(saleVals.length!==1)return null;sale=saleVals[0];if(!sale)return null;var regVals=uniqueRows(fr.map(function(x){return x[2];}).filter(function(x){return x!=null;}));regular=regVals.length?Math.max.apply(null,regVals):null;if(regular!=null&&regular<sale)regular=null;var saleStrEn=Number(sale).toLocaleString('en-US');var saleStr=String(Number(sale));
+      // WebView에서는 CTA 문구가 늦게 붙는 경우가 있어, sno 확정 가격+화면 숫자가 있으면 통과.
+      if(pt.indexOf(saleStrEn)<0&&pt.indexOf(saleStr)<0)return null;
+      return result('4910',sale,regular&&regular>sale?regular:null,'goods.price','goods.first_page_rendering.original_price',{priceConfidence:'medium',optionDependent:false});
     }
 
     if(hostIs('ssfshop.com')){

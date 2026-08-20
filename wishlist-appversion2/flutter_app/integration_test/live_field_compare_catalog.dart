@@ -661,23 +661,23 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://hi.thehyundai.com/product/60B1084782?sectId=1031",
       live: LiveCompareExpected(
         name: "소가죽 오픈토 뮬 BE26S3FSP0251",
-        price: 18100,
+        price: 301680,
         image: "https://image.thehyundai.com/8/7/4/08/B1/60B1084782_0.jpg",
       ),
     ),
     LiveCompareProduct(
-      "https://hi.thehyundai.com/product/60A2104589?sectId=1031",
+      "https://hi.thehyundai.com/product/40B1406274?sectId=1031",
       live: LiveCompareExpected(
-        name: "14K 골드 포인트 플레어 팔찌 TBSK4G222075M",
-        price: 3000,
-        image: "https://image.thehyundai.com/8/5/4/10/A2/60A2104589_0.jpg",
+        name: "스티치 백 리본 블라우스 Z262MSC031",
+        price: 130300,
+        image: "https://image.thehyundai.com/7/2/6/40/B1/40B1406274_0.jpg",
       ),
     ),
     LiveCompareProduct(
       "https://hi.thehyundai.com/product/2229774639?sectId=1031",
       live: LiveCompareExpected(
         name: "VW-5074-001",
-        price: 3000,
+        price: 175320,
         image: "https://image.thehyundai.com/3/6/4/77/29/2229774639_0.jpg",
       ),
     ),
@@ -1380,28 +1380,28 @@ const liveCompareMalls = <LiveCompareMall>[
   ]),
   LiveCompareMall("4910", [
     LiveCompareProduct(
-      "https://4910.kr/desktop/goods/44678113",
+      "https://4910.kr/goods/44678113",
       live: LiveCompareExpected(
         name: "그루브스텝 [2PACK] 1+1 랩스타미니 라운드 반팔 티셔츠 S0217 - 4910 | 사고 싶은 스타일의 발견",
-        price: 1000,
+        price: 34800,
         image:
             "https://d3ha2047wt6x28.cloudfront.net/FA45r5mdpZY/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjYwNTIyXzE3Nzk0NTI1Mjg0MTgwOTdtLnBuZw",
       ),
     ),
     LiveCompareProduct(
-      "https://4910.kr/desktop/goods/71195041",
+      "https://4910.kr/goods/71195041",
       live: LiveCompareExpected(
         name: "모즈모즈 [단독1+1] 무지 배색 롤업 반팔티셔츠 - 4910 | 사고 싶은 스타일의 발견",
-        price: 1690,
+        price: 47200,
         image:
             "https://d3ha2047wt6x28.cloudfront.net/YL2tLW-EPb0/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjYwNjE4XzE3ODE3NjU3OTQ1MzAyMDJtLmpwZw",
       ),
     ),
     LiveCompareProduct(
-      "https://4910.kr/desktop/goods/3954236",
+      "https://4910.kr/goods/3954236",
       live: LiveCompareExpected(
         name: "플루크 캠퍼밴 투어 피그먼트 반팔티셔츠 FST710 / 4color W - 4910 | 사고 싶은 스타일의 발견",
-        price: 1000,
+        price: 20800,
         image:
             "https://d3ha2047wt6x28.cloudfront.net/z6T_-U60HFk/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjMwODA5XzE2OTE1NjQwMDAwMzI1MTZtLmpwZw",
       ),

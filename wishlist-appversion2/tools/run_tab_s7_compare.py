@@ -14,9 +14,9 @@ FLUTTER = r"C:\Dev\0.sdk\flutter\bin\flutter.bat"
 APP_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\flutter_app")
 LOG_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\audit-logs")
 
-# Next: AnderssonBell catalog fix (retired home-redirect SKU)
+# Live price fixes: 4910 retry after Hi MATCH 3
 MALLS = [
-    "앤더슨벨",
+    "4910",
 ]
 
 COOLDOWN_SEC = 12

@@ -21,13 +21,12 @@ Future<OnDeviceExtract?> _extract(WidgetTester tester, String url) async {
   final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
   final isAbly = host == 'a-bly.com' || host.endsWith('.a-bly.com');
   final isAndersson = host.endsWith('anderssonbell.com');
-  // WebViewScraper도 호스트별 maxWait를 쓰지만, 여기서 명시해 대조 러너와 맞춘다.
+  final is4910 = host == '4910.kr' || host.endsWith('.4910.kr');
   final maxWait = isAbly
       ? const Duration(seconds: 28)
-      : (isAndersson
+      : (isAndersson || is4910
           ? const Duration(seconds: 20)
           : const Duration(seconds: 12));
-  // 에이블리는 firstLoad(40s)+maxWait까지 갈 수 있어 하드 타임아웃을 넉넉히 둔다.
   final hardTimeout =
       isAbly ? const Duration(seconds: 90) : const Duration(seconds: 45);
   var done = false;
