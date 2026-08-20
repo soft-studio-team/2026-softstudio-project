@@ -9,6 +9,7 @@
 - Tab: 하고 MATCH 3, 룩핀 MATCH 3. SSG는 deal 페이지 `script_timeout`×3(카탈로그 교체 후보). 에이블리 `loading_timeout`×3, 앤더슨벨 1·3 MATCH / 2 `not_product_page`.
 - 패션플러스: og `dev_test/og_200x200` 거부 → JSON-LD/DOM `product_img`; 옵션 버튼 비어 있으면 LD `sale_price` 폴백. 카탈로그 3상품 교체 → Tab MATCH 3.
 - 더현대Hi·4910: 이름·이미지는 맞지만 `price_ambiguous`(live 가격 재확인 필요: 4910 1000/1690원 의심).
+- 회원가 베이스라인(Tab): 어반스터프·파브레가 엔진가 = live×0.9(회원가). 필루미네이트도 엔진<live. 리·비바스튜디오는 `price_ambiguous`(가격 null). **정책 결정 전 엔진 변경 금지.**
 
 ---
 
