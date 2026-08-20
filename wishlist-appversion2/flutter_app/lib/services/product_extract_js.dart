@@ -541,7 +541,10 @@ const String productExtractJs = r'''
     }
 
     if(hostIs('fashionplus.co.kr')){
-      var fp=products();if(fp.length!==1)return null;var fprod=fp[0],fname=firstStr(fprod.name),fid=String(fprod.mpn||fprod.productID||''),fo=productOffers(fprod);if(!fname||!/^\d+$/.test(fid)||fo.length!==1||!availability(fo[0].availability).endsWith('instock')||fo[0].priceCurrency!=='KRW')return null;regular=toPrice(fo[0].price);sale=toPrice(fo[0].sale_price);if(!sale)return null;var fops=[];document.querySelectorAll('button.btn_option').forEach(function(x){if(x.disabled||x.classList.contains('disabled')||x.classList.contains('soldout'))return;var m=/([\d,]+)\s*원?\s*$/.exec(x.textContent.trim());if(m){var p=toPrice(m[1]);if(p)fops.push(p);}});fops=uniqueRows(fops);var ft=pageText();if(!fops.length||fops.indexOf(sale)<0||ft.indexOf(fname)<0||ft.indexOf('장바구니')<0||ft.indexOf('구매')<0)return null;var flo=Math.min.apply(null,fops),fhi=Math.max.apply(null,fops),fdep=flo!==fhi,freg=regular&&regular>sale&&regular>=fhi?regular:null;
+      var fp=products();if(fp.length!==1)return null;var fprod=fp[0],fname=firstStr(fprod.name),fid=String(fprod.mpn||fprod.productID||''),fo=productOffers(fprod);if(!fname||!/^\d+$/.test(fid)||fo.length!==1||!availability(fo[0].availability).endsWith('instock')||fo[0].priceCurrency!=='KRW')return null;regular=toPrice(fo[0].price);sale=toPrice(fo[0].sale_price);if(!sale)return null;var fops=[];document.querySelectorAll('button.btn_option').forEach(function(x){if(x.disabled||x.classList.contains('disabled')||x.classList.contains('soldout'))return;var m=/([\d,]+)\s*원?\s*$/.exec(x.textContent.trim());if(m){var p=toPrice(m[1]);if(p)fops.push(p);}});fops=uniqueRows(fops);var ft=pageText();
+      // 옵션 버튼이 SPA로만 채워지는 상품은 LD sale_price를 단일 후보로 쓴다.
+      if(!fops.length) fops=[sale];
+      if(fops.indexOf(sale)<0||ft.indexOf(fname)<0||ft.indexOf('장바구니')<0||ft.indexOf('구매')<0)return null;var flo=Math.min.apply(null,fops),fhi=Math.max.apply(null,fops),fdep=flo!==fhi,freg=regular&&regular>sale&&regular>=fhi?regular:null;
       return result('fashionplus',flo,freg,'Product.offers.sale_price + button.btn_option[enabled]',freg?'Product.offers.price':null,{priceConfidence:'medium',purchasePriceStatus:fdep?'option_dependent':'confirmed',optionDependent:fdep,optionPriceMin:fdep?flo:null,optionPriceMax:fdep?fhi:null});
     }
 
@@ -653,10 +656,29 @@ const String productExtractJs = r'''
 
   // 대표 이미지가 JSON-LD 또는 og:image에서 서로 다른 해상도/프록시로 섞이는 몰들이 있다.
   // 대조(카탈로그) 기준은 host별로 다음 우선순위를 따른다.
-  if(hostIs('hago.kr')||hostIs('ssg.com')||hostIs('fashionplus.co.kr')){
+  if(hostIs('hago.kr')||hostIs('ssg.com')){
     if(ogImage){
       image = normalizeUrl(ogImage) || image;
       imageSource = 'og';
+    }
+  }
+  if(hostIs('fashionplus.co.kr') && image && /og_200x200|dev_test/i.test(image)){
+    // og:image는 고정 플레이스홀더라 JSON-LD/DOM 상품 이미지를 쓴다.
+    var fpLdImg = (ld&&ld.image) ? normalizeUrl(ld.image) : null;
+    if(fpLdImg && !/og_200x200|dev_test/i.test(fpLdImg)){
+      image = fpLdImg;
+      imageSource = 'json-ld';
+    }else{
+      var fpImgs = Array.from(document.querySelectorAll('img')).map(function(img){
+        return (img.getAttribute('src')||img.getAttribute('data-src')||img.getAttribute('data-original')||'').trim();
+      }).filter(function(u){return !!u;}).map(function(u){return normalizeUrl(u);});
+      var fpPreferred = fpImgs.filter(function(u){
+        return u && /product_img|mall\/assets/i.test(u) && !/og_200x200|dev_test/i.test(u);
+      });
+      if(fpPreferred.length){
+        image = fpPreferred[0];
+        imageSource = 'dom';
+      }
     }
   }
   if(hostIs('hago.kr') && image){

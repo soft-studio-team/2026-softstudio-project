@@ -1,5 +1,17 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-20 - 이미지 몰 재검증 + 패션플러스 카탈로그/이미지
+
+🌟 **쉬운 설명**
+- 하고·룩핀은 탭에서 이름·가격·사진이 모두 맞았습니다. 패션플러스는 og 플레이스홀더 대신 상품 사진을 쓰도록 고치고, 딜 페이지를 일반 상품으로 바꿨더니 3개 모두 맞았습니다.
+
+🔧 **기술 설명**
+- Tab: 하고 MATCH 3, 룩핀 MATCH 3. SSG는 deal 페이지 `script_timeout`×3(카탈로그 교체 후보). 에이블리 `loading_timeout`×3, 앤더슨벨 1·3 MATCH / 2 `not_product_page`.
+- 패션플러스: og `dev_test/og_200x200` 거부 → JSON-LD/DOM `product_img`; 옵션 버튼 비어 있으면 LD `sale_price` 폴백. 카탈로그 3상품 교체 → Tab MATCH 3.
+- 더현대Hi·4910: 이름·이미지는 맞지만 `price_ambiguous`(live 가격 재확인 필요: 4910 1000/1690원 의심).
+
+---
+
 ## 2026-08-20 - Cafe24 metaSale: 빈 availability·custom span·HTML 이름
 
 🌟 **쉬운 설명**

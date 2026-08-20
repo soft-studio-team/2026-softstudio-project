@@ -157,5 +157,17 @@ void main() {
       contains("hostIs('hotping.co.kr')||hostIs('withyoon.com')"),
     );
     expect(productExtractJs, contains('function stripHtmlName(value)'));
+    expect(
+      productExtractJs,
+      contains("hostIs('hago.kr')||hostIs('ssg.com')"),
+    );
+    expect(
+      productExtractJs,
+      contains('/og_200x200|dev_test/i.test(image)'),
+    );
+    expect(
+      productExtractJs,
+      contains('if(!fops.length) fops=[sale];'),
+    );
   });
 }

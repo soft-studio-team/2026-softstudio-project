@@ -1176,27 +1176,30 @@ const liveCompareMalls = <LiveCompareMall>[
   ]),
   LiveCompareMall("패션플러스", [
     LiveCompareProduct(
-      "https://www.fashionplus.co.kr/goods/detail/429636922",
+      "https://www.fashionplus.co.kr/goods/detail/423666368",
       live: LiveCompareExpected(
-        name: "[신규입점 EVENT] 티셔츠ㅣ팬츠 외 1만원대부터",
-        price: 29000,
-        image: "https://img.fashionplus.co.kr/dev_test/og_200x200.jpg",
+        name: "[아울렛] 케어 면혼방 패턴 드레스 반팔셔츠_DMP2SHDL161G1",
+        price: 69000,
+        image:
+            "https://img.fashionplus.co.kr/mall/assets/product_img/41710/plg41710_DMP2SHDL161G167.jpg?RS=400x536&AR=0",
       ),
     ),
     LiveCompareProduct(
-      "https://www.fashionplus.co.kr/goods/detail/411701285",
+      "https://www.fashionplus.co.kr/goods/detail/424922346",
       live: LiveCompareExpected(
-        name: "콘드로이친/오메가 방송특가 딜",
-        price: 164500,
-        image: "https://img.fashionplus.co.kr/dev_test/og_200x200.jpg",
+        name: "[아울렛] 케어 면혼방 스몰체크 캐주얼 반팔셔츠 레귤러핏_DMS2SHCS104R1",
+        price: 69000,
+        image:
+            "https://img.fashionplus.co.kr/mall/assets/product_img/41710/plg41710_DMS2SHCS104R167.jpg?RS=400x536&AR=0",
       ),
     ),
     LiveCompareProduct(
-      "https://www.fashionplus.co.kr/goods/detail/319807873",
+      "https://www.fashionplus.co.kr/goods/detail/424878197",
       live: LiveCompareExpected(
-        name: "유한킴벌리 BEST 화장지 외 생필품 모음전",
-        price: 20800,
-        image: "https://img.fashionplus.co.kr/dev_test/og_200x200.jpg",
+        name: "트렌치 크롭 자켓 MYCAWY8070_ESC",
+        price: 169150,
+        image:
+            "https://img.fashionplus.co.kr/mall/assets/product_img/721893/plg721893_MYCAWY8070.jpg?RS=400x536&AR=0",
       ),
     ),
   ]),
