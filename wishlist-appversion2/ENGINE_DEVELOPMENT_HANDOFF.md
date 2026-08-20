@@ -43,30 +43,32 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 다음 우선순위는 SuperDisplay를 완전히 종료한 뒤, 위젯 호스트 경로로 7개(`14,22,24,46,49,53,55`)와 1~3 / 4~64 분할 감사를 다시 실행하는 것이다. 그 전에는 64개 가격 재감사를 통과로 보고하면 안 된다.
 
-**2026-08-18 저녁 이어서 할 일:** Tab S7 신규 카탈로그 재대조가 코드그라피 2번에서 멈춤. `wishlist-appversion2/TAB_S7_LIVE_COMPARE_CONTINUATION.md`를 새 대화에 쓴다. 머지하지 않는다.
+**2026-08-20 Tab S7 50몰 실페이지 대조 완료.** 엔진 코드 변경 없음. 아래 §0.13·`TAB_S7_LIVE_COMPARE_CONTINUATION.md`·`audit-logs/compare-final-summary.json` 참고. 패치는 대조 숫자 기준으로 다음 단계.
 
-## 0.13 2026-08-18 저녁 Tab S7 재대조 중간 상태
+## 0.13 2026-08-20 Tab S7 실페이지 대조 완료
 
-구현 브랜치: `feat/webview-scraper-stabilize` (PR #28)
-
-이어서 하는 사람: `wishlist-appversion2/TAB_S7_LIVE_COMPARE_CONTINUATION.md`를 먼저 읽는다. 이 섹션은 그날 저녁 재실행의 숫자다. §0.12의 MATCH 목록은 같은 날 낮 배치·다른 URL이 섞여 있을 수 있어, **재개 기준으로 쓰지 않는다.**
+구현 브랜치: `feat/webview-scraper-stabilize` (PR #28, Draft — **머지 금지**)
 
 기기: Galaxy Tab S7 `SM-T870` / `R54RB01SMVB` / Android 13. ADB `C:\Users\tingo\AppData\Local\Android\sdk\platform-tools\adb.exe`. `--no-uninstall`. SuperDisplay 없음.
 
 분류: 라벨은 **틀린 필드**다. `MATCH` = 이름·가격·사진 모두 일치. `PRICE` = 이름·사진 맞고 가격만 불일치.
 
-진행 (카탈로그 50몰, 낫포유만 정답 2개):
+**결과:** 카탈로그 50몰(낫포유 2상품) 전부 대조 완료. 상품 슬롯 149/149.
 
-- 3/3(낫포유 2/2) 완료 36몰 중 35몰 + 코드그라피 1번만.
-- 완료 예: 무신사·29CM·FILA·탑텐·무인양품·현대Hmall·유니클로·게스·반스·퀸잇·브랜디 MATCH 3. W컨셉 NAME (`[W CONCEPT]`). 에이블리 `NAME_PRICE_IMAGE` 3(`loading_timeout`). 노이아고·립합 PRICE 3. 커버낫 PRICE/MATCH/MATCH. 이랜드몰 MATCH/IMAGE/MATCH.
-- **재개 지점:** 코드그라피 2 (`https://code-graphy.com/product/detail.html?product_no=8260`) hang. 1번은 PRICE.
-- **미실행 14몰:** 후아유, Aritzia, 마하그리드, 비바스튜디오, 아모멘토, 앤더슨벨, 예일, 위드윤, 패션플러스, 프롬비기닝, 나이키, CJ온스타일, 4910, SSF샵
+- **MATCH 전부(15몰):** 무신사, 29CM, FILA, 탑텐, 무인양품, 현대Hmall, 유니클로, 게스, 반스, 후아유, 아모멘토, 예일, 퀸잇, 브랜디, SSF샵
+- **가격 이슈 다수:** Cafe24 계열 `price_ambiguous`(코드그라피·노이아고·립합·위드윤 등), ~90% 회원가(리·필루미네이트·어반스터프·파브레가·비바스튜디오), 나이키/CJ온스타일 엔진 정가 vs live 할인가
+- **이름:** W컨셉(`[W CONCEPT]`), 핫핑 HTML 태그
+- **이미지:** 하고·룩핀 og 플레이스홀더, SSG·패션플러스(live `og_200x200.jpg` 의심), 이랜드몰 2번
+- **복합:** 에이블리 3(`loading_timeout`), 앤더슨벨 2번 `not_product_page`(홈 리다이렉트)
+- **live 재확인 후보:** 더현대Hi, 4910(1000/1690원), 패션플러스 og 이미지
 
-운영 규칙: 1몰씩. 3몰 이상 배치는 설치 직후 hang. hang/`error: closed`면 `adb kill-server` + 화면 깨우기(`keyevent 82`) + `am force-stop com.softstudio.wishlist`. Gradle APK 복사/assets 잠금이면 java·dart를 끄고 `flutter build apk --debug`. debug APK 재빌드는 2026-08-18 20:59에 성공해 둔 상태. 검사 후 uninstall 금지, 전부 끝나면 `adb install -r`.
+몰별 상세: `audit-logs/compare-progress.txt`, JSON `audit-logs/compare-final-summary.json`. 2026-08-20 배치 로그 `compare-batch-2026-08-20-*.log`.
 
-하지 말 것: 리바이스 대기 늘리기, 관리 몰 범용 가격 우회, 엔진 패치(대조 완료 전), PR 머지.
+운영: 1~2몰씩, hang 시 ADB kill-server + 화면 깨우기 + force-stop. `tools/run_tab_s7_compare.py`(몰 간 12초 cooldown). 검사 후 uninstall 금지, 종료 후 `adb install -r`로 debug APK 복구.
 
-다음: 코드그라피 2·3 → 남은 14몰 → APK `-r` → 이 섹션·CHANGELOG·continuation 파일 갱신 후 푸시.
+하지 말 것: 리바이스 대기 늘리기, 관리 몰 범용 가격 우회, **대조 완료 전** 엔진 패치(이제 패치 단계), PR 머지.
+
+다음: §0.13 패치 우선순위(W컨셉·Cafe24·에이블리·핫핑·og 이미지·live 정답 재확인) 순으로 엔진 수정.
 
 ## 0.12 2026-08-18 신규 3상품 정답지 + 엔진 대조
 
