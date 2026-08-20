@@ -159,7 +159,7 @@ void main() {
     expect(productExtractJs, contains('function stripHtmlName(value)'));
     expect(
       productExtractJs,
-      contains("hostIs('hago.kr')||hostIs('ssg.com')"),
+      contains("hostIs('hago.kr')||hostIs('ssg.com')||hostIs('11st.co.kr')"),
     );
     expect(
       productExtractJs,

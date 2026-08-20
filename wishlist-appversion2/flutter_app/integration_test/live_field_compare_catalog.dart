@@ -33,7 +33,7 @@ const liveCompareMalls = <LiveCompareMall>[
     LiveCompareProduct(
       "https://www.11st.co.kr/products/2046037563",
       live: LiveCompareExpected(
-        name: "[40%쿠폰+T11%] 비너스외 본사 신상브라.팬티,드로즈,홈웨어 BEST모음",
+        name: "[35%쿠폰+T11%] 비너스외 본사 신상브라.팬티,드로즈,홈웨어 BEST모음",
         price: 10000,
         image:
             "https://cdn.011st.com/11dims/resize/600x600/quality/75/11src/dl/v2/0/3/7/5/6/3/uhTkW/2046037563_237337664.webp",
@@ -52,9 +52,9 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://www.11st.co.kr/products/8716610739",
       live: LiveCompareExpected(
         name: "세스코 마이랩 배수구클리너 5개+5개 악취제거",
-        price: 9900,
+        price: 15000,
         image:
-            "https://cdn.011st.com/11dims/resize/600x600/quality/75/11src/dl/v2/6/1/0/7/3/9/inTzn/8716610739_237406180.webp",
+            "https://cdn.011st.com/11dims/resize/600x600/quality/75/11src/dl/v2/6/1/0/7/3/9/ZIZWq/8716610739_235640427.webp",
       ),
     ),
   ]),
@@ -715,8 +715,8 @@ const liveCompareMalls = <LiveCompareMall>[
     LiveCompareProduct(
       "https://zigzag.kr/catalog/products/159126270",
       live: LiveCompareExpected(
-        name: "모어렌 [MADE] [3만장/컬러추가] 캡내장 로브닝 레이스 슬리브리스",
-        price: 15300,
+        name: "모어렌 [MADE] [4만장/컬러추가] 캡내장 로브닝 레이스 슬리브리스",
+        price: 17000,
         image:
             "https://cf.product-image.s.zigzag.kr/original/c/15/912/627/159126270-7158693702236622361.jpeg",
       ),
@@ -725,7 +725,7 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://zigzag.kr/catalog/products/168362278",
       live: LiveCompareExpected(
         name: "화이트랩스 화이트랩스 치아미백기 LED 셀프 자가 치아미백기계 &amp; 치아미백젤 세트 (1인용)",
-        price: 159000,
+        price: 179000,
         image:
             "https://cf.product-image.s.zigzag.kr/original/d/2026/2/3/59382_202602031710060884_61349.jpeg",
       ),
@@ -1277,7 +1277,7 @@ const liveCompareMalls = <LiveCompareMall>[
         name: "[8월 올영픽/수면 효율증가]대원제약 대원헬스 꿀잠샷 20gX12포 (+2포+수면안대) (14일분)",
         price: 18900,
         image:
-            "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0024/A00000024788471ko.jpg",
+            "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0024/A00000024788476ko.jpg",
       ),
     ),
     LiveCompareProduct(
@@ -1452,7 +1452,7 @@ const liveCompareMalls = <LiveCompareMall>[
         name: "[ACTIVE] 라이트 시어 후드 크롭 윈드브레이커_SPJJG37G02",
         price: 19900,
         image:
-            "https://item.elandrs.com/r/image/item/2026-04-28/18cd3dea-aacc-47bf-8e7b-bd5c08f37bb9.jpg",
+            "https://item.elandrs.com/r/image/item/2026-08-18/63f4c858-7d4b-4345-a5d1-6e891a03b526.jpg",
       ),
     ),
     LiveCompareProduct(
