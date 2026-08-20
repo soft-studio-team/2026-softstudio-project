@@ -74,7 +74,15 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
       );
     }
     _busy = true;
-    final loop = WebViewExtractLoop(clock: clock);
+    final requestHost = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+    final firstLoadTimeout = requestHost == 'a-bly.com' ||
+            requestHost.endsWith('.a-bly.com')
+        ? const Duration(seconds: 25)
+        : const Duration(seconds: 15);
+    final loop = WebViewExtractLoop(
+      clock: clock,
+      firstLoadTimeout: firstLoadTimeout,
+    );
 
     try {
       final controller = await _created.future.timeout(

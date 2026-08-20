@@ -482,14 +482,27 @@ class WebViewScraper {
   }) async {
     if (!isSupported) return null;
 
+    final requestHost = Uri.tryParse(url)?.host.toLowerCase() ?? '';
+    final effectiveMaxWait = requestHost.endsWith('anderssonbell.com')
+        ? const Duration(seconds: 20)
+        : maxWait;
+
     final host = WebViewExtractHost.maybeInstance;
     if (host != null) {
-      return host.extract(url, maxWait: maxWait, clock: _clock);
+      return host.extract(url,
+          maxWait: effectiveMaxWait, clock: _clock);
     }
 
     InAppWebViewController? controller;
     HeadlessInAppWebView? headless;
-    final loop = WebViewExtractLoop(clock: _clock);
+    final firstLoadTimeout = requestHost == 'a-bly.com' ||
+            requestHost.endsWith('.a-bly.com')
+        ? const Duration(seconds: 25)
+        : const Duration(seconds: 15);
+    final loop = WebViewExtractLoop(
+      clock: _clock,
+      firstLoadTimeout: firstLoadTimeout,
+    );
 
     try {
       headless = HeadlessInAppWebView(
@@ -527,7 +540,7 @@ class WebViewScraper {
 
       return loop.run(
         requestUrl: url,
-        maxWait: maxWait,
+        maxWait: effectiveMaxWait,
         isAlive: () => headless?.isRunning() == true,
         evaluate: (source) async {
           final view = headless;

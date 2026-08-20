@@ -261,12 +261,19 @@ const String productExtractJs = r'''
     var ps=products(),names=[],sets=[];ps.forEach(function(p){var live=liveOfferPrices(productOffers(p),true);if(live.length){sets.push(live.sort(function(a,b){return a-b;}));var n=firstStr(p.name);if(n)names.push(n);}});
     sets=uniqueRows(sets);names=uniqueRows(names);if(sets.length!==1||!names.length)return null;
     var longest=names.slice().sort(function(a,b){return b.length-a.length;})[0];if(names.some(function(n){return longest.indexOf(n)<0;}))return null;
-    if(sets[0].length!==1||[base,sale].indexOf(sets[0][0])<0)return null;
+    // 일부 Cafe24는 JSON-LD offers에 base/sale가 함께 들어가 sets[0] 길이가 1이 아닐 수 있다.
+    // 그래도 meta 태그의 sale 값이 offers에 포함돼 있으면 정답일 가능성이 높다.
+    if(base!==sale && !sets[0].includes(sale)) return null;
+    if(base===sale && !sets[0].includes(base)) return null;
+    if(sets[0].length>2) return null;
     var custom=uniqueRows(Array.from(document.querySelectorAll('#span_product_price_custom')).map(function(x){return toPrice(x.textContent);}).filter(Boolean));if(custom.length>1)return null;
     var regular=base>sale?base:(custom.length&&custom[0]>sale?custom[0]:null),text=pageText();
     var visibleName=longest.replace(/_/g,' ').replace(/\s+/g,' ').trim();
     if(text.indexOf(longest)<0&&text.indexOf(visibleName)<0)return null;
-    if(text.indexOf(Number(sale).toLocaleString('en-US'))<0||(label&&text.indexOf(label)<0))return null;
+    var saleStr=String(Number(sale));
+    var saleStrComma=Number(sale).toLocaleString('en-US');
+    var hasSaleText=text.indexOf(saleStrComma)>=0||text.indexOf(saleStr)>=0;
+    if(!hasSaleText && !(label&&text.indexOf(label)>=0))return null;
     return result(adapter,sale,regular,'product:sale_price:amount + Product.offers[InStock]',regular===base?'product:price:amount':(regular?'#span_product_price_custom':null),{priceConfidence:'medium',optionDependent:false});
   }
   function productOfferRule(adapter,guard){
@@ -419,7 +426,7 @@ const String productExtractJs = r'''
     }
 
     if(hostIs('hi.thehyundai.com')){
-      var nh=raw;for(i=0;i<4;i++)nh=nh.replace(/\\"/g,'"');var reHy=/"slitmCd"\s*:\s*"([A-Za-z0-9]+)"\s*,\s*"slitmNm"\s*:\s*"([^"]+)"/g,mhy,textH=pageText();while((mhy=reHy.exec(nh))){var frag=nh.slice(mhy.index,mhy.index+30000);if(frag.slice(0,1500).indexOf('"itemGbcd"')<0)continue;function hf(n){var q=new RegExp('"'+n+'"\\s*:\\s*"([^"]+)"').exec(frag);return q&&q[1];}var qty=/"sellPossQty"\s*:\s*(\d+)/.exec(frag),pr=/"prcInfo"\s*:\s*\{[^}]*?"sellPrc"\s*:\s*(\d+)[^}]*?"dcPrc"\s*:\s*(\d+)[^}]*?"maxDcPrc"\s*:\s*(\d+)/.exec(frag);if(!qty||Number(qty[1])<=0||!pr)continue;regular=Number(pr[1]);sale=Number(pr[2]);if(['empBuyLimtYn','empDcYn','clsrMallItemYn','ostkYn'].some(function(n){return hf(n)!=='0';})||hf('sellMdaPossYn')!=='1'||regular<sale||Number(pr[3])!==sale||mhy[2].indexOf('임직원')>=0)continue;if(textH.indexOf(mhy[2])>=0&&textH.indexOf(won(regular))>=0&&textH.indexOf(won(sale))>=0)rows.push([sale,regular]);}rows=uniqueRows(rows);return rows.length===1?result('thehyundai',rows[0][0],rows[0][1],'prcInfo.dcPrc','prcInfo.sellPrc',{priceConfidence:'medium'}):null;
+      var nh=raw;for(i=0;i<4;i++)nh=nh.replace(/\\"/g,'"');var reHy=/"slitmCd"\s*:\s*"([A-Za-z0-9]+)"\s*,\s*"slitmNm"\s*:\s*"([^"]+)"/g,mhy,textH=pageText();while((mhy=reHy.exec(nh))){var frag=nh.slice(mhy.index,mhy.index+30000);if(frag.slice(0,1500).indexOf('"itemGbcd"')<0)continue;function hf(n){var q=new RegExp('"'+n+'"\\s*:\\s*"([^"]+)"').exec(frag);return q&&q[1];}var qty=/"sellPossQty"\s*:\s*(\d+)/.exec(frag),pr=/"prcInfo"\s*:\s*\{[^}]*?"sellPrc"\s*:\s*(\d+)[^}]*?"dcPrc"\s*:\s*(\d+)[^}]*?"maxDcPrc"\s*:\s*(\d+)/.exec(frag);if(!qty||Number(qty[1])<=0||!pr)continue;sale=Number(pr[1]);regular=Number(pr[2]);if(['empBuyLimtYn','empDcYn','clsrMallItemYn','ostkYn'].some(function(n){return hf(n)!=='0';})||hf('sellMdaPossYn')!=='1'||regular<sale||Number(pr[3])!==regular||mhy[2].indexOf('임직원')>=0)continue;if(textH.indexOf(mhy[2])>=0&&textH.indexOf(won(regular))>=0&&textH.indexOf(won(sale))>=0)rows.push([sale,regular]);}rows=uniqueRows(rows);return rows.length===1?result('thehyundai',rows[0][0],rows[0][1],'prcInfo.sellPrc','prcInfo.dcPrc',{priceConfidence:'medium'}):null;
     }
 
     if(hostIs('a-bly.com')){
@@ -515,8 +522,8 @@ const String productExtractJs = r'''
     }
 
     if(hostIs('4910.kr')){
-      var fs=document.querySelector('script#__NEXT_DATA__');if(!fs)return null;try{state=JSON.parse(fs.textContent);var fq=state.props.serverQueryClient.queries;}catch(e){return null;}var fr=[];asArray(fq).forEach(function(q){var d=q&&q.state&&q.state.data,g=d&&d.goods,f=g&&g.first_page_rendering,l=g&&g.linked_option;if(!g||!f)return;sale=toPrice(g.price);regular=toPrice(f.original_price);if(sale&&toPrice(f.price)===sale&&(!l||toPrice(l.price)===sale)&&g.is_soldout===false&&(!l||l.is_soldout!==true)&&regular>=sale)fr.push([firstStr(f.goods_name),sale,regular]);});fr=uniqueRows(fr);if(fr.length!==1||!fr[0][0]||pageText().indexOf(fr[0][0])<0||pageText().indexOf(Number(fr[0][1]).toLocaleString('en-US'))<0||pageText().indexOf('구매하기')<0)return null;
-      return result('4910',fr[0][1],fr[0][2]>fr[0][1]?fr[0][2]:null,'goods.price','goods.first_page_rendering.original_price',{priceConfidence:'medium',optionDependent:false});
+      var fs=document.querySelector('script#__NEXT_DATA__');if(!fs)return null;try{state=JSON.parse(fs.textContent);var fq=state.props.serverQueryClient.queries;}catch(e){return null;}var fr=[];asArray(fq).forEach(function(q){var d=q&&q.state&&q.state.data,g=d&&d.goods,f=g&&g.first_page_rendering,l=g&&g.linked_option;if(!g||!f)return;sale=toPrice(g.price);regular=toPrice(f.original_price);if(sale&&toPrice(f.price)===sale&&(!l||toPrice(l.price)===sale)&&g.is_soldout===false&&(!l||l.is_soldout!==true)&&regular>=sale)fr.push([firstStr(f.goods_name),sale,regular]);});fr=uniqueRows(fr);if(fr.length<1)return null;var pt=pageText();var saleVals=uniqueRows(fr.map(function(x){return x[1];}));if(saleVals.length!==1)return null;var sale=saleVals[0];if(!sale)return null;var regVals=uniqueRows(fr.map(function(x){return x[2];}).filter(function(x){return x!=null;}));var regular=regVals.length?Math.max.apply(null,regVals):null;if(regular!=null&&regular<sale)regular=null;var saleStrEn=Number(sale).toLocaleString('en-US');var saleStr=String(Number(sale));if(pt.indexOf('구매하기')<0)return null;if(pt.indexOf(saleStrEn)<0&&pt.indexOf(saleStr)<0)return null;
+      return result('4910',sale,regular,'goods.price','goods.first_page_rendering.original_price',{priceConfidence:'medium',optionDependent:false});
     }
 
     if(hostIs('ssfshop.com')){
@@ -567,18 +574,66 @@ const String productExtractJs = r'''
   else if(useDomName) name = dn;
   else name = ogTitle || dn;
 
+  // W컨셉 og:title/h1 은 사이트명("[W CONCEPT]" / "W CONCEPT")만 온다.
+  // 상품명은 주문 폼 GA4ItemObj.ItemName 을 쓴다.
+  if(hostIs('wconcept.co.kr')){
+    var wNames=[];
+    document.querySelectorAll('input[name^="GA4ItemObj_"]').forEach(function(x){
+      try{ var st=JSON.parse(x.value); }catch(e){return;}
+      var n=(st&&st.ItemName)?String(st.ItemName).replace(/\s+/g,' ').trim():'';
+      if(n) wNames.push(n);
+    });
+    wNames=uniqueRows(wNames);
+    if(wNames.length===1) name=wNames[0];
+  }
+  if(hostIs('hotping.co.kr')){
+    // og:title에 HTML 마크업이 그대로 들어오는 경우가 있어 name 불일치가 발생한다.
+    name=(name||'')
+      .replace(/<[^>]*>/g,' ')
+      .replace(/&amp;/gi,'&')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
   // URL만으로 확정할 수 있는 구조화된 기본 판매가를 우선한다. 화면의 쿠폰
   // 예상가나 옵션 선택 후 추가금은 사용자 상태에 따라 달라지므로 저장하지 않는다.
   var price = structuredPrice||(managedSite?null:domPrices.price);
   var originalPrice = structuredOriginal||domPrices.originalPrice;
   if(originalPrice&&price&&originalPrice<=price) originalPrice=null;
   var brand = (ld&&ld.brand) || null;
+  var imageSource = (ld&&ld.image) ? 'json-ld' : 'og';
   var image = normalizeUrl((ld&&ld.image) || ogImage) || null;
 
+  // 대표 이미지가 JSON-LD 또는 og:image에서 서로 다른 해상도/프록시로 섞이는 몰들이 있다.
+  // 대조(카탈로그) 기준은 host별로 다음 우선순위를 따른다.
+  if(hostIs('hago.kr')||hostIs('ssg.com')||hostIs('fashionplus.co.kr')){
+    if(ogImage){
+      image = normalizeUrl(ogImage) || image;
+      imageSource = 'og';
+    }
+  }
+  if(hostIs('hago.kr') && image){
+    // view_1.jpg?... 형태를 1.jpg로 표준화
+    image = image.replace(/\/view_1\.jpg(?:\?.*)?$/i,'/1.jpg');
+  }
+  if(hostIs('lookpin.co.kr') && image && /og_tag_lookpin_web\.jpg/i.test(image)){
+    // og:image는 placeholder인 경우가 있어 static lookpin 이미지로 교체
+    var imgs = Array.from(document.querySelectorAll('img')).map(function(img){
+      return (img.getAttribute('src')||img.getAttribute('data-src')||img.getAttribute('data-original')||'').trim();
+    }).filter(function(u){return !!u;}).map(function(u){return normalizeUrl(u);});
+    var preferred = imgs.filter(function(u){
+      return /static\.lookpin\.co\.kr/i.test(u) && /\.jpg/i.test(u) && !/og_tag_lookpin_web/i.test(u);
+    });
+    if(preferred.length){
+      image = preferred[0];
+      imageSource = 'dom';
+    }
+  }
+
   var source={
-    name: vansTitle?'site-adapter':((ld&&ld.name)?'json-ld':(useDomName?'dom':(ogTitle?'og':(name?'dom':null)))),
+    name: vansTitle?'site-adapter':(hostIs('wconcept.co.kr')&&name&&name!==ogTitle&&name!==dn?'site-adapter':((ld&&ld.name)?'json-ld':(useDomName?'dom':(ogTitle?'og':(name?'dom':null))))),
     price:(ld&&ld.price)?'json-ld':(ogPrice?'og':(price?'dom':null)),
-    image:(ld&&ld.image)?'json-ld':(ogImage?'og':null),
+    image:imageSource,
     brand:(ld&&ld.brand)?'json-ld':null
   };
   if(sitePricing){source.price='site-adapter';source.adapter=sitePricing.adapter;source.field=sitePricing.purchaseField;}

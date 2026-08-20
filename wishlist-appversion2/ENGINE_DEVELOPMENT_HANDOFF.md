@@ -68,7 +68,7 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 하지 말 것: 리바이스 대기 늘리기, 관리 몰 범용 가격 우회, **대조 완료 전** 엔진 패치(이제 패치 단계), PR 머지.
 
-다음: §0.13 패치 우선순위(W컨셉·Cafe24·에이블리·핫핑·og 이미지·live 정답 재확인) 순으로 엔진 수정.
+다음: §0.13 패치 우선순위(W컨셉·Cafe24·에이블리·핫핑·og 이미지·live 정답 재확인) 순으로 엔진 수정. **2026-08-20 1차 패치 반영:** W컨셉 `GA4ItemObj.ItemName`(Tab 2·3 MATCH), 핫핑 HTML 이름 제거(MATCH 3), 에이블리 firstLoad 25초, 앤더슨벨 maxWait 20초. Cafe24 verifiedCafe(`코드그라피` 등) `price_ambiguous`는 미해결.
 
 ## 0.12 2026-08-18 신규 3상품 정답지 + 엔진 대조
 

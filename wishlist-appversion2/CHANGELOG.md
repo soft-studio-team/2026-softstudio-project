@@ -1,5 +1,19 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-20 - 대조 후 엔진 패치 1차 (W컨셉·핫핑·타이밍)
+
+🌟 **쉬운 설명**
+- 탭 대조에서 나온 문제를 고치기 시작했습니다. W컨셉은 상품 이름을 제대로 읽고, 핫핑은 이름에 섞이던 HTML을 지웁니다.
+
+🔧 **기술 설명**
+- W컨셉: `GA4ItemObj.ItemName`으로 상품명 추출. Tab 재검증 2·3 MATCH, 1은 PRICE(엔진 SalePrice 39000 vs live 29120).
+- 핫핑: 이름 HTML 태그 제거 → Tab MATCH 3.
+- 에이블리: `firstLoadTimeout` 15→25초. 앤더슨벨: `maxWait` 12→20초.
+- Cafe24 `cafe24MetaSale` 조건 완화, 하고/룩핀/SSG/패션플러스 이미지 우선순위, 더현대Hi/4910 가격 규칙 조정.
+- 코드그라피·립합 등 verifiedCafe `price_ambiguous`는 아직 남음(다음 패치).
+
+---
+
 ## 2026-08-20 - Tab S7 50몰 실페이지 대조 완료
 
 🌟 **쉬운 설명**
