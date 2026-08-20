@@ -14,9 +14,11 @@ FLUTTER = r"C:\Dev\0.sdk\flutter\bin\flutter.bat"
 APP_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\flutter_app")
 LOG_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\audit-logs")
 
-# CJ #2 price_ambiguous 재검증
+# PRICE 배치2: 코드그라피·커버낫·데일리쥬
 MALLS = [
-    "CJ온스타일",
+    "코드그라피",
+    "커버낫",
+    "데일리쥬",
 ]
 
 COOLDOWN_SEC = 12

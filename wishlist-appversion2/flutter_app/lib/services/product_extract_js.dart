@@ -445,8 +445,7 @@ const String productExtractJs = r'''
     }
 
     var metaSaleSites={
-      'mixxo.com':['mixxo','구매하기'],
-      'noirer.com':['noirer','BUY NOW'],'liphop.com':['liphop','BUY IT NOW'],
+      'noirer.com':['noirer','BUY NOW'],
       'marithe-official.com':['marithe','장바구니 담기'],
       'amomento.co':['amomento','Add To Bag'],'anderssonbell.com':['anderssonbell','ADD TO BAG'],
       'yaleapparel.co.kr':['yale','구매하기'],'withyoon.com':['withyoon','Buy It Now'],
@@ -457,7 +456,9 @@ const String productExtractJs = r'''
     var metaListSites={
       'leekorea.co.kr':['lee','바로 구매하기'],
       'vivastudio.co.kr':['vivastudio',null],
-      'frombeginning.co.kr':['frombeginning','바로구매']
+      'frombeginning.co.kr':['frombeginning','바로구매'],
+      'mixxo.com':['mixxo','구매하기'],
+      'liphop.com':['liphop','BUY IT NOW']
     };
     for(var listDomain in metaListSites)if(hostIs(listDomain))return cafe24MetaList(metaListSites[listDomain][0],metaListSites[listDomain][1]);
     if(hostIs('dailyjou.com'))return cafe24Offer('dailyjou','high',false);
@@ -591,8 +592,18 @@ const String productExtractJs = r'''
     }
 
     if(hostIs('mahagrid.com')){
-      var mt=pageText();if(mt.indexOf('품절')>=0||mt.indexOf('장바구니')<0||mt.indexOf('구매하기')<0)return null;var mid=metaOne('product:retailer_item_id');regular=toPrice(metaOne('product:price:amount'));sale=toPrice(metaOne('product:sale_price:amount'));var mp=products();if(!/^\d+$/.test(mid||'')||!regular||!sale||regular<sale||mp.length!==1||mt.indexOf(firstStr(mp[0].name)||'\u0000')<0)return null;var mo=productOffers(mp[0]);if(mo.length!==1||mo[0].priceCurrency!=='KRW'||toPrice(mo[0].price)!==regular||mt.indexOf(won(sale))<0)return null;
-      return result('mahagrid',sale,regular===sale?null:regular,'product:sale_price:amount / active purchase actions','product:price:amount',{priceConfidence:'medium',optionDependent:false});
+      // 옵션 일부 품절 문구·Offer availability 누락이 있어도 meta 정가로 확정.
+      var mt=pageText();if(mt.indexOf('장바구니')<0||mt.indexOf('구매하기')<0)return null;
+      var mid=metaOne('product:retailer_item_id');regular=toPrice(metaOne('product:price:amount'));sale=toPrice(metaOne('product:sale_price:amount'))||regular;
+      if(!/^\d+$/.test(mid||'')||!regular||regular<sale)return null;
+      var mp=products();
+      if(mp.length===1){
+        var nm=firstStr(mp[0].name);if(nm&&mt.indexOf(nm)<0)return null;
+        var prices=uniqueRows(productOffers(mp[0]).map(function(o){return (!o.priceCurrency||o.priceCurrency==='KRW')?toPrice(o.price):null;}).filter(Boolean));
+        if(prices.length&&prices.indexOf(regular)<0)return null;
+      }else if(mp.length>1)return null;
+      if(mt.indexOf(won(regular))<0&&mt.indexOf(Number(regular).toLocaleString('en-US'))<0)return null;
+      return result('mahagrid',regular,null,'product:price:amount',null,{priceConfidence:'medium',optionDependent:false});
     }
 
     if(hostIs('ohora.kr')){

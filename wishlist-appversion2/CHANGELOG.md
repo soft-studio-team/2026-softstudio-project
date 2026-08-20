@@ -1,5 +1,17 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-20 - PRICE 배치: 미쏘·립합·마하그리드 정가
+
+🌟 **쉬운 설명**
+- 미쏘·립합·마하그리드도 회원가가 아니라 정가로 읽도록 바꿨고, 탭에서 3개 몰 모두 맞았습니다.
+
+🔧 **기술 설명**
+- `mixxo.com` / `liphop.com` → `cafe24MetaList`.
+- `mahagrid.com`: `product:price:amount` 채택, Offer availability 완화. #2 SKU `3852`→`3854`.
+- Tab MATCH 3×3.
+
+---
+
 ## 2026-08-20 - 프롬비기닝 정가 · 나이키/CJ 카탈로그 · 이름 따옴표
 
 🌟 **쉬운 설명**

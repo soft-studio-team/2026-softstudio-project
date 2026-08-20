@@ -1011,12 +1011,12 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
     LiveCompareProduct(
-      "https://mahagrid.com/product/detail.html?product_no=3852",
+      "https://mahagrid.com/product/detail.html?product_no=3854",
       live: LiveCompareExpected(
-        name: "WASHED BUM BAG[BLACK]",
-        price: 59000,
+        name: "THIRD LOGO BACKPACK[BLACK]",
+        price: 109000,
         image:
-            "https://mahagrid.com/web/product/big/202302/6e6076124c1154bea2cc19794839e10f.jpg",
+            "https://mahagrid.com/web/product/big/202602/c9908ec067fc6dd75124f9ed69c164a7.jpg",
       ),
     ),
     LiveCompareProduct(
