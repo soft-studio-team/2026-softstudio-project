@@ -254,36 +254,61 @@ const String productExtractJs = r'''
     if(requireScript&&scriptPrice('product_price',document.documentElement.innerHTML)!==lo)return null;
     return result(adapter,lo,null,'Product.offers[InStock].price',null,{priceConfidence:confidence||'high',purchasePriceStatus:lo===hi?'confirmed':'option_dependent',optionDependent:lo!==hi,optionPriceMin:lo!==hi?lo:null,optionPriceMax:lo!==hi?hi:null});
   }
+  function stripHtmlName(value){
+    return String(value||'')
+      .replace(/\\u003c/gi,'<')
+      .replace(/\\u003e/gi,'>')
+      .replace(/<[^>]*>/g,' ')
+      .replace(/&amp;/gi,'&')
+      .replace(/&nbsp;/gi,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
   function cafe24MetaSale(adapter,label){
     var id=metaOne('product:retailer_item_id'),baseCur=metaOne('product:price:currency'),saleCur=metaOne('product:sale_price:currency');
     var base=toPrice(metaOne('product:price:amount')),sale=toPrice(metaOne('product:sale_price:amount'));
     if(!/^\d+$/.test(id||'')||baseCur!=='KRW'||saleCur!=='KRW'||!base||!sale||base<sale)return null;
-    var ps=products(),names=[],sets=[];ps.forEach(function(p){var n=firstStr(p.name);if(n)names.push(n);var live=liveOfferPrices(productOffers(p),true);if(live.length)sets.push(live.sort(function(a,b){return a-b;}));});
+    var ps=products(),names=[],sets=[];
+    ps.forEach(function(p){
+      var n=stripHtmlName(firstStr(p.name));if(n)names.push(n);
+      var os=productOffers(p),live=liveOfferPrices(os,true);
+      // 노이아고처럼 availability가 비어 있어도 KRW price만 있는 Offer는 meta와 교차검증에 쓴다.
+      if(!live.length){
+        live=uniqueRows(os.map(function(o){
+          if(!o||(o.priceCurrency&&o.priceCurrency!=='KRW'))return null;
+          var av=availability(o.availability);
+          if(av&&!av.endsWith('instock'))return null;
+          return toPrice(o.price);
+        }).filter(Boolean));
+      }
+      if(live.length)sets.push(live.sort(function(a,b){return a-b;}));
+    });
     sets=uniqueRows(sets);names=uniqueRows(names);
     var shown=uniqueRows(Array.from(document.querySelectorAll('#span_product_price_text')).map(function(x){return toPrice(x.textContent);}).filter(Boolean));
+    var custom=uniqueRows(Array.from(document.querySelectorAll('#span_product_price_custom')).map(function(x){return toPrice(x.textContent);}).filter(Boolean));
     var scriptP=scriptPrice('product_price',document.documentElement?document.documentElement.innerHTML:'');
     var fromLd=false;
     if(sets.length===1){
-      // 일부 Cafe24는 JSON-LD offers에 base/sale가 함께 들어가 sets[0] 길이가 1이 아닐 수 있다.
       if(base!==sale && !sets[0].includes(sale)) return null;
       if(base===sale && !sets[0].includes(base)) return null;
       if(sets[0].length>2) return null;
       fromLd=true;
     }else if(!sets.length){
-      // LD offers에 InStock/KRW 가격이 없어도 meta+화면가(+스크립트)가 일치하면 확정.
-      if(shown.length!==1||shown[0]!==sale||(scriptP!=null&&scriptP!==sale))return null;
+      // 화면가가 text 또는 custom 한쪽에만 있어도 meta/script와 같으면 확정.
+      var display=shown.length===1?shown[0]:(custom.length===1?custom[0]:null);
+      if(display==null||display!==sale||(scriptP!=null&&scriptP!==sale))return null;
     }else return null;
-    if(!names.length && !shown.length)return null;
+    if(!names.length && !shown.length && !custom.length)return null;
     var longest=names.length?names.slice().sort(function(a,b){return b.length-a.length;})[0]:null;
     if(names.length&&names.some(function(n){return longest.indexOf(n)<0;}))return null;
-    var custom=uniqueRows(Array.from(document.querySelectorAll('#span_product_price_custom')).map(function(x){return toPrice(x.textContent);}).filter(Boolean));if(custom.length>1)return null;
+    if(custom.length>1)return null;
     var regular=base>sale?base:(custom.length&&custom[0]>sale?custom[0]:null),text=pageText();
     if(longest){var visibleName=longest.replace(/_/g,' ').replace(/\s+/g,' ').trim();if(text.indexOf(longest)<0&&text.indexOf(visibleName)<0)return null;}
     var saleStr=String(Number(sale));
     var saleStrComma=Number(sale).toLocaleString('en-US');
     var hasSaleText=text.indexOf(saleStrComma)>=0||text.indexOf(saleStr)>=0;
     if(!hasSaleText && !(label&&text.indexOf(label)>=0))return null;
-    return result(adapter,sale,regular,fromLd?'product:sale_price:amount + Product.offers[InStock]':'product:sale_price:amount + #span_product_price_text',regular===base?'product:price:amount':(regular?'#span_product_price_custom':null),{priceConfidence:'medium',optionDependent:false});
+    return result(adapter,sale,regular,fromLd?'product:sale_price:amount + Product.offers[KRW]':'product:sale_price:amount + displayed price',regular===base?'product:price:amount':(regular?'#span_product_price_custom':null),{priceConfidence:'medium',optionDependent:false});
   }
   function productOfferRule(adapter,guard){
     var ps=products();if(ps.length!==1)return null;var p=ps[0],os=productOffers(p);if(guard&&!guard(p,os))return null;
@@ -612,13 +637,9 @@ const String productExtractJs = r'''
     wNames=uniqueRows(wNames);
     if(wNames.length===1) name=wNames[0];
   }
-  if(hostIs('hotping.co.kr')){
-    // og:title에 HTML 마크업이 그대로 들어오는 경우가 있어 name 불일치가 발생한다.
-    name=(name||'')
-      .replace(/<[^>]*>/g,' ')
-      .replace(/&amp;/gi,'&')
-      .replace(/\s+/g,' ')
-      .trim();
+  if(hostIs('hotping.co.kr')||hostIs('withyoon.com')){
+    // og/JSON-LD 이름에 HTML 마크업이 그대로 들어오는 경우가 있어 name 불일치가 발생한다.
+    name=stripHtmlName(name);
   }
 
   // URL만으로 확정할 수 있는 구조화된 기본 판매가를 우선한다. 화면의 쿠폰

@@ -1,5 +1,17 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-20 - Cafe24 metaSale: 빈 availability·custom span·HTML 이름
+
+🌟 **쉬운 설명**
+- 노이아고처럼 재고 표시가 비어 있어도 원화 가격이 맞으면 확정하고, 위드윤처럼 이름에 HTML이 섞여도 가격·이름이 맞게 나오도록 고쳤습니다. 탭에서 두 몰 모두 3개 일치했습니다.
+
+🔧 **기술 설명**
+- `cafe24MetaSale`: LD Offer `availability` 비어 있어도 KRW price면 meta 교차검증; `#span_product_price_text` 없으면 `#span_product_price_custom`; `stripHtmlName`으로 이름 HTML/`\u003c` 제거(위드윤·핫핑).
+- Tab `R54RB01SMVB`: 노이아고 MATCH 3, 위드윤 MATCH 3(첫 시도 ADB 끊김 후 재시도).
+- 단위: `product_extract_js_sync_test.dart` 통과. PR #28 Draft 유지.
+
+---
+
 ## 2026-08-20 - Cafe24 verifiedCafe 가격 폴백 (코드그라피·립합)
 
 🌟 **쉬운 설명**

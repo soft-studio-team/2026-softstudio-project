@@ -143,5 +143,19 @@ void main() {
     );
     expect(productExtractJs, contains('접속이 잠시 제한되었습니다'));
     expect(productExtractJs, contains('잠시만 기다려 주세요'));
+    // Cafe24 meta+LD: empty availability KRW offer + custom span fallback
+    expect(
+      productExtractJs,
+      contains("fromLd?'product:sale_price:amount + Product.offers[KRW]'"),
+    );
+    expect(
+      productExtractJs,
+      contains('var display=shown.length===1?shown[0]:(custom.length===1?custom[0]:null)'),
+    );
+    expect(
+      productExtractJs,
+      contains("hostIs('hotping.co.kr')||hostIs('withyoon.com')"),
+    );
+    expect(productExtractJs, contains('function stripHtmlName(value)'));
   });
 }

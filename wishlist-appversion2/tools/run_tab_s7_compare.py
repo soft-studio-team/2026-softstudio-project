@@ -14,10 +14,10 @@ FLUTTER = r"C:\Dev\0.sdk\flutter\bin\flutter.bat"
 APP_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\flutter_app")
 LOG_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\audit-logs")
 
-# Remaining from 2026-08-20 session
+# Next Tab re-verify: timeout / wait patches
 MALLS = [
-    "4910",
-    "SSF샵",
+    "에이블리",
+    "앤더슨벨",
 ]
 
 COOLDOWN_SEC = 12
