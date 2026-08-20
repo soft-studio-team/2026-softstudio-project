@@ -14,15 +14,13 @@ FLUTTER = r"C:\Dev\0.sdk\flutter\bin\flutter.bat"
 APP_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\flutter_app")
 LOG_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\audit-logs")
 
-# PRICE 배치2: 코드그라피·커버낫·데일리쥬
 MALLS = [
-    "코드그라피",
-    "커버낫",
-    "데일리쥬",
+    "올리브영",
+    "Aritzia",
 ]
 
 COOLDOWN_SEC = 12
-EXTRACT_TIMEOUT_SEC = 480
+EXTRACT_TIMEOUT_SEC = 900
 
 
 def log(msg: str, log_path: Path) -> None:
@@ -40,10 +38,7 @@ def adb(*args: str) -> None:
 
 
 def prep_device() -> None:
-    subprocess.run([ADB, "kill-server"], capture_output=True)
-    time.sleep(2)
-    subprocess.run([ADB, "start-server"], capture_output=True)
-    time.sleep(1)
+    # kill-server는 Tab을 offline으로 만드는 경우가 있어 생략. force-stop만.
     subprocess.run([ADB, "-s", DEVICE, "wait-for-device"], capture_output=True, timeout=60)
     adb("shell", "settings", "put", "global", "stay_on_while_plugged_in", "7")
     adb("shell", "input", "keyevent", "82")

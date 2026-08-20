@@ -157,7 +157,7 @@ class WebViewExtractLoop {
   WebViewExtractLoop({
     ExtractClock? clock,
     this.settleWindow = const Duration(milliseconds: 600),
-    this.scriptTimeout = const Duration(seconds: 4),
+    this.scriptTimeout = const Duration(seconds: 8),
     this.pollInterval = const Duration(milliseconds: 200),
     this.firstLoadTimeout = const Duration(seconds: 15),
   }) : clock = clock ?? const SystemExtractClock();

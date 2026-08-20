@@ -22,13 +22,24 @@ Future<OnDeviceExtract?> _extract(WidgetTester tester, String url) async {
   final isAbly = host == 'a-bly.com' || host.endsWith('.a-bly.com');
   final isAndersson = host.endsWith('anderssonbell.com');
   final is4910 = host == '4910.kr' || host.endsWith('.4910.kr');
+  final isAritzia = host.contains('aritzia.com');
+  final isOlive = host.contains('oliveyoung.co.kr');
   final maxWait = isAbly
       ? const Duration(seconds: 28)
-      : (isAndersson || is4910
-          ? const Duration(seconds: 20)
-          : const Duration(seconds: 12));
-  final hardTimeout =
-      isAbly ? const Duration(seconds: 90) : const Duration(seconds: 45);
+      : (isAritzia
+          ? const Duration(seconds: 45)
+          : (isAndersson || is4910
+              ? const Duration(seconds: 20)
+              : (isOlive
+                  ? const Duration(seconds: 20)
+                  : const Duration(seconds: 12))));
+  final hardTimeout = isAbly
+      ? const Duration(seconds: 90)
+      : (isAritzia
+          ? const Duration(seconds: 100)
+          : (isOlive
+              ? const Duration(seconds: 70)
+              : const Duration(seconds: 45)));
   var done = false;
   final future = WebViewScraper()
       .extract(url, maxWait: maxWait)

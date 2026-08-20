@@ -742,32 +742,33 @@ const liveCompareMalls = <LiveCompareMall>[
   ]),
   LiveCompareMall("KREAM", [
     LiveCompareProduct(
-      "https://kream.co.kr/products/1036058",
+      "https://kream.co.kr/products/1012767",
       live: LiveCompareExpected(
         name:
-            "Black Yak Climbing Stone Master Light Down Jacket #3 Cloud Dancer",
-        price: 251000,
+            "[KREAM 단독] Thevinylhouse x Bocchi the Rock! Kessoku Star Layered Ls Tee Black",
+        price: 75000,
         image:
-            "https://kream-phinf.pstatic.net/MjAyNjA4MDZfMTU2/MDAxNzg1OTg3OTIyNDE0.MvVCq7uwCf35x4bhxgKGcVAM73NkEdP1hZfFMXpav3wg.nmN6pqpw1IZfpmVdvFQI0uIjCXM27Yhg1dW1Wz9hWJ8g.PNG/a_3d99b8d5e51a4b17a64024ad9401bf7a.png",
+            "https://kream-phinf.pstatic.net/MjAyNjA3MjFfMTg4/MDAxNzg0NjI1NjU1NjM1.2BI9VXVbcdapWUmRh0WlEwr_hv_5W7N9xFYqHb05Pycg.GPpdMDscTfgzG9PM3uOktT3yV5TjyOibgMklxlCgfnsg.PNG/p_d155324f3a38439dbbfd707b2d447f5f.png",
       ),
     ),
     LiveCompareProduct(
-      "https://kream.co.kr/products/1039844",
+      "https://kream.co.kr/products/1012757",
       live: LiveCompareExpected(
         name:
-            "Adidas Liverpool FC Teamgeist 26 Longsleeve T-Shirt White - KR Sizing (Non Marking Ver.)",
-        price: 134000,
+            "[KREAM 단독] Thevinylhouse x Bocchi the Rock! Kessoku Acrylic Key Ring Pink",
+        price: 19000,
         image:
-            "https://kream-phinf.pstatic.net/MjAyNjA4MTBfNyAg/MDAxNzg2MzMwNzU3ODgy._8r6nHi5eZTeaChA9U5Wwa56SAADirrvypw_2TGcLIsg.i6DHTG-pkiRCdkwW4RH7-BRkokBCzrxB89IKoA79K2sg.PNG/a_9c94b1c451a647ee8c0d95581a46843f.png",
+            "https://kream-phinf.pstatic.net/MjAyNjA3MjFfOTUg/MDAxNzg0NjE1NTMwMjk2.BAmLftkmc4G7A3xzGvewt3OmPuR_sRzpIjmUn7hExxYg.8IxWY5b80ELy9K0tNXYS15aisYfYNbEuPg5k6ibXFQAg.PNG/p_b2b51d61d9264fc68948da832b0c0906.png",
       ),
     ),
     LiveCompareProduct(
-      "https://kream.co.kr/products/1035900",
+      "https://kream.co.kr/products/1012784",
       live: LiveCompareExpected(
-        name: "thisisneverthat x Fragment Design Hoodie Off Black",
-        price: 190000,
+        name:
+            "[KREAM 단독] Thevinylhouse x Bocchi the Rock! Kessoku Friends Tee Black",
+        price: 59000,
         image:
-            "https://kream-phinf.pstatic.net/MjAyNjA4MDZfMTI1/MDAxNzg1OTg3MjM1MTc4.VC-3K8lsyt2eI1wwr74XSC55IJ8hlGvYCcmpfkmyq-Ig.s4hKPRWeCA3cVOfYu2I0UEF0A61Z4kHUjLfeMnCpgFQg.PNG/a_4b2f5643d3aa4b5fb8a1982c27b5dd33.png",
+            "https://kream-phinf.pstatic.net/MjAyNjA3MjFfMjI3/MDAxNzg0NjE3ODY4Mzg1.UDEeWJY1fUchthKDAaTpRFlDedLp0QZPloakINgb3oAg.XJv6aiPlKmv1s-z6TL5OOoBvQpD_URRpaU45gZYk0mYg.PNG/p_aef519f6b61f43fabb7eda41dac1a1bd.png",
       ),
     ),
   ]),
@@ -1272,12 +1273,12 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
     LiveCompareProduct(
-      "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000260602",
+      "https://www.oliveyoung.co.kr/store/goods/getGoodsDetail.do?goodsNo=A000000262781",
       live: LiveCompareExpected(
-        name: "[한정기획/반다나] 스너글 섬유탈취제 150ml 2종 허거블 기획 (+ 반다나 증정)",
-        price: 1,
+        name: "프로티원 단백질쉐이크 파우치형 40g 7입 6종",
+        price: 25900,
         image:
-            "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0026/A00000026060226ko.png",
+            "https://image.oliveyoung.co.kr/cfimages/cf-goods/uploads/images/thumbnails/10/0000/0026/A00000026278108ko.jpg",
       ),
     ),
     LiveCompareProduct(

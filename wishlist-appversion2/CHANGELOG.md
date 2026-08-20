@@ -1,5 +1,18 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-21 - 올리브영·Aritzia·KREAM Tab MATCH 3
+
+🌟 **쉬운 설명**
+- 올리브영·Aritzia·KREAM을 탭에서 각각 3개 상품 모두 맞췄습니다. 올리브영은 느린 상품도 API로 가격을 기다리고, Aritzia는 원화로 바뀐 뒤의 장바구니 버튼을 보고, KREAM은 브랜드배송 상품으로 바꿨습니다.
+
+🔧 **기술 설명**
+- 올리브영: RSC 없으면 `goods/api/v1/detail` async fetch+폴링. sitePricing 대기 중 name/image만 나오면 scraper 조기종료 → 빈 응답으로 폴링 유지. #2 SKU `A000000262781` @25900.
+- Aritzia: Global-e KRW(≥10000)만 채택. `Add to Bag` 버튼 ₩ 우선, URL `color=` 고정. maxWait 45s.
+- KREAM: 입찰 SKU → 브랜드배송 `1012767`/`1012757`/`1012784`.
+- Tab S7 MATCH 3×3. 에이블리·SSG 보류.
+
+---
+
 ## 2026-08-20 - PRICE 배치: 미쏘·립합·마하그리드 정가
 
 🌟 **쉬운 설명**
