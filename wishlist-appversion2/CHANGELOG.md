@@ -1,5 +1,16 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-20 - Cafe24 verifiedCafe 가격 폴백 (코드그라피·립합)
+
+🌟 **쉬운 설명**
+- JSON-LD에 재고 가격이 비어 있어도, 메타·화면 판매가·스크립트가 같으면 가격을 확정하도록 고쳤습니다. 코드그라피·립합이 탭에서 맞게 나왔습니다.
+
+🔧 **기술 설명**
+- `verifiedCafe` / `cafe24MetaSale`: LD `InStock` 가격이 없으면 `product:sale_price:amount` + `#span_product_price_text` (+ `product_price`) 교차검증 폴백.
+- Tab 재검증: 코드그라피 MATCH 3, 립합 MATCH 3. 위드윤 1 MATCH 후 2번 hang(ADB 리셋).
+
+---
+
 ## 2026-08-20 - 대조 후 엔진 패치 1차 (W컨셉·핫핑·타이밍)
 
 🌟 **쉬운 설명**
