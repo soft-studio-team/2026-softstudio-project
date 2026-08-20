@@ -310,6 +310,51 @@ const String productExtractJs = r'''
     if(!hasSaleText && !(label&&text.indexOf(label)>=0))return null;
     return result(adapter,sale,regular,fromLd?'product:sale_price:amount + Product.offers[KRW]':'product:sale_price:amount + displayed price',regular===base?'product:price:amount':(regular?'#span_product_price_custom':null),{priceConfidence:'medium',optionDependent:false});
   }
+  // 회원가(sale) 대신 정가(product:price / product_price)를 채택. 리·비바 등 회원할인 몰용.
+  function cafe24MetaList(adapter,label){
+    var id=metaOne('product:retailer_item_id'),baseCur=metaOne('product:price:currency'),saleCur=metaOne('product:sale_price:currency');
+    var base=toPrice(metaOne('product:price:amount')),sale=toPrice(metaOne('product:sale_price:amount'));
+    if(!/^\d+$/.test(id||'')||baseCur!=='KRW'||!base)return null;
+    if(sale!=null&&(saleCur!=='KRW'||base<sale))return null;
+    var ps=products(),names=[],sets=[];
+    ps.forEach(function(p){
+      var n=stripHtmlName(firstStr(p.name));if(n)names.push(n);
+      var os=productOffers(p),live=liveOfferPrices(os,true);
+      if(!live.length){
+        live=uniqueRows(os.map(function(o){
+          if(!o||(o.priceCurrency&&o.priceCurrency!=='KRW'))return null;
+          var av=availability(o.availability);
+          if(av&&!av.endsWith('instock'))return null;
+          return toPrice(o.price);
+        }).filter(Boolean));
+      }
+      if(live.length)sets.push(live.sort(function(a,b){return a-b;}));
+    });
+    sets=uniqueRows(sets);names=uniqueRows(names);
+    var shown=uniqueRows(Array.from(document.querySelectorAll('#span_product_price_text')).map(function(x){return toPrice(x.textContent);}).filter(Boolean));
+    var custom=uniqueRows(Array.from(document.querySelectorAll('#span_product_price_custom')).map(function(x){return toPrice(x.textContent);}).filter(Boolean));
+    var scriptP=scriptPrice('product_price',document.documentElement?document.documentElement.innerHTML:'');
+    if(scriptP!=null&&scriptP!==base)return null;
+    var fromLd=false;
+    if(sets.length===1){
+      if(!sets[0].includes(base))return null;
+      if(sets[0].length>2)return null;
+      fromLd=true;
+    }else if(!sets.length){
+      var display=shown.length===1?shown[0]:(custom.length===1?custom[0]:null);
+      if(display!=null&&display!==base&&(sale==null||display!==sale))return null;
+    }else return null;
+    if(!names.length&&!shown.length&&!custom.length)return null;
+    var longest=names.length?names.slice().sort(function(a,b){return b.length-a.length;})[0]:null;
+    if(names.length&&names.some(function(n){return longest.indexOf(n)<0;}))return null;
+    if(custom.length>1)return null;
+    var text=pageText();
+    if(longest){var visibleName=longest.replace(/_/g,' ').replace(/\s+/g,' ').trim();if(text.indexOf(longest)<0&&text.indexOf(visibleName)<0)return null;}
+    var baseStr=String(Number(base)),baseComma=Number(base).toLocaleString('en-US');
+    var hasBaseText=text.indexOf(baseComma)>=0||text.indexOf(baseStr)>=0;
+    if(!hasBaseText&&!(label&&text.indexOf(label)>=0))return null;
+    return result(adapter,base,null,fromLd?'product:price:amount + Product.offers[KRW]':'product:price:amount + product_price',null,{priceConfidence:'medium',optionDependent:false});
+  }
   function productOfferRule(adapter,guard){
     var ps=products();if(ps.length!==1)return null;var p=ps[0],os=productOffers(p);if(guard&&!guard(p,os))return null;
     var live=liveOfferPrices(os,true);if(!live.length)return null;var lo=Math.min.apply(null,live),hi=Math.max.apply(null,live);
@@ -396,15 +441,21 @@ const String productExtractJs = r'''
     }
 
     var metaSaleSites={
-      'mixxo.com':['mixxo','구매하기'],'leekorea.co.kr':['lee','바로 구매하기'],
+      'mixxo.com':['mixxo','구매하기'],
       'noirer.com':['noirer','BUY NOW'],'liphop.com':['liphop','BUY IT NOW'],
-      'marithe-official.com':['marithe','장바구니 담기'],'vivastudio.co.kr':['vivastudio',null],
+      'marithe-official.com':['marithe','장바구니 담기'],
       'amomento.co':['amomento','Add To Bag'],'anderssonbell.com':['anderssonbell','ADD TO BAG'],
       'yaleapparel.co.kr':['yale','구매하기'],'withyoon.com':['withyoon','Buy It Now'],
       '66girls.co.kr':['66girls','바로 구매하기'],'partimento.com':['partimento','Add to Cart'],
       'frombeginning.co.kr':['frombeginning','바로구매']
     };
     for(var metaDomain in metaSaleSites)if(hostIs(metaDomain))return cafe24MetaSale(metaSaleSites[metaDomain][0],metaSaleSites[metaDomain][1]);
+    // 회원가 몰: 정가(list) 채택
+    var metaListSites={
+      'leekorea.co.kr':['lee','바로 구매하기'],
+      'vivastudio.co.kr':['vivastudio',null]
+    };
+    for(var listDomain in metaListSites)if(hostIs(listDomain))return cafe24MetaList(metaListSites[listDomain][0],metaListSites[listDomain][1]);
     if(hostIs('dailyjou.com'))return cafe24Offer('dailyjou','high',false);
     if(hostIs('hotping.co.kr')){
       var hpid=metaOne('product:retailer_item_id'),hcur=metaOne('product:sale_price:currency'),hmeta=toPrice(metaOne('product:sale_price:amount')),hps=products();
@@ -419,7 +470,8 @@ const String productExtractJs = r'''
       var psF=products();if(psF.length!==1)return null;var osF=productOffers(psF[0]),liveF=osF.filter(function(o){return o.availability==='InStock';}),pricesF=liveOfferPrices(osF,false);
       if(!liveF.length||pricesF.length!==1||liveF.length!==liveF.filter(function(o){return toPrice(o.price)&&(!o.priceCurrency||o.priceCurrency==='KRW');}).length)return null;
       regular=pricesF[0];if(scriptPrice('product_price',raw)!==regular)return null;sale=scriptPrice('product_sale_price',raw)||regular;
-      return sale<=regular?result('filluminate',sale,regular,'product_sale_price || product_price','product_price',{optionDependent:false}):null;
+      // 회원 sale 대신 정가(product_price / LD offers)
+      return sale<=regular?result('filluminate',regular,null,'product_price + Product.offers.price',null,{optionDependent:false}):null;
     }
 
     if(hostIs('urbanstoff.com')){
@@ -427,7 +479,8 @@ const String productExtractJs = r'''
       var statesU=uniqueRows(osU.map(function(o){return o.availability;})),explicit=statesU.indexOf('InStock')>=0&&statesU.every(function(x){return x==='InStock'||x==='OutOfStock';});
       if(!explicit&&!(liveSelectOptions().length&&pageText().indexOf('ADD TO CART')>=0&&pageText().indexOf('품절')<0))return null;
       var sr=scriptPrice('product_price',raw);if(sr&&sr!==regular)return null;sale=scriptPrice('product_sale_price',raw)||toPrice((Array.from(document.querySelectorAll('tr')).find(function(r){var c=r.querySelectorAll(':scope > th, :scope > td');return c.length>1&&c[0].textContent.trim()==='판매가';})||{}).textContent);
-      return sale&&sale<=regular?result('urbanstoff',sale,regular,'product_sale_price/displayed automatic discount','Product.offers.price',{optionDependent:false}):null;
+      // 회원 자동할인 대신 정가(LD/product_price)
+      return sale&&sale<=regular?result('urbanstoff',regular,null,'Product.offers.price + product_price',null,{optionDependent:false}):null;
     }
 
     if(hostIs('not4u.kr')){
@@ -446,7 +499,8 @@ const String productExtractJs = r'''
     if(hostIs('fabregat.kr')){
       if(!liveSelectOptions().length)return null;var pf=products();if(pf.length!==1)return null;var af=uniqueRows(productOffers(pf[0]).map(function(o){return (!o.priceCurrency||o.priceCurrency==='KRW')?toPrice(o.price):null;}).filter(Boolean));if(af.length!==1)return null;regular=af[0];sale=scriptPrice('product_sale_price',raw);
       if(!sale){var el=document.querySelector('#span_product_price_sale');sale=el?toPrice(el.textContent):null;}var rr=scriptPrice('product_price',raw);if(rr&&rr!==regular)return null;
-      return sale&&sale<=regular?result('fabregat',sale,regular,'product_sale_price/displayed automatic sale','Product.offers.price',{priceConfidence:'medium',optionDependent:false}):null;
+      // 회원 자동할인 대신 정가(LD/product_price)
+      return sale&&sale<=regular?result('fabregat',regular,null,'Product.offers.price + product_price',null,{priceConfidence:'medium',optionDependent:false}):null;
     }
 
     if(hostIs('uniqlo.com')){

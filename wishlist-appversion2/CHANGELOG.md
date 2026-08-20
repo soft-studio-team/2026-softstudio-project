@@ -1,5 +1,17 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-20 - 회원가 몰 정가 채택 + W컨셉 카탈로그
+
+🌟 **쉬운 설명**
+- 리·필루미네이트·어반스터프·파브레가·비바스튜디오는 회원가 대신 정가로 읽도록 바꿨고, 탭에서 모두 맞았습니다. W컨셉 1번은 예전 할인가가 남아 있어 현재 판매가로 고쳤습니다.
+
+🔧 **기술 설명**
+- `cafe24MetaList`: `product:price:amount` / `product_price`를 채택. 리·비바는 metaSale → metaList.
+- 필루미네이트·어반스터프·파브레가: 결과 price를 sale→regular로 변경. Tab MATCH 3×5.
+- W컨셉 #1 live 29120→39000(현재 `SalePrice`). Tab MATCH 3.
+
+---
+
 ## 2026-08-20 - 4910 WebView 가격 (NEXT_DATA vs innerText)
 
 🌟 **쉬운 설명**

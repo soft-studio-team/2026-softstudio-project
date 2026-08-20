@@ -92,7 +92,7 @@ const liveCompareMalls = <LiveCompareMall>[
       "https://www.wconcept.co.kr/Product/308678703",
       live: LiveCompareExpected(
         name: "멀티 유즈 슬리브리스 탑 브라운 OU2006",
-        price: 29120,
+        price: 39000,
         image:
             "https://product-image.wconcept.co.kr/productimg/image/img9/03/308678703_UI25679.jpg",
         brand: "ouie",

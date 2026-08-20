@@ -14,9 +14,9 @@ FLUTTER = r"C:\Dev\0.sdk\flutter\bin\flutter.bat"
 APP_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\flutter_app")
 LOG_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\audit-logs")
 
-# Live price fixes: 4910 retry after Hi MATCH 3
+# W컨셉 #1 카탈로그 정가/판매가 갱신 재검증
 MALLS = [
-    "4910",
+    "W컨셉",
 ]
 
 COOLDOWN_SEC = 12
