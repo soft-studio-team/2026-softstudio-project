@@ -129,13 +129,19 @@ void main() {
     );
     expect(
       productExtractJs,
-      contains('no.every(function(o){return !o.availability;})'),
+      contains("return cafe24MetaList('not4u','구매하기')"),
     );
     expect(
       productExtractJs,
-      contains("scriptPrice('product_price',raw)===sale"),
+      contains("return cafe24MetaList('insilence','구매하기')"),
     );
     expect(productExtractJs, contains("'mixxo.com':['mixxo','구매하기']"));
+    expect(productExtractJs, contains("'dailyjou.com':['dailyjou','구매하기']"));
+    expect(productExtractJs, contains("'covernat.co.kr':['covernat','CART']"));
+    expect(
+      productExtractJs,
+      contains("'code-graphy.com':['codegraphy','구매하기']"),
+    );
     expect(productExtractJs, contains("return result('hotping',hlo,null"));
     expect(
       productExtractJs,

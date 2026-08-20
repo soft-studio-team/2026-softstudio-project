@@ -458,10 +458,12 @@ const String productExtractJs = r'''
       'vivastudio.co.kr':['vivastudio',null],
       'frombeginning.co.kr':['frombeginning','바로구매'],
       'mixxo.com':['mixxo','구매하기'],
-      'liphop.com':['liphop','BUY IT NOW']
+      'liphop.com':['liphop','BUY IT NOW'],
+      'dailyjou.com':['dailyjou','구매하기'],
+      'covernat.co.kr':['covernat','CART'],
+      'code-graphy.com':['codegraphy','구매하기']
     };
     for(var listDomain in metaListSites)if(hostIs(listDomain))return cafe24MetaList(metaListSites[listDomain][0],metaListSites[listDomain][1]);
-    if(hostIs('dailyjou.com'))return cafe24Offer('dailyjou','high',false);
     if(hostIs('hotping.co.kr')){
       var hpid=metaOne('product:retailer_item_id'),hcur=metaOne('product:sale_price:currency'),hmeta=toPrice(metaOne('product:sale_price:amount')),hps=products();
       if(!/^\d+$/.test(hpid||'')||hcur!=='KRW'||!hmeta||hps.length!==1||!firstStr(hps[0].name))return null;
@@ -489,16 +491,13 @@ const String productExtractJs = r'''
     }
 
     if(hostIs('not4u.kr')){
-      var h=document.querySelector('h1,h2'),title=h?(h.textContent||'').trim():'';if(!title||/테스트|이벤트/.test(title)||!liveSelectOptions().length)return null;
-      function labelled(label){var vals=[];document.querySelectorAll('tr').forEach(function(r){var c=r.querySelectorAll(':scope > th, :scope > td');if(c.length>1&&c[0].textContent.trim()===label){var m=/([\d,]+)\s*원/.exec(c[1].textContent);if(m)vals.push(toPrice(m[1]));}});vals=uniqueRows(vals.filter(Boolean));return vals.length===1?vals[0]:null;}
-      regular=labelled('소비자가');sale=labelled('판매가');var po=products();if(po.length!==1)return null;var no=productOffers(po[0]),lp=liveOfferPrices(no,false),nt=pageText();
-      if(!lp.length&&no.length&&no.every(function(o){return !o.availability;})&&nt.indexOf('구매하기')>=0){lp=uniqueRows(no.map(function(o){return (!o.priceCurrency||o.priceCurrency==='KRW')?toPrice(o.price):null;}).filter(Boolean));}
-      return regular&&sale&&regular>=sale&&lp.length===1&&lp[0]===sale&&scriptPrice('product_price',raw)===sale?result('not4u',sale,regular,'판매가 + product_price + Product.offers.price','소비자가',{priceConfidence:'medium',optionDependent:false}):null;
+      var h=document.querySelector('h1,h2'),title=h?(h.textContent||'').trim():'';if(title&&/테스트|이벤트/.test(title))return null;
+      return cafe24MetaList('not4u','구매하기');
     }
 
     if(hostIs('insilence.co.kr')){
-      var pi=products();if(pi.length!==1||!firstStr(pi[0].name)||firstStr(pi[0].name).indexOf('¥')>=0||!liveSelectOptions().length)return null;var li=liveOfferPrices(productOffers(pi[0]),false);if(li.length!==1||scriptPrice('product_price',raw)!==li[0])return null;
-      return result('insilence',li[0],null,'product_price + Product.offers.price',null,{optionDependent:false});
+      var pi=products();if(pi.length===1&&firstStr(pi[0].name)&&firstStr(pi[0].name).indexOf('¥')>=0)return null;
+      return cafe24MetaList('insilence','구매하기');
     }
 
     if(hostIs('fabregat.kr')){
@@ -554,7 +553,7 @@ const String productExtractJs = r'''
       return vt&&vc==='KRW'&&sale&&(!regular||regular>=sale)&&sizes.length&&vtext.indexOf(vt)>=0&&vtext.indexOf(Number(sale).toLocaleString('en-US')+' 원')>=0&&vtext.indexOf('장바구니에 담기')>=0&&vtext.indexOf('바로구매')>=0?result('vans',sale,vs&&regular!==sale?regular:null,vs?'meta[recopick:sale_price]':'meta[recopick:price]','meta[recopick:price]',{priceConfidence:'medium',optionDependent:false}):null;
     }
 
-    var verifiedCafe={'covernat.co.kr':['covernat','CART'],'code-graphy.com':['codegraphy','구매하기'],'whoau.com':['whoau','구매하기']};
+    var verifiedCafe={'whoau.com':['whoau','구매하기']};
     for(var cafeDomain in verifiedCafe)if(hostIs(cafeDomain)){
       var cfg=verifiedCafe[cafeDomain],cid=metaOne('product:retailer_item_id'),cc=metaOne('product:sale_price:currency'),cms=toPrice(metaOne('product:sale_price:amount'));if(!/^\d+$/.test(cid||'')||cc!=='KRW'||!cms)return null;
       var cps=products(),csets=[],cnames=[];cps.forEach(function(p){var n=firstStr(p.name);if(n)cnames.push(n);var lp=liveOfferPrices(productOffers(p),false);if(lp.length)csets.push(lp.sort(function(a,b){return a-b;}));});csets=uniqueRows(csets);cnames=uniqueRows(cnames);
@@ -758,6 +757,10 @@ const String productExtractJs = r'''
   if(hostIs('hotping.co.kr')||hostIs('withyoon.com')){
     // og/JSON-LD 이름에 HTML 마크업이 그대로 들어오는 경우가 있어 name 불일치가 발생한다.
     name=stripHtmlName(name);
+  }
+  if(hostIs('hotping.co.kr') && ld && ld.name){
+    var hotName=stripHtmlName(ld.name);
+    if(hotName) name=hotName;
   }
 
   // URL만으로 확정할 수 있는 구조화된 기본 판매가를 우선한다. 화면의 쿠폰

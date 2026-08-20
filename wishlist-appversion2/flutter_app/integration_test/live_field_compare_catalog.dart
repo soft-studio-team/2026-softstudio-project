@@ -519,12 +519,12 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
     LiveCompareProduct(
-      "https://insilence.co.kr/product/detail.html?product_no=7680",
+      "https://insilence.co.kr/product/detail.html?product_no=7400",
       live: LiveCompareExpected(
-        name: "¥¥¥¥*",
+        name: "와플 크루넥 롱슬리브 MELANGE GREY",
         price: 49000,
         image:
-            "https://insilence.co.kr/web/product/big/202606/cd704dd88dcbc5389bdd6426647ed7bc.jpg",
+            "https://insilence.co.kr/web/product/big/202608/903f9f151097e13333f517b6ee693454.jpg",
       ),
     ),
     LiveCompareProduct(
@@ -533,7 +533,7 @@ const liveCompareMalls = <LiveCompareMall>[
         name: "엔지니어핏 데님 팬츠 RINSED INDIGO",
         price: 149000,
         image:
-            "https://insilence.co.kr/web/product/big/202605/353d6a80825ba133beac3005925347cc.jpg",
+            "https://insilence.co.kr/web/product/big/202608/9e07ab598aac3edecdde96e5348916c2.jpg",
       ),
     ),
   ]),
@@ -828,12 +828,12 @@ const liveCompareMalls = <LiveCompareMall>[
   ]),
   LiveCompareMall("커버낫", [
     LiveCompareProduct(
-      "https://covernat.co.kr/product/detail.html?product_no=8321",
+      "https://covernat.co.kr/product/detail.html?product_no=8300",
       live: LiveCompareExpected(
-        name: "패스포트 티셔츠 화이트",
+        name: "우먼 스몰 클로버하트 티셔츠 Lime",
         price: 29000,
         image:
-            "https://covernat.co.kr/web/product/big/202407/f2a03bcb0b5292af8cb08f575687e1c8.jpg",
+            "https://covernat.co.kr/web/product/big/202503/ddafdfdcb5f89b8d6cacf141a35d77c2.jpg",
       ),
     ),
     LiveCompareProduct(
