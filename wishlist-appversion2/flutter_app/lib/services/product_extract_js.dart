@@ -336,12 +336,13 @@ const String productExtractJs = r'''
     var scriptP=scriptPrice('product_price',document.documentElement?document.documentElement.innerHTML:'');
     if(scriptP!=null&&scriptP!==base)return null;
     var fromLd=false;
+    var shownOrCustomHasBase=(shown.indexOf(base)>=0)||(custom.indexOf(base)>=0);
     if(sets.length===1){
       if(sets[0].includes(base)){
         if(sets[0].length>2)return null;
         fromLd=true;
-      }else if(scriptP===base){
-        // LD가 옵션가 등 다른 값만 있어도 Cafe24 정가는 product_price / meta price
+      }else if(scriptP===base||shownOrCustomHasBase){
+        // LD가 옵션가(하프/롱 등)만 있어도 meta/화면 정가로 확정
         if(sets[0].length>2)return null;
       }else return null;
     }else if(!sets.length){
