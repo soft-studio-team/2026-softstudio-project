@@ -629,30 +629,30 @@ const liveCompareMalls = <LiveCompareMall>[
   ]),
   LiveCompareMall("SSG", [
     LiveCompareProduct(
-      "https://www.ssg.com/item/dealItemView.ssg?itemId=1000625754372&siteNo=7009&salestrNo=2551",
+      "https://www.ssg.com/item/dealItemView.ssg?itemId=1000641326300&siteNo=7009&salestrNo=2551",
       live: LiveCompareExpected(
-        name: "(~50%) 한우 등심/국거리 등",
-        price: 29835,
+        name: "(~50%) 한우 구이,국거리,불고기 등",
+        price: 10890,
         image:
-            "https://sitem.ssgcdn.com/72/43/75/item/1000625754372_i1_250.jpg",
+            "https://sitem.ssgcdn.com/00/63/32/item/1000641326300_i1_250.jpg",
       ),
     ),
     LiveCompareProduct(
-      "https://www.ssg.com/item/dealItemView.ssg?itemId=1000870953111&siteNo=6001&salestrNo=2037",
+      "https://www.ssg.com/item/dealItemView.ssg?itemId=1000534782697&siteNo=6001&salestrNo=2037",
       live: LiveCompareExpected(
-        name: "토종닭/볶음탕용~30%",
-        price: 15980,
+        name: "26년 가을 서해 햇꽃게 ~45%할인",
+        price: 35880,
         image:
-            "https://sitem.ssgcdn.com/11/31/95/item/1000870953111_i1_250.jpg",
+            "https://sitem.ssgcdn.com/97/26/78/item/1000534782697_i1_250.jpg",
       ),
     ),
     LiveCompareProduct(
-      "https://www.ssg.com/item/dealItemView.ssg?itemId=1000021236556&siteNo=6001&salestrNo=2037&advertBidId=1020473523&advertExtensTeryDivCd=10",
+      "https://www.ssg.com/item/dealItemView.ssg?itemId=1000860886017&siteNo=6001&salestrNo=2037",
       live: LiveCompareExpected(
-        name: "청정원x종가 역대급 할인릴레이",
-        price: 5280,
+        name: "메가파인트/파인트/멀티바 (상품상세 배너클릭/응모필수)",
+        price: 22900,
         image:
-            "https://sitem.ssgcdn.com/56/65/23/item/1000021236556_i1_250.jpg",
+            "https://sitem.ssgcdn.com/17/60/88/item/1000860886017_i1_250.jpg",
       ),
     ),
   ]),
@@ -684,7 +684,7 @@ const liveCompareMalls = <LiveCompareMall>[
   ]),
   LiveCompareMall("에이블리", [
     LiveCompareProduct(
-      "https://m.a-bly.com/goods/75432976",
+      "https://mobile.a-bly.com/goods/75432976",
       live: LiveCompareExpected(
         name: "[하이넥/간절기필수🍂] 톤텔 루즈 사선 지퍼 후드집업",
         price: 26500,
@@ -693,7 +693,7 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
     LiveCompareProduct(
-      "https://m.a-bly.com/goods/75506878",
+      "https://mobile.a-bly.com/goods/75506878",
       live: LiveCompareExpected(
         name: "[여리코어🪡] made 소피 여리 펀칭 니트 - 4color",
         price: 23270,
@@ -702,10 +702,10 @@ const liveCompareMalls = <LiveCompareMall>[
       ),
     ),
     LiveCompareProduct(
-      "https://m.a-bly.com/goods/28244036",
+      "https://mobile.a-bly.com/goods/28244036",
       live: LiveCompareExpected(
         name: "🏆1위🏆 스킨 레이어 핏 파운데이션",
-        price: 24450,
+        price: 20000,
         image:
             "https://imgb.a-bly.com/data/goods/f7995d70c943e5ca270f9f07ca8d10e2.gif",
       ),

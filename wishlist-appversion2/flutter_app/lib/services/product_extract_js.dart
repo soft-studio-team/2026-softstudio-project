@@ -516,7 +516,39 @@ const String productExtractJs = r'''
     }
 
     if(hostIs('ssg.com')){
-      var reSsg=/var\s+resultItemObj\s*=\s*\{([\s\S]{0,18000}?)\}\s*;/g,ms,textS=pageText();while((ms=reSsg.exec(raw))){var f=ms[1];function fv(re){var z=re.exec(f);return z&&z[1];}var id=fv(/itemId\s*:\s*'([^']+)'/),reg=toPrice(fv(/sellprc\s*:\s*'(\d+)'/)),buy=toPrice(fv(/bestAmt\s*:\s*parseInt\('(\d+)'/)),pre=toPrice(fv(/preCpnDcPrc\s*:\s*'(\d+)'/));if(/^\d+$/.test(id||'')&&fv(/sellStatCd\s*:\s*'([^']+)'/)==='20'&&fv(/soldOut\s*:\s*'([^']+)'/)==='N'&&fv(/soldOutPass\s*:\s*'([^']+)'/)==='N'&&fv(/uitemSamePrcYn\s*:\s*'([^']+)'/)==='Y'&&fv(/cpnYn\s*:\s*'([^']+)'/)==='N'&&buy===pre&&(!reg||reg>=buy)&&textS.indexOf('최적가')>=0&&textS.indexOf(Number(buy).toLocaleString('en-US'))>=0)rows.push([buy,reg===buy?null:reg]);}rows=uniqueRows(rows);return rows.length===1?result('ssg',rows[0][0],rows[0][1],'resultItemObj.bestAmt','resultItemObj.sellprc',{optionDependent:false}):null;
+      // deal 페이지 resultItemObj는 bestAmt:'N' 문자열·상태필드 생략.
+      // itemView는 bestAmt:parseInt('N') + sellStat/cpnYn 등. 비탐욕 정규식은 script_timeout.
+      var textS=pageText();
+      if(textS.indexOf('행사 기간이 아닙니다')>=0)return null;
+      var rowsS=[], from=0, marker='resultItemObj';
+      function ssgBlob(at){
+        var open=raw.indexOf('{', at); if(open<0)return null;
+        var depth=0;
+        for(var i=open;i<Math.min(raw.length,open+20000);i++){
+          var c=raw[i];
+          if(c==='{')depth++;
+          else if(c==='}'){ if(--depth===0)return raw.slice(open,i+1); }
+        }
+        return null;
+      }
+      while(true){
+        var at=raw.indexOf(marker, from); if(at<0)break;
+        var blob=ssgBlob(at); if(!blob){from=at+marker.length;continue;}
+        function fv(re){var z=re.exec(blob);return z&&z[1];}
+        var id=fv(/itemId\s*:\s*'([^']+)'/);
+        var buy=toPrice((/bestAmt\s*:\s*parseInt\('(\d+)'/.exec(blob)||/bestAmt\s*:\s*'(\d+)'/.exec(blob)||[])[1]);
+        var reg=toPrice(fv(/sellprc\s*:\s*'(\d+)'/));
+        var pre=toPrice(fv(/preCpnDcPrc\s*:\s*'(\d+)'/));
+        var sellStat=fv(/sellStatCd\s*:\s*'([^']+)'/);
+        if(!/^\d+$/.test(id||'')||!buy||(reg&&reg<buy)){from=at+marker.length;continue;}
+        if(textS.indexOf('최적가')<0||textS.indexOf(Number(buy).toLocaleString('en-US'))<0){from=at+marker.length;continue;}
+        if(sellStat!=null){
+          if(sellStat!=='20'||fv(/soldOut\s*:\s*'([^']+)'/)!=='N'||fv(/soldOutPass\s*:\s*'([^']+)'/)!=='N'||fv(/uitemSamePrcYn\s*:\s*'([^']+)'/)!=='Y'||fv(/cpnYn\s*:\s*'([^']+)'/)!=='N'||(pre!=null&&buy!==pre)){from=at+marker.length;continue;}
+        }
+        rowsS.push([buy,reg&&reg>buy?reg:null]);
+        from=at+marker.length;
+      }
+      rowsS=uniqueRows(rowsS);return rowsS.length===1?result('ssg',rowsS[0][0],rowsS[0][1],'resultItemObj.bestAmt','resultItemObj.sellprc',{optionDependent:false}):null;
     }
 
     if(hostIs('hi.thehyundai.com')){

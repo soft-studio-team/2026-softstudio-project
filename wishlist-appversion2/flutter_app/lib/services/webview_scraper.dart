@@ -198,7 +198,11 @@ class WebViewExtractLoop {
 
   void onHistoryUpdate(String? url) {
     if (isAboutBlankUrl(url)) return;
-    lastNavigationAt = clock.now();
+    // pushState만 반복하는 SPA(에이블리 등)가 settle을 영원히 미루지 않게,
+    // 실제 문서 로딩 중일 때만 안정화 타이머를 갱신한다.
+    if (loading) {
+      lastNavigationAt = clock.now();
+    }
   }
 
   void onNetworkError() {
@@ -426,6 +430,19 @@ String? extractHost(String url) {
   return host;
 }
 
+/// `m.a-bly.com` / `mobile.a-bly.com`처럼 같은 등록 도메인의 형제 서브도메인을
+/// 동일 사이트로 본다. `co.kr` 등 2단 TLD는 마지막 3라벨을 쓴다.
+String? registrableDomain(String? host) {
+  if (host == null || host.isEmpty) return null;
+  final parts = host.toLowerCase().split('.');
+  if (parts.length < 2) return host.toLowerCase();
+  const multi = {'co', 'or', 'ne', 'ac', 'go', 'com', 'net', 'org'};
+  if (parts.length >= 3 && multi.contains(parts[parts.length - 2])) {
+    return parts.sublist(parts.length - 3).join('.');
+  }
+  return parts.sublist(parts.length - 2).join('.');
+}
+
 bool isSameExtractSite(String requestUrl, String? candidateUrl) {
   if (candidateUrl == null || candidateUrl.isEmpty) return false;
   if (isAboutBlankUrl(candidateUrl)) return false;
@@ -433,8 +450,15 @@ bool isSameExtractSite(String requestUrl, String? candidateUrl) {
   final candidateHost = extractHost(candidateUrl);
   if (requestHost == null || candidateHost == null) return false;
   if (requestHost == candidateHost) return true;
-  return requestHost.endsWith('.$candidateHost') ||
-      candidateHost.endsWith('.$requestHost');
+  if (requestHost.endsWith('.$candidateHost') ||
+      candidateHost.endsWith('.$requestHost')) {
+    return true;
+  }
+  final requestRoot = registrableDomain(requestHost);
+  final candidateRoot = registrableDomain(candidateHost);
+  return requestRoot != null &&
+      candidateRoot != null &&
+      requestRoot == candidateRoot;
 }
 
 bool isForeignExtractResult(String requestUrl, String? finalUrl) {

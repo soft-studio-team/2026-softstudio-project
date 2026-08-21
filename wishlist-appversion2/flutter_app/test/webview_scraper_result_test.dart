@@ -452,6 +452,13 @@ void main() {
     );
     expect(
       isSameExtractSite(
+        'https://m.a-bly.com/goods/1',
+        'https://mobile.a-bly.com/goods/1',
+      ),
+      isTrue,
+    );
+    expect(
+      isSameExtractSite(
         'https://www.brandi.co.kr/products/1',
         'https://web.queenit.kr/product/1',
       ),

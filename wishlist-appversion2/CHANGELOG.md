@@ -1,5 +1,17 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-21 - 에이블리·SSG 보류 해소 (Tab MATCH 3)
+
+🌟 **쉬운 설명**
+- 보류했던 에이블리·SSG를 탭에서 각각 3개 상품 모두 맞췄습니다. 에이블리는 모바일 주소와 형제 서브도메인·SPA 안정화를 고쳤고, SSG는 만료된 딜 대신 살아 있는 딜 페이지의 새 가격 형식을 읽습니다.
+
+🔧 **기술 설명**
+- 에이블리: `m`→`mobile` 형제 서브도메인을 same-site로 인정(`registrableDomain`). SPA `onHistoryUpdate`가 settle을 막지 않음. 카탈로그 `mobile.a-bly.com`, #3 live 20000.
+- SSG: `resultItemObj` 비탐욕 정규식 제거(script_timeout). deal `bestAmt:'N'` + itemView `parseInt` 모두 허용. 활성 deal 3개로 카탈로그 교체. itemView는 Tab에서 `access_blocked` 유지(우회 없음).
+- Tab S7 MATCH 3×2.
+
+---
+
 ## 2026-08-21 - 지그재그·롯데온 Tab MATCH 3 (카탈로그 정합)
 
 🌟 **쉬운 설명**

@@ -21,7 +21,7 @@ Tab S7(`R54RB01SMVB`)은 **나만** 돌린다. 팀원은 Tab/adb/`run_tab_s7_com
 
 ### 나 — SPA / 대형 + 전체 Tab
 브랜치(패치용): `fix/price-owner-spa`  
-몰(패치): **올리브영, 롯데온, 지그재그, KREAM, Aritzia, 11번가(IMAGE), 이랜드몰(IMAGE)**  
+몰(패치): **올리브영, 롯데온, 지그재그, KREAM, Aritzia, 11번가(IMAGE), 이랜드몰(IMAGE), 에이블리, SSG**  
 추가 의무: 팀원 브랜치까지 pull 해서 Tab MATCH 확인
 
 ## 이미 끝난 것 (둘 다 건드리지 말 것)
@@ -31,7 +31,7 @@ Tab S7(`R54RB01SMVB`)은 **나만** 돌린다. 팀원은 Tab/adb/`run_tab_s7_com
 - 정가(`product:price` / `product_price`) 우선. 회원가로 카탈로그 낮추지 말 것.
 - `product_extract_js.dart`는 **자기 담당 몰 hostIs 블록만** 수정.
 - `tools/_*.py`, bulk `audit-logs/` 커밋 금지.
-- 에이블리·SSG 보류.
+- 에이블리·SSG Tab MATCH 3 완료 (itemView 차단 시 deal 경로 사용).
 
 ## 협업 흐름
 1. 팀원이 패치 push → PR #28에 `Tab 검증 요청: [몰] / 브랜치 / 예상 정가`
@@ -102,7 +102,7 @@ Draft PR: https://github.com/soft-studio-team/2026-softstudio-project/pull/28
 정책:
 - 정가/조건 없는 판매가 우선. 쿠폰·회원·첫구매가로 맞추지 말 것.
 - 팀원 몰(코드그라피·커버낫·데일리쥬·낫포유·인사일런스·핫핑) 엔진은 팀원 요청 없이 임의로 크게 바꾸지 말 것(Tab만 하거나, 명확한 핫픽스만).
-- 에이블리·SSG 보류. hang 시 adb kill/start + force-stop.
+- 에이블리·SSG MATCH 3 완료. hang 시 adb kill/start + force-stop.
 
 응답은 한국어.
 ```

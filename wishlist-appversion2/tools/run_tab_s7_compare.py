@@ -15,8 +15,8 @@ APP_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2
 LOG_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\audit-logs")
 
 MALLS = [
-    "올리브영",
-    "Aritzia",
+    "에이블리",
+    "SSG",
 ]
 
 COOLDOWN_SEC = 12
