@@ -114,7 +114,14 @@ class OnDeviceExtract {
   static OnDeviceExtract? fromRaw(dynamic raw) {
     if (raw == null) return null;
     try {
-      final decoded = raw is String ? jsonDecode(raw) : raw;
+      var decoded = raw;
+      // iOS WKWebView (especially on device) may wrap JSON.stringify output
+      // in an extra quoted string. Unwrap at most twice.
+      for (var i = 0; i < 2 && decoded is String; i++) {
+        final text = decoded.trim();
+        if (text.isEmpty || text == 'null') return null;
+        decoded = jsonDecode(text);
+      }
       if (decoded is! Map) return null;
       final map = decoded.cast<String, dynamic>();
       return OnDeviceExtract(
@@ -490,12 +497,30 @@ class WebViewScraper {
 
   static const String desktopUa = _desktopUa;
 
+  /// Real iPhones send this more honestly than a desktop Chrome UA inside
+  /// WKWebView. Simulator often loads desktop pages anyway; devices block them.
+  static const String iosSafariUa =
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) '
+      'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 '
+      'Mobile/15E148 Safari/604.1';
+
+  static String userAgentForHost(String host) {
+    final h = host.toLowerCase();
+    final isAbly = h == 'a-bly.com' || h.endsWith('.a-bly.com');
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return iosSafariUa;
+    }
+    return isAbly ? mobileUa : desktopUa;
+  }
+
   static final InAppWebViewSettings extractSettings = InAppWebViewSettings(
-    userAgent: _desktopUa,
+    userAgent: defaultTargetPlatform == TargetPlatform.iOS
+        ? iosSafariUa
+        : _desktopUa,
     javaScriptEnabled: true,
     clearCache: false,
     mediaPlaybackRequiresUserGesture: true,
-    transparentBackground: true,
+    transparentBackground: false,
     useHybridComposition: true,
   );
 
@@ -517,21 +542,20 @@ class WebViewScraper {
     final effectiveMaxWait = requestHost.endsWith('anderssonbell.com')
         ? const Duration(seconds: 20)
         : (requestHost == 'a-bly.com' || requestHost.endsWith('.a-bly.com')
-            ? const Duration(seconds: 28)
-            : (requestHost == '4910.kr' || requestHost.endsWith('.4910.kr')
-                ? const Duration(seconds: 20)
-                : maxWait));
+              ? const Duration(seconds: 28)
+              : (requestHost == '4910.kr' || requestHost.endsWith('.4910.kr')
+                    ? const Duration(seconds: 20)
+                    : maxWait));
 
     final host = WebViewExtractHost.maybeInstance;
     if (host != null) {
-      return host.extract(url,
-          maxWait: effectiveMaxWait, clock: _clock);
+      return host.extract(url, maxWait: effectiveMaxWait, clock: _clock);
     }
 
     InAppWebViewController? controller;
     HeadlessInAppWebView? headless;
-    final firstLoadTimeout = requestHost == 'a-bly.com' ||
-            requestHost.endsWith('.a-bly.com')
+    final firstLoadTimeout =
+        requestHost == 'a-bly.com' || requestHost.endsWith('.a-bly.com')
         ? const Duration(seconds: 40)
         : const Duration(seconds: 15);
     final loop = WebViewExtractLoop(

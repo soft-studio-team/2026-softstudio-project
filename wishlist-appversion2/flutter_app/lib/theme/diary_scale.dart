@@ -40,24 +40,27 @@ class DiaryScale {
     return LayoutBuilder(
       builder: (context, constraints) {
         final mq = MediaQuery.of(context);
-        final maxW = constraints.maxWidth.isFinite
+        final maxW = constraints.maxWidth.isFinite && constraints.maxWidth > 0
             ? constraints.maxWidth
             : mq.size.width;
-        final maxH = constraints.maxHeight.isFinite
+        final maxH = constraints.maxHeight.isFinite && constraints.maxHeight > 0
             ? constraints.maxHeight
             : mq.size.height;
-        if (maxW <= 0 || maxH <= 0) return child;
+        // Keep MediaQuery in the tree even when a frame briefly reports 0.
+        // Dropping it while a modal still depends on it hits
+        // `_dependents.isEmpty` (살까말까 공유 시트 + 키보드).
+        final safeW = maxW > 0 ? maxW : designWidth;
+        final safeH = maxH > 0 ? maxH : 1.0;
 
-        final factor = factorForWidth(maxW);
-        final virtualHeight = maxH / factor;
-        final userScale =
-            mq.textScaler.scale(1).clamp(1.0, maxUserTextScale);
+        final factor = factorForWidth(safeW);
+        final virtualHeight = safeH / factor;
+        final userScale = mq.textScaler.scale(1).clamp(1.0, maxUserTextScale);
 
         return Align(
           alignment: Alignment.topCenter,
           child: SizedBox(
             width: designWidth * factor,
-            height: maxH,
+            height: safeH,
             child: FittedBox(
               fit: BoxFit.fitWidth,
               alignment: Alignment.topCenter,
@@ -70,8 +73,10 @@ class DiaryScale {
                     padding: scaleInsets(mq.padding, factor),
                     viewPadding: scaleInsets(mq.viewPadding, factor),
                     viewInsets: scaleInsets(mq.viewInsets, factor),
-                    systemGestureInsets:
-                        scaleInsets(mq.systemGestureInsets, factor),
+                    systemGestureInsets: scaleInsets(
+                      mq.systemGestureInsets,
+                      factor,
+                    ),
                     textScaler: TextScaler.linear(userScale),
                   ),
                   child: child,
