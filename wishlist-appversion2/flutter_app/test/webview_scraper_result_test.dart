@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -92,6 +93,34 @@ void main() {
     expect(result, isNotNull);
     expect(result!.failureReason, ExtractFailureReason.accessBlocked);
     expect(result.blocked, isTrue);
+  });
+
+  test('iOS evaluateJavascript가 JSON을 한 겹 더 감싸도 읽는다', () {
+    final inner = jsonEncode({'name': '상품', 'price': 12900, 'blocked': false});
+    final result = OnDeviceExtract.fromRaw(jsonEncode(inner));
+    expect(result, isNotNull);
+    expect(result!.name, '상품');
+    expect(result.price, 12900);
+  });
+
+  test('iOS extract UA is Safari, Android Ably stays mobile Chrome', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    expect(
+      WebViewScraper.userAgentForHost('www.musinsa.com'),
+      contains('iPhone'),
+    );
+    expect(WebViewScraper.userAgentForHost('m.a-bly.com'), contains('iPhone'));
+
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    expect(
+      WebViewScraper.userAgentForHost('m.a-bly.com'),
+      WebViewScraper.mobileUa,
+    );
+    expect(
+      WebViewScraper.userAgentForHost('www.musinsa.com'),
+      WebViewScraper.desktopUa,
+    );
   });
 
   test('리다이렉트와 SPA 주소 변경이 멈춘 뒤에만 추출한다', () async {
@@ -464,7 +493,10 @@ void main() {
       ),
       isFalse,
     );
-    expect(isForeignExtractResult('https://x.example/p', 'about:blank'), isTrue);
+    expect(
+      isForeignExtractResult('https://x.example/p', 'about:blank'),
+      isTrue,
+    );
     expect(isForeignExtractResult('https://x.example/p', null), isFalse);
   });
 
@@ -472,10 +504,7 @@ void main() {
     expect(WebViewExtractHost.maybeInstance, isNull);
     await tester.pumpWidget(
       const MaterialApp(
-        home: WebViewExtractHost(
-          mountWebView: false,
-          child: SizedBox.shrink(),
-        ),
+        home: WebViewExtractHost(mountWebView: false, child: SizedBox.shrink()),
       ),
     );
     expect(WebViewExtractHost.maybeInstance, isNotNull);
