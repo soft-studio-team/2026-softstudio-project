@@ -1,5 +1,436 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-21 - PRICE 브랜치 통합 · 몰 지원 목록
+
+🌟 **쉬운 설명**
+- 기기 소유자(SPA)와 팀원(Cafe24) 가격 패치를 안정화 브랜치에 합쳤고, 지원하는 쇼핑몰·지원하지 않는 쇼핑몰 목록을 문서로 남겼습니다.
+
+🔧 **기술 설명**
+- `fix/price-owner-spa` · `fix/price-teammate-cafe24` → `feat/webview-scraper-stabilize` 병합.
+- [`MALL_SUPPORT.md`](./MALL_SUPPORT.md): Tab MATCH 50몰 / 기권·차단 / 미인증 몰 구분.
+- ENGINE 핸드오프 상단에 2026-08-21 현황 추가.
+
+---
+
+## 2026-08-21 - 에이블리·SSG 보류 해소 (Tab MATCH 3)
+
+🌟 **쉬운 설명**
+- 보류했던 에이블리·SSG를 탭에서 각각 3개 상품 모두 맞췄습니다. 에이블리는 모바일 주소와 형제 서브도메인·SPA 안정화를 고쳤고, SSG는 만료된 딜 대신 살아 있는 딜 페이지의 새 가격 형식을 읽습니다.
+
+🔧 **기술 설명**
+- 에이블리: `m`→`mobile` 형제 서브도메인을 same-site로 인정(`registrableDomain`). SPA `onHistoryUpdate`가 settle을 막지 않음. 카탈로그 `mobile.a-bly.com`, #3 live 20000.
+- SSG: `resultItemObj` 비탐욕 정규식 제거(script_timeout). deal `bestAmt:'N'` + itemView `parseInt` 모두 허용. 활성 deal 3개로 카탈로그 교체. itemView는 Tab에서 `access_blocked` 유지(우회 없음).
+- Tab S7 MATCH 3×2.
+
+---
+
+## 2026-08-21 - 지그재그·롯데온 Tab MATCH 3 (카탈로그 정합)
+
+🌟 **쉬운 설명**
+- 지그재그는 최저가 도전(쿠폰)가가 아니라 화면 판매가로 카탈로그를 맞췄고, 롯데온과 함께 탭에서 3개씩 모두 맞았습니다.
+
+🔧 **기술 설명**
+- 지그재그 live: 15300/159000 → `display_final_price.final_price` 17000/179000 (additional/최저가도전 제외). 상품명 갱신.
+- Tab MATCH 3 × 지그재그·롯데온. 11번가·이랜드몰은 기존 Tab MATCH 3 유지.
+
+---
+
+## 2026-08-21 - 올리브영·Aritzia·KREAM Tab MATCH 3
+
+🌟 **쉬운 설명**
+- 올리브영·Aritzia·KREAM을 탭에서 각각 3개 상품 모두 맞췄습니다. 올리브영은 느린 상품도 API로 가격을 기다리고, Aritzia는 원화로 바뀐 뒤의 장바구니 버튼을 보고, KREAM은 브랜드배송 상품으로 바꿨습니다.
+
+🔧 **기술 설명**
+- 올리브영: RSC 없으면 `goods/api/v1/detail` async fetch+폴링. sitePricing 대기 중 name/image만 나오면 scraper 조기종료 → 빈 응답으로 폴링 유지. #2 SKU `A000000262781` @25900.
+- Aritzia: Global-e KRW(≥10000)만 채택. `Add to Bag` 버튼 ₩ 우선, URL `color=` 고정. maxWait 45s.
+- KREAM: 입찰 SKU → 브랜드배송 `1012767`/`1012757`/`1012784`.
+- Tab S7 MATCH 3×3. 에이블리·SSG 보류.
+
+---
+
+## 2026-08-20 - PRICE 배치: 미쏘·립합·마하그리드 정가
+
+🌟 **쉬운 설명**
+- 미쏘·립합·마하그리드도 회원가가 아니라 정가로 읽도록 바꿨고, 탭에서 3개 몰 모두 맞았습니다.
+
+🔧 **기술 설명**
+- `mixxo.com` / `liphop.com` → `cafe24MetaList`.
+- `mahagrid.com`: `product:price:amount` 채택, Offer availability 완화. #2 SKU `3852`→`3854`.
+- Tab MATCH 3×3.
+
+---
+
+## 2026-08-20 - 프롬비기닝 정가 · 나이키/CJ 카탈로그 · 이름 따옴표
+
+🌟 **쉬운 설명**
+- 프롬비기닝도 회원가 대신 정가로 읽도록 바꿨고, 나이키·CJ는 오래된 할인가 카탈로그를 고쳤습니다. 상품명 따옴표 차이만으로 틀리던 것도 맞춰 봤습니다. 탭에서 프롬비기닝·나이키는 3개 모두 맞았고, CJ는 2번 상품만 가격을 아직 못 읽습니다.
+
+🔧 **기술 설명**
+- `frombeginning.co.kr` → `cafe24MetaList`. LD가 옵션가만 있어도 `product_price` 정가 허용.
+- 나이키 live 99000/65000→189000/115000. CJ #1 live 129000→169000.
+- `normalizeProductName`: 따옴표 제거. 프롬비기닝 #3 이름·이미지 갱신.
+- Tab: 프롬비기닝·나이키·CJ온스타일 모두 MATCH 3.
+- `cjonstyle`: 장바구니만 있는 SKU 허용, Offer 복수여도 동일 KRW InStock 단가면 채택.
+
+---
+
+## 2026-08-20 - 회원가 몰 정가 채택 + W컨셉 카탈로그
+
+🌟 **쉬운 설명**
+- 리·필루미네이트·어반스터프·파브레가·비바스튜디오는 회원가 대신 정가로 읽도록 바꿨고, 탭에서 모두 맞았습니다. W컨셉 1번은 예전 할인가가 남아 있어 현재 판매가로 고쳤습니다.
+
+🔧 **기술 설명**
+- `cafe24MetaList`: `product:price:amount` / `product_price`를 채택. 리·비바는 metaSale → metaList.
+- 필루미네이트·어반스터프·파브레가: 결과 price를 sale→regular로 변경. Tab MATCH 3×5.
+- W컨셉 #1 live 29120→39000(현재 `SalePrice`). Tab MATCH 3.
+
+---
+
+## 2026-08-20 - 4910 WebView 가격 (NEXT_DATA vs innerText)
+
+🌟 **쉬운 설명**
+- 4910은 판매가가 화면 글이 아니라 페이지 데이터(__NEXT_DATA__)에만 있어서, 글만 찾으면 가격이 없다고 판단하고 있었습니다. 데이터 HTML까지 보도록 고쳤더니 탭에서 3개 모두 맞았습니다.
+
+🔧 **기술 설명**
+- `4910.kr`: 가격 존재 검증을 `pageText()`뿐 아니라 `documentElement.innerHTML`로 확장. Tab MATCH 3 (34800/47200/20800).
+
+---
+
+## 2026-08-20 - 더현대Hi 할인가 규칙 + live 가격 교정
+
+🌟 **쉬운 설명**
+- 더현대Hi는 정상가/할인가를 뒤집어 읽고 있었고, 카탈로그에도 잘못된 낮은 가격이 들어 있었습니다. 고친 뒤 탭에서 3개 모두 맞았습니다. 4910은 카탈로그 가격을 바로잡았지만 WebView에서는 아직 가격을 못 읽습니다.
+
+🔧 **기술 설명**
+- `hi.thehyundai.com`: `dcPrc`를 판매가·`sellPrc`를 정상가로 사용. `sellMdaPossYn` 누락 허용. 품절(qty=0) SKU는 카탈로그에서 `40B1406274`로 교체. Tab **MATCH ×3**.
+- `4910.kr`: 카탈로그 live를 34800/47200/20800으로 교정, sno 매칭·CTA 완화·maxWait 20s. Tab은 이름·이미지만 맞고 `price_ambiguous` 유지(NEXT_DATA 경로 WebView 미확정).
+
+---
+
+## 2026-08-20 - 앤더슨벨 카탈로그 교체 · 에이블리 로드 시도
+
+🌟 **쉬운 설명**
+- 앤더슨벨에서 홈으로 튕기던 상품을 다른 상품으로 바꿨더니 탭에서 3개 모두 맞았습니다. 에이블리는 기다림·모바일 UA를 늘려도 페이지 로드가 끝나지 않아 당분간 보류합니다.
+
+🔧 **기술 설명**
+- 앤더슨벨 카탈로그 #2: `product_no=10277`(홈 리다이렉트) → `10280`. Tab MATCH 3.
+- 에이블리: `firstLoadTimeout` 40s / `maxWait` 28s, 대조 하드 타임아웃 90s, 모바일 UA, same-site 외 로드 콜백 허용. Tab은 여전히 `loading_timeout`(onLoadStop 미발생). SSG deal/`script_timeout`·PC 403은 별도.
+
+---
+
+## 2026-08-20 - 이미지 몰 재검증 + 패션플러스 카탈로그/이미지
+
+🌟 **쉬운 설명**
+- 하고·룩핀은 탭에서 이름·가격·사진이 모두 맞았습니다. 패션플러스는 og 플레이스홀더 대신 상품 사진을 쓰도록 고치고, 딜 페이지를 일반 상품으로 바꿨더니 3개 모두 맞았습니다.
+
+🔧 **기술 설명**
+- Tab: 하고 MATCH 3, 룩핀 MATCH 3. SSG는 deal 페이지 `script_timeout`×3(카탈로그 교체 후보). 에이블리 `loading_timeout`×3, 앤더슨벨 1·3 MATCH / 2 `not_product_page`.
+- 패션플러스: og `dev_test/og_200x200` 거부 → JSON-LD/DOM `product_img`; 옵션 버튼 비어 있으면 LD `sale_price` 폴백. 카탈로그 3상품 교체 → Tab MATCH 3.
+- 더현대Hi·4910: 이름·이미지는 맞지만 `price_ambiguous`(live 가격 재확인 필요: 4910 1000/1690원 의심).
+- 회원가 베이스라인(Tab): 어반스터프·파브레가 엔진가 = live×0.9(회원가). 필루미네이트도 엔진<live. 리·비바스튜디오는 `price_ambiguous`(가격 null). **정책 결정 전 엔진 변경 금지.**
+
+---
+
+## 2026-08-20 - Cafe24 metaSale: 빈 availability·custom span·HTML 이름
+
+🌟 **쉬운 설명**
+- 노이아고처럼 재고 표시가 비어 있어도 원화 가격이 맞으면 확정하고, 위드윤처럼 이름에 HTML이 섞여도 가격·이름이 맞게 나오도록 고쳤습니다. 탭에서 두 몰 모두 3개 일치했습니다.
+
+🔧 **기술 설명**
+- `cafe24MetaSale`: LD Offer `availability` 비어 있어도 KRW price면 meta 교차검증; `#span_product_price_text` 없으면 `#span_product_price_custom`; `stripHtmlName`으로 이름 HTML/`\u003c` 제거(위드윤·핫핑).
+- Tab `R54RB01SMVB`: 노이아고 MATCH 3, 위드윤 MATCH 3(첫 시도 ADB 끊김 후 재시도).
+- 단위: `product_extract_js_sync_test.dart` 통과. PR #28 Draft 유지.
+
+---
+
+## 2026-08-20 - Cafe24 verifiedCafe 가격 폴백 (코드그라피·립합)
+
+🌟 **쉬운 설명**
+- JSON-LD에 재고 가격이 비어 있어도, 메타·화면 판매가·스크립트가 같으면 가격을 확정하도록 고쳤습니다. 코드그라피·립합이 탭에서 맞게 나왔습니다.
+
+🔧 **기술 설명**
+- `verifiedCafe` / `cafe24MetaSale`: LD `InStock` 가격이 없으면 `product:sale_price:amount` + `#span_product_price_text` (+ `product_price`) 교차검증 폴백.
+- Tab 재검증: 코드그라피 MATCH 3, 립합 MATCH 3. 위드윤 1 MATCH 후 2번 hang(ADB 리셋).
+
+---
+
+## 2026-08-20 - 대조 후 엔진 패치 1차 (W컨셉·핫핑·타이밍)
+
+🌟 **쉬운 설명**
+- 탭 대조에서 나온 문제를 고치기 시작했습니다. W컨셉은 상품 이름을 제대로 읽고, 핫핑은 이름에 섞이던 HTML을 지웁니다.
+
+🔧 **기술 설명**
+- W컨셉: `GA4ItemObj.ItemName`으로 상품명 추출. Tab 재검증 2·3 MATCH, 1은 PRICE(엔진 SalePrice 39000 vs live 29120).
+- 핫핑: 이름 HTML 태그 제거 → Tab MATCH 3.
+- 에이블리: `firstLoadTimeout` 15→25초. 앤더슨벨: `maxWait` 12→20초.
+- Cafe24 `cafe24MetaSale` 조건 완화, 하고/룩핀/SSG/패션플러스 이미지 우선순위, 더현대Hi/4910 가격 규칙 조정.
+- 코드그라피·립합 등 verifiedCafe `price_ambiguous`는 아직 남음(다음 패치).
+
+---
+
+## 2026-08-20 - Tab S7 50몰 실페이지 대조 완료
+
+🌟 **쉬운 설명**
+- 탭에서 쇼핑몰 50곳·상품 149개를 모두 정답지와 비교했습니다. 앱 동작은 바꾸지 않았고, 결과만 기록했습니다.
+
+🔧 **기술 설명**
+- 인수인계 §0.13, `TAB_S7_LIVE_COMPARE_CONTINUATION.md`, `audit-logs/compare-final-summary.json` 갱신.
+- MATCH 전부 15몰: 무신사·29CM·FILA·탑텐·무인양품·현대Hmall·유니클로·게스·반스·후아유·아모멘토·예일·퀸잇·브랜디·SSF샵.
+- 주요 이슈: W컨셉 이름, Cafe24 `price_ambiguous`, 에이블리 `loading_timeout`, og 플레이스홀더 이미지, 4910·더현대Hi live 재확인 후보.
+- 대조 후 `flutter build apk --debug` + `adb install -r`로 Tab에 debug APK 복구. PR #28 Draft 유지, 머지 없음.
+
+---
+
+## 2026-08-18 - Tab S7 재대조 중간 상태를 인수인계로 남김
+
+🌟 **쉬운 설명**
+- 탭에서 쇼핑몰 50곳을 다시 대조하다가 코드그라피에서 멈춘 상태를, 다른 사람이 바로 이어서 돌릴 수 있게 적어 두었습니다. 앱 동작은 바꾸지 않았습니다.
+
+🔧 **기술 설명**
+- 이어서 하는 사람용: `wishlist-appversion2/TAB_S7_LIVE_COMPARE_CONTINUATION.md`. 인수인계 §0.13.
+- 재실행 완료: 36몰 중 35몰 3/3(낫포유 2/2) + 코드그라피 1번 PRICE. 미실행 14몰(후아유·Aritzia·마하그리드 등).
+- 분류는 틀린 필드 이름. `MATCH` = 세 필드 일치, `PRICE` = 가격만 불일치.
+- 1몰씩 `--no-uninstall`. 대형 배치 hang, ADB `closed`, Gradle APK 잠금이 반복됨. 리바이스 대기·범용 가격 우회·PR 머지 없음.
+
+---
+
+## 2026-08-18 - 50몰 새 정답지 3상품씩 만들고 엔진과 대조
+
+🌟 **쉬운 설명**
+- 쇼핑몰마다 상품 페이지를 새로 열어 이름·가격·사진을 정답으로 적고, 탭에서 엔진이 같은 값을 읽는지 비교했습니다. 49몰은 정답이 채워졌고, 낫포유만 hang URL을 빼 2개입니다.
+
+🔧 **기술 설명**
+- `integration_test/live_field_compare_catalog.dart`를 2026-08-18 신규 상품으로 교체. 판매가는 화면 판매가(첫구매·카드 쿠폰 제외).
+- 정답 3개 49몰(+낫포유 2). 브라우저로 채운 몰: 룩핀, 유니클로(판매가 49900·3x4 이미지), 반스, 코드그라피, SSF샵, 롯데온, Aritzia, 올리브영, 에이블리, 브랜디, 이랜드몰, 퀸잇.
+- 퀸잇 판매가는 `product.finalPrice`(첫구매·최대쿠폰가 제외).
+- 탭 S7 신규 정답 MATCH: 무신사·29CM·게스·후아유·예일·FILA·아모멘토·앤더슨벨·반스·SSF샵·유니클로·현대Hmall·퀸잇·브랜디·탑텐·무인양품 각 3, 위드윤·커버낫·데일리쥬·11번가·롯데온 2, Aritzia·지그재그·CJ온스타일·미쏘·나이키·올리브영 1, 이랜드몰 2.
+- 이름·사진 맞고 가격만 불일치/`price_ambiguous`: 코드그라피(엔진 null), 프롬비기닝(~20% 낮음), 룩핀은 이름·가격 맞고 엔진 이미지가 `og_tag_lookpin_web.jpg`, 올리브영 2(`price_ambiguous`), 노이아고 3(엔진 null), SSG 3(엔진 null·이미지 stem 일치·URL 크기만 다름).
+- 정답 카탈로그 오류로 엔진이 맞음(재수집 후 MATCH): 탑텐 3(9900/19900/12900), 무인양품 3(29900/29900/49900·og 제네릭 이미지).
+- `loading_timeout`: 에이블리 3. W컨셉: 이름 `[W CONCEPT]`(1번 가격도 불일치), 2·3번은 가격·사진 일치.
+- 이랜드몰 2번 IMAGE(엔진 이미지 날짜 경로가 live와 다름). 패션플러스 live `og_200x200.jpg`, 더현대Hi·4910 live 가격 이상은 이전과 동일.
+- 앱 uninstall 없음. 검사 후 debug APK `-r` 복구.
+
+---
+
+## 2026-08-18 - 탭 S7에서 자동 채움 50몰 실페이지 대조
+
+🌟 **쉬운 설명**
+- 갤럭시 탭 S7에서 자동 채움 50몰을 모두 열었습니다. 이름·가격·사진이 페이지와 같은 몰도 있고, 가격만 다르거나 페이지 제목만 읽는 몰도 있습니다.
+
+🔧 **기술 설명**
+- 기기: `SM-T870` / `R54RB01SMVB` / Android 13. 배치 실행, `--no-uninstall`, JS probe=`2`.
+- MATCH 몰: 무신사, 29CM, 반스, 나이키, 후아유, 게스, 핫핑, 낫포유, 예일, 데일리쥬(2/3), 커버낫(2/3), 필루미네이트(1/3), 인사일런스(1/3), 코드그라피, 노이아고(1, 2번은 hang), 립합, 아모멘토(1/2), 앤더슨벨, 위드윤(2/3).
+- 이름·사진 맞고 가격만 다름: 미쏘, 리, 어반스터프, 파브레가, 마하그리드, 프롬비기닝. 다수는 화면가의 80~90%(회원가).
+- W컨셉: 1번은 가격·사진 맞고 이름은 `[W CONCEPT]`. 2·3번은 `script_timeout`.
+- 추출만 함(카탈로그 live 없음): 11번가, FILA, 하고, 룩핀, 탑텐, 무인양품, 현대Hmall, 롯데온, 유니클로, SSG, 더현대Hi, 에이블리, 지그재그, KREAM, Aritzia, 비바스튜디오, 패션플러스, 올리브영, 퀸잇, 브랜디, CJ온스타일, 4910, SSF샵, 이랜드몰.
+- SSG 2번째 URL `access_blocked`. 노이아고 2140은 extract future가 끝나지 않아 세션 hang.
+- 검사 뒤 debug APK `-r` 복구. 앱 uninstall 없음.
+
+---
+
+## 2026-08-17 - WebView 이름·가격·사진 실페이지 대조 시작
+
+🌟 **쉬운 설명**
+- 자동 채움이 되는 쇼핑몰을 대상으로, 엔진이 읽은 이름·가격·사진이 실제 상품 페이지와 같은지 비교하는 검사를 만들었습니다.
+
+🔧 **기술 설명**
+- `lib/services/live_field_compare.dart` + `integration_test/live_field_compare_test.dart`. `--no-uninstall`, `LIVE_COMPARE_MALLS`로 부분집합 가능.
+
+---
+
+## 2026-08-17 - 파이썬 파싱 엔진 폴더 제거
+
+🌟 **쉬운 설명**
+- 앱이 더 이상 쓰지 않는 파이썬 파싱 서버 폴더를 저장소에서 뺐습니다. 상품 읽기는 휴대폰 WebView만 사용합니다.
+
+🔧 **기술 설명**
+- `wishlist-appversion2/parsing-engine/` 삭제 (FastAPI `/parse`·`/api/scrap`, site adapters, PRICE_SCHEMA).
+- 가격 규칙은 `flutter_app/lib/services/product_extract_js.dart`가 기준이다.
+- 단위 테스트는 파이썬 폴더를 읽지 않음. 관리 도메인 목록 테스트 이름만 온디바이스 기준으로 바꿈.
+- 리바이스 대기는 늘리지 않음.
+
+---
+
+## 2026-08-17 - 앱에서 파이썬 서버 연결 흔적 제거
+
+🌟 **쉬운 설명**
+- 공유 담기는 이미 휴대폰만 쓰는데, 앱 안에 남아 있던 파이썬 서버 주소와 서버 JSON 읽기 코드를 지웠습니다.
+- 파이썬 엔진 폴더는 아직 저장소에 있습니다. 이번엔 앱이 그걸 부르지 못하게만 정리했습니다.
+
+🔧 **기술 설명**
+- `AppConfig.engineBaseUrl` / `lib/config.dart` 삭제. `ENGINE_BASE_URL` dart-define은 더 이상 없다.
+- `ParsedProductInfo.fromEngineResponse` / `fromEngineProduct` / `fromJson` 제거. `engineUsed` 기본값은 false.
+- 직접 쓰이지 않던 `http` 의존성 제거. 단위 테스트 43 passed, 대상 analyze 0 issues.
+- `parsing-engine/` 폴더는 유지. 리바이스 대기는 늘리지 않음.
+
+---
+
+## 2026-08-17 - 갤럭시 공유 담기 WebView 경로 스모크
+
+🌟 **쉬운 설명**
+- 실물 갤럭시에서 공유 담기가 파이썬 없이 페이지를 읽는지 확인했습니다. 반스는 이름·사진·가격이 자동으로 채워졌고, ZARA는 이름·사진은 남기고 가격만 직접 넣게 했습니다.
+- 위시리스트에는 상품을 저장하지 않았습니다. 검사 뒤 일반 앱을 다시 넣었습니다.
+
+🔧 **기술 설명**
+- `integration_test/share_intake_smoke_test.dart`가 공유 화면과 같은 `ParsingBridge.scrapShareInput`을 실기기 WebView 호스트로 호출한다. AppStore/Firebase 저장 없음.
+- 실물 `SM-S938N` / `R3CY10LF2HE` / Android 16, SuperDisplay Stopped, `--no-uninstall`, SDK ADB 1.0.41. JS probe=`2`.
+- 반스 공유 텍스트: 올드스쿨 57000, 이미지 있음, `engineUsed=false`, `needsManualPrice=false`.
+- ZARA: 플리츠 쇼트 트렌치 코트, 이미지 있음, 가격 0, `price_ambiguous`, `needsManualPrice=true`. 관리 몰이라 범용 가격 우회 없음.
+- 쿠팡은 관리 도메인이 아니라 페이지가 열리면 범용 추출이 허용된다. 1차 실행은 11990 자동 채움, 통과 실행은 `Access Denied`/`access_blocked`. 안정 PASS로 보지 않음.
+- 원본: `wishlist-appversion2/share_intake_smoke_2026-08-17.json`.
+- 검사 후 `flutter build apk --debug` + `adb install -r`. 앱/데이터 삭제 없음.
+
+---
+
+## 2026-08-17 - iOS blank 리셋 재확인 (오염 3쌍 + SSG/반스/Aritzia/마리떼)
+
+🌟 **쉬운 설명**
+- iOS에서 연속으로 쇼핑몰을 열어도 이전 페이지가 다음 결과에 섞이지 않는지 다시 확인했습니다. 퀸잇→브랜디, 탑텐→무인양품, 코드그라피→후아유는 모두 각자 상품이 나왔습니다.
+- SSG는 여전히 접속 제한 화면입니다. 반스·마리떼는 이름·사진·가격이 같이 나왔고, Aritzia는 가격을 비운 채 두었습니다.
+
+🔧 **기술 설명**
+- 브랜치 `feat/webview-scraper-stabilize` (`eafa6b3`). 64개 전체 감사가 아니다. JS probe=`2.0`, `--no-uninstall`.
+- 실물 iPhone `지으닝`은 무선으로 보였으나 `flutter test`가 wireless tether에서 앱을 시작하지 못해, 부팅된 iPhone 17 Pro 시뮬레이터(`53D6E81D-B9AC-48B0-8175-7F12FECF1041`)를 썼다.
+- 오염 3쌍 모두 `finalUrl`·상품명·adapter가 요청 몰과 일치. 이전 iOS 64에서 무인양품←탑텐, 후아유←코드그라피, 퀸잇 DOM이 브랜디로 새던 오염은 이번 연속 실행에서 재현되지 않음.
+- SSG `BLOCKED` `access_blocked` 「접속이 잠시 제한되었습니다」. 우회하지 않음. finalUrl `ssg.com`.
+- 반스 PASS 올드스쿨 57000, `source.price=site-adapter`. 마리떼 PASS 49000, `source.price=site-adapter`.
+- Aritzia `PARTIAL_NO_PRICE` `price_ambiguous`. 이름 `www.aritzia.com`, 이미지/가격 null. 전용 규칙 실패라 범용 가격 우회 없음. Android PASS·이전 iOS 64(이름·이미지 있음)와 다름.
+- 원본: `wishlist-appversion2/ios_webview_recheck_2026-08-17.json`. PR #31 64몰 문서는 덮어쓰지 않음.
+- 검사 후 `flutter install`로 일반 Debug를 시뮬레이터에 다시 넣었다. 이 명령이 시뮬레이터 기존 앱을 지운 뒤 설치했다. 실기기 데이터는 건드리지 않음.
+
+---
+
+## 2026-08-17 - 공유 담기를 WebView 전용으로 전환
+
+🌟 **쉬운 설명**
+- 상품 링크를 담을 때 더 이상 파이썬 서버를 부르지 않습니다. 휴대폰이 페이지를 직접 읽습니다.
+- 가격을 못 읽어도 이름·사진·주소는 남기고, 가격만 직접 입력하면 저장됩니다.
+
+🔧 **기술 설명**
+- `ParsingBridge`의 `/parse`·`/api/scrap` HTTP 호출을 제거했다. 공유 담기는 `WebViewScraper.extract`만 사용한다.
+- 추출 실패·가격 부재 시에도 URL과 읽힌 이름/이미지를 유지한다. 공유 텍스트의 제목 힌트를 상품명 후보로 쓴다.
+- 저장 시 상품명·양수 가격이 없으면 막는다. 가짜 Unsplash 대표 이미지는 넣지 않는다.
+- 단위 테스트: parsing_bridge / share_input / 기존 가격 의미 테스트.
+
+---
+
+## 2026-08-17 - WebView blank 리셋 강화와 남은 몰 전용 규칙
+
+🌟 **쉬운 설명**
+- 상품을 읽기 전에 빈 화면이 실제로 열린 뒤에만 다음 쇼핑몰을 열도록 바꿨습니다. 이전 페이지가 다음 결과에 섞이지 않게 합니다.
+- 반스는 전용 상품명을 우선하고, 현대Hmall·이랜드몰 상품 주소를 상품 페이지로 인식합니다.
+- 품절·단종된 감사 표본(현대Hmall, 나이키, 이랜드몰)은 현재 판매 중인 주소로 바꿨습니다. 쿠폰 예상가는 저장하지 않습니다.
+- 실물 갤럭시에서 5곳을 다시 열었습니다. 현대Hmall·반스·나이키·이랜드몰은 이름·사진·가격이 같이 나왔고, 리바이스만 페이지가 끝나지 않았습니다.
+
+🔧 **기술 설명**
+- `WebViewExtractHost`는 추출마다 `about:blank` `onLoadStop`을 최대 2초 기다린 뒤에만 대상 URL을 연다. 리셋 중 콜백과 blank URL은 루프에 넘기지 않는다.
+- `WebViewExtractLoop`는 blank 로드를 첫 상품 로드로 치지 않고, `finalUrl`이 요청 호스트와 다른 추출 결과는 버린다.
+- 반스는 `recopick:title`을 상품명으로 우선한다. Hmall은 `itemPtc`/`slitmCd`, 이랜드몰은 `/i/item`/`itemNo`, 나이키는 `/t/` 상품 URL을 상품 페이지로 본다.
+- 이랜드몰 전용 가격은 표시 판매가 `s_price`만 사용한다. `final_price`는 쿠폰 예상가라 쓰지 않는다. 관리 몰 범용 JSON-LD/OG/DOM 가격 우회는 그대로 없다.
+- 감사 URL: Hmall `slitmCd=2060464676`(판매중 42900), 나이키 AF1 `IH1698-100`(BUYABLE_BUY), 이랜드몰 `itemNo=2607498077`. 기존 Hmall/나이키/이랜드 표본은 품절·404·판매종료.
+- 단위 테스트 25개, 대상 analyze 0 issues.
+- 실물 `SM-S938N` / `R3CY10LF2HE` / Android 16, SuperDisplay Stopped, `--no-uninstall`, SDK ADB 1.0.41. JS probe=`2`.
+- 5몰 재감사 `WEBVIEW_AUDIT_ONLY=12,30,31,54,64`: 현대Hmall PASS 42900, 반스 PASS 올드스쿨 57000, 나이키 PASS 134100, 이랜드몰 PASS 55600. 리바이스는 여전히 `loading_timeout`(27.4초, 고정 대기는 늘리지 않음).
+- 검사 후 일반 앱을 `flutter build apk --debug` + `adb install -r`로 복구한다.
+
+---
+
+## 2026-08-16 - 실기기 64개 WebView 분할 감사 완료
+
+🌟 **쉬운 설명**
+- 실물 Galaxy에서 등록 쇼핑몰 64곳을 나눠 열어 봤습니다. 이름·사진·가격이 같이 나온 곳은 46곳입니다.
+- 막힌 곳, 일부러 가격을 안 적는 곳, 전용 규칙이 안 맞아 가격을 비운 곳은 통과로 세지 않았습니다.
+- 검사가 끝난 뒤에는 일반 앱을 다시 넣었습니다.
+
+🔧 **기술 설명**
+- 실물 `SM-S938N` / Android 16, SuperDisplay Stopped, `--no-uninstall`, SDK ADB 1.0.41. JS probe=`2`.
+- 분할: 1~3, 4~37, 38(노이아고 단독), 39~51, 52~64.
+- 집계: PASS 46, EXPECTED_ABSTAIN 5(네이버·Gap·LF몰·NUGU·SHEIN), BLOCKED 2(쿠팡·H&M), PARTIAL_MEDIA 1(반스 이름), NO_RESULT 1(리바이스 `loading_timeout`), PARTIAL_NO_PRICE 9(현대Hmall·마리떼·오호라·육육걸즈·파르티멘토·Reformation·나이키·ZARA·이랜드몰).
+- 11번가는 hang 없이 PASS. 노이아고는 단독 재실행에서 PASS(219000원).
+- 관리 몰 전용 규칙 실패 시 범용 가격 우회 없음. iOS는 이 환경에 기기 없음.
+- 검사 후 `flutter build apk --debug` + `adb install -r`로 일반 앱을 복구했습니다.
+
+---
+
+## 2026-08-16 - 실기기 WebView 생성·추출 복구
+
+🌟 **쉬운 설명**
+- 상품을 읽기 전에 WebView를 미리 붙여 두고, 같은 WebView를 연속으로 쓸 때 이전 쇼핑몰 페이지가 섞이지 않게 했습니다.
+- 실물 Galaxy에서 1~37번까지는 실제로 페이지를 읽어 가격을 확인했습니다. 38번 이후와 iOS는 이번 실행에서 끝까지 검증하지 못했습니다.
+
+🔧 **기술 설명**
+- `WebViewExtractHost`는 `about:blank`를 항상 마운트하고 `useHybridComposition`을 켭니다. 감사 러너는 `onWebViewCreated`와 `evaluateJavascript('1+1')`이 성공할 때만 몰 감사를 시작합니다.
+- 추출마다 `stopLoading` + `about:blank` 후 대상 URL을 열어, 이전 페이지 load 콜백/DOM이 다음 건을 오염시키지 않게 했습니다.
+- 반스는 가격 어댑터가 이미 확인한 `recopick:title`을 상품명으로 씁니다. 관리 몰 전용 규칙 실패 시 JSON-LD/OG/DOM 가격 우회는 하지 않습니다.
+- 실물 `SM-S938N` / `R3CY10LF2HE` / Android 16, SuperDisplay Stopped, SDK ADB 1.0.41. JS probe=`2`.
+- 7개(`14,22,24,46,49,53,55`): 미쏘·핫핑·SSG·올리브영 PASS, 오호라·파르티멘토·Reformation은 이름/이미지만 있고 전용 가격 규칙 실패로 `price_ambiguous`.
+- 1~3: 쿠팡 `BLOCKED`, 네이버 `EXPECTED_ABSTAIN`, 11번가 PASS(json-ld, hang 없음).
+- 4~37: 무신사~Aritzia까지 실기기 완주. 반스 `PARTIAL_MEDIA`(이름 없음), 현대Hmall 가격 없음, 리바이스 `loading_timeout`, H&M `BLOCKED`, Gap abstain.
+- 4~64는 38 노이아고에서 러너가 끊겼고, 이후 실기기 재실행은 WebView 생성 단계에서 isolate가 종료됐습니다. `flutter test` 기본 동작이 앱을 지워 `--no-uninstall`을 이후부터 사용했습니다. 패키지는 다시 `-r` 설치했습니다.
+- 에뮬레이터 39~51은 JS는 동작했지만 이전 페이지 오염과 `script_timeout`이 많아 가격 통과로 보지 않습니다.
+- 이 Windows 환경에는 iOS 기기가 없습니다. 대상 단위 테스트와 analyze는 통과했습니다.
+
+---
+
+## 2026-08-16 - WebView 추출을 위젯 트리 PlatformView로 복구
+
+🌟 **쉬운 설명**
+- 안 보이는 Headless WebView가 페이지를 열지 못하던 문제를 피하려고, 앱 안에 거의 보이지 않는 실제 WebView를 붙여 상품 페이지를 읽도록 바꿨습니다.
+- 단위 테스트는 통과했지만, SuperDisplay ADB 40과 SDK ADB 41이 다시 충돌해 Android 에뮬레이터 설치가 끊겨 7개 재감사는 미검증입니다.
+
+🔧 **기술 설명**
+- `WebViewExtractHost`를 `MaterialApp`과 감사 러너에 올리고, `WebViewScraper`는 호스트가 있으면 Headless 대신 트리에 붙은 `InAppWebView`를 사용합니다.
+- Headless 경로는 360×640 `setSize`를 남기되, Activity content 자식이 없으면 뷰 계층에 붙지 못하는 기존 한계를 우회하지 않고 호스트를 우선합니다.
+- 대상 단위 테스트 21개와 관련 Flutter analyze 0 issues를 통과했습니다.
+- Android 재감사는 `adb server version (40) doesn't match this client (41)`로 streamed install이 두 번 실패했습니다. 실물 Galaxy 앱/데이터는 삭제하지 않았고, 가짜 SDK/ADB 프록시도 만들지 않았습니다.
+
+---
+
+## 2026-08-16 - Flutter WebView 추출 안정화
+
+🌟 **쉬운 설명**
+- 상품 페이지가 리다이렉트나 화면 전환을 끝낸 뒤에만 가격을 읽고, 차단 화면은 바로 멈추며, 실패한 이유를 구분해서 남기도록 WebView 추출기를 바꿨습니다.
+- 고정 대기 시간만 늘리지는 않았습니다. Android 에뮬레이터에서는 Headless WebView가 페이지 로드 콜백을 주지 않아 7개와 1~3번 감사를 가격 통과로 보지 않습니다.
+
+🔧 **기술 설명**
+- `webview_scraper.dart`에 시계/세션 추상화, 마지막 탐색 후 600ms 안정화, `evaluateJavascript` 4초 timeout, 명시적 `blocked` 즉시 종료, 빈 결과 1회 reload, 가격 fingerprint 2회 연속 확인, 실패 이유(`loading_timeout`, `script_timeout`, `access_blocked`, `network_error`, `not_product_page`, `price_ambiguous`, `unsupported_currency`)를 추가했습니다.
+- 대상 단위 테스트 20개와 관련 Flutter analyze 0 issues를 통과했습니다.
+- Pixel 10 / Android 17 에뮬레이터(`emulator-5554`)에서 SuperDisplay는 떠 있지 않았고 SDK ADB 1.0.41만 사용했습니다. 첫 설치는 ADB daemon 5037 연결 실패로 한 번 끊겼고, 재시도 후 `WEBVIEW_AUDIT_ONLY=14,22,24,46,49,53,55`와 `WEBVIEW_AUDIT_START=0 END=3`을 실행했습니다. 두 실행 모두 상품 내용 없이 `loading_timeout`만 나와 가격 추출 성공으로 보지 않습니다. 4~64 전체 감사는 같은 인프라 실패를 반복할 뿐이라 실행하지 않았습니다. 실물 기기 앱/데이터는 삭제하지 않았습니다.
+
+---
+
+## 2026-08-16 - Android WebView 이미지·가격 안전성 보정
+
+🌟 **쉬운 설명**
+- 깨진 대표 이미지 주소를 앱에서 자동으로 정상화하고, ZARA처럼 전용 규칙이 확인되지 않은 관리 쇼핑몰은 화면 숫자를 임의 가격으로 저장하지 않게 했습니다.
+- 오래된 품절 감사 상품을 현재 판매 상품으로 바꾸고 룩핀·낫포유 등 실제 Android 누락 원인을 보완했습니다.
+
+🔧 **기술 설명**
+- 이미지 URL의 중복 스킴(`https:https://`), HTML entity(`&amp;`), 상대경로, HTTPS 페이지의 HTTP 이미지를 정규화합니다.
+- 룩핀과 오호라는 페이지 전체의 추천상품/숨김 UI에 있는 `품절·재입고` 문구 대신 주상품의 활성 구매 동작만 사용합니다. 낫포유는 JSON-LD에 availability가 없을 때 판매 옵션, 표시 판매가, `product_price`, Product offer가 모두 일치해야만 확정합니다.
+- 미쏘 구매 버튼 문구, 파르티멘토의 밑줄 상품명, 핫핑 옵션별 24,800~25,800원 범위를 현재 렌더링 구조에 맞췄습니다. SSG·올리브영의 한국어 접근 제한 화면은 `BLOCKED`로 분류합니다.
+- Android 17 에뮬레이터 64개 1차 재감사는 PASS 43, 가격은 확인됐으나 이름 누락 1, 의도적 abstain 5, 가격 없음 8, 완전 결과 없음 4, 접근 차단 2, timeout 1이었습니다. 이 실행에서 룩핀·무인양품·리·낫포유·인사일런스·게스·Aritzia가 새 판매 표본으로 정상 통과했고 ZARA provisional 가격은 제거됐습니다.
+- 이후 미쏘·핫핑·오호라·파르티멘토·Reformation 표본/규칙과 SSG·올리브영 차단 분류를 보완했습니다. 대상 단위 테스트 7개와 정적 분석(0 issues)은 통과했지만, 마지막 Android 7건 재실행은 SuperDisplay ADB 40이 SDK ADB 41 서버를 반복 교체해 설치 스트림이 끊겨 완료하지 못했습니다. 이 7건은 Android 통과로 보고하지 않습니다.
+- 로그인·결제·실물 기기 앱 삭제는 하지 않았습니다.
+
+---
+
+## 2026-08-16 - Android WebView 64개 쇼핑몰 대표 상품 감사
+
+🌟 **쉬운 설명**
+- Python 서버를 사용하지 않고 Pixel 10 Android 에뮬레이터에서 등록 쇼핑몰 64곳을 한 건씩 직접 열어 상품명·이미지·가격 추출 여부를 확인했습니다.
+- 37곳은 쇼핑몰 전용 규칙으로 조건 없는 구매 가격까지 확정했고, Gap·LF몰·NUGU·SHEIN·네이버 쇼핑 5곳은 설계대로 잘못된 양수 가격을 만들지 않았습니다.
+- 나머지는 접근 차단, 판매 종료 표본, 최신 페이지 구조와 규칙 불일치로 확인되어 WebView 규칙 보정과 판매 중 URL 재검증이 필요합니다.
+
+🔧 **기술 설명**
+- `integration_test/webview_all_malls_audit_test.dart`에 서버를 거치지 않는 64개 URL 배치 러너, 쇼핑몰별 45초 격리 제한, JSON line 결과 출력을 추가했습니다.
+- Android 17/API 37 에뮬레이터 결과는 confirmed 37, expected abstain 5, provisional 1, partial-no-price 14, no-result 4, blocked 2, timeout 1입니다.
+- 쿠팡과 H&M은 Access Denied, 11번가는 네이티브 WebView timeout, SSG는 접속 제한 화면이었습니다. ZARA는 숫자를 얻었지만 전용 규칙이 아닌 provisional 폴백이어서 confirmed로 세지 않았습니다.
+- 이미지 결과는 정상 HTTPS 45, 누락 11, 중복 스킴 3, HTML entity가 남은 쿼리 2, HTTP 2, 상대 경로 1입니다. 결과 원본은 `0.EngineTest/data/webview_android_audit_64_2026-08-16.json`에 기록했습니다.
+- 로그인·결제·장바구니 변경은 하지 않았습니다. Galaxy 실물 기기 실행은 PC의 구형/신형 ADB 충돌로 시작되지 않아 이번 수치에 포함하지 않았습니다.
+
+---
+
 ## 2026-08-17 - iOS 공유 시트에 wishkit 노출
 
 🌟 **쉬운 설명**

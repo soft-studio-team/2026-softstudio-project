@@ -57,4 +57,26 @@ https://link.coupang.com/a/example''';
       );
     });
   });
+
+  group('ShareInput.titleHint', () {
+    test('uses text before the URL as a product name hint', () {
+      expect(
+        ShareInput.titleHint(
+          '올드스쿨 https://www.vans.co.kr/PRODUCT/1',
+          'https://www.vans.co.kr/PRODUCT/1',
+        ),
+        '올드스쿨',
+      );
+    });
+
+    test('returns null when only a URL is shared', () {
+      expect(
+        ShareInput.titleHint(
+          'https://www.vans.co.kr/PRODUCT/1',
+          'https://www.vans.co.kr/PRODUCT/1',
+        ),
+        isNull,
+      );
+    });
+  });
 }
