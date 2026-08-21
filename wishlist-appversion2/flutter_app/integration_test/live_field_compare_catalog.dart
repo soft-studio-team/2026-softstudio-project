@@ -715,7 +715,7 @@ const liveCompareMalls = <LiveCompareMall>[
     LiveCompareProduct(
       "https://zigzag.kr/catalog/products/159126270",
       live: LiveCompareExpected(
-        name: "모어렌 [MADE] [4만장/컬러추가] 캡내장 로브닝 레이스 슬리브리스",
+        name: "[MADE] [4만장/컬러추가] 캡내장 로브닝 레이스 슬리브리스",
         price: 17000,
         image:
             "https://cf.product-image.s.zigzag.kr/original/c/15/912/627/159126270-7158693702236622361.jpeg",
@@ -724,7 +724,7 @@ const liveCompareMalls = <LiveCompareMall>[
     LiveCompareProduct(
       "https://zigzag.kr/catalog/products/168362278",
       live: LiveCompareExpected(
-        name: "화이트랩스 화이트랩스 치아미백기 LED 셀프 자가 치아미백기계 &amp; 치아미백젤 세트 (1인용)",
+        name: "화이트랩스 치아미백기 LED 셀프 자가 치아미백기계 &amp; 치아미백젤 세트 (1인용)",
         price: 179000,
         image:
             "https://cf.product-image.s.zigzag.kr/original/d/2026/2/3/59382_202602031710060884_61349.jpeg",
@@ -733,7 +733,7 @@ const liveCompareMalls = <LiveCompareMall>[
     LiveCompareProduct(
       "https://zigzag.kr/catalog/products/161980550",
       live: LiveCompareExpected(
-        name: "뷰티크 🌹뷰티페스타 특가🌹 [조말론] 블랙베리 앤 베이 코롱 100ml (블랙베리향) (+선물포장)",
+        name: "🌹뷰티페스타 특가🌹 [조말론] 블랙베리 앤 베이 코롱 100ml (블랙베리향) (+선물포장)",
         price: 185580,
         image:
             "https://cf.product-image.s.zigzag.kr/original/d/2026/7/16/40976_202607161436522871_71643.jpeg",
