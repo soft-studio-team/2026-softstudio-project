@@ -99,11 +99,8 @@ class SentBasketsScreen extends StatelessWidget {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () => showSentBasketShareSheet(
-                            context,
-                            store,
-                            b,
-                          ),
+                          onPressed: () =>
+                              showSentBasketShareSheet(context, store, b),
                           child: const Text('다시 보내기'),
                         ),
                       ),
@@ -141,6 +138,8 @@ Future<void> showSentBasketShareSheet(
     initialMemo: basket.memo,
   );
   if (picked == null || picked.friendIds.isEmpty || !context.mounted) return;
+  await WidgetsBinding.instance.endOfFrame;
+  if (!context.mounted) return;
   try {
     await store.resendBasketToFriends(
       items: basket.items,

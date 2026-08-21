@@ -1,3 +1,5 @@
+import 'package:figmadesign/models/models.dart';
+import 'package:figmadesign/screens/salkamalka/share_to_friends_sheet.dart';
 import 'package:figmadesign/theme/diary_scale.dart';
 import 'package:figmadesign/widgets/diary_widgets.dart';
 import 'package:flutter/material.dart';
@@ -23,8 +25,9 @@ void main() {
     expect(scaled.bottom, 42.5);
   });
 
-  testWidgets('wrap lays children out at design width on a small phone',
-      (tester) async {
+  testWidgets('wrap lays children out at design width on a small phone', (
+    tester,
+  ) async {
     const phone = Size(320, 568);
     await tester.binding.setSurfaceSize(phone);
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -50,6 +53,79 @@ void main() {
     );
   });
 
+  testWidgets('wrap keeps MediaQuery when a parent reports zero size', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MediaQuery(
+        data: MediaQueryData(size: Size(390, 844)),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: SizedBox(width: 0, height: 0, child: _ZeroSizeScaleProbe()),
+        ),
+      ),
+    );
+
+    expect(find.byType(_ZeroSizeScaleProbe), findsOneWidget);
+    expect(_lastInnerMediaQuery, isNotNull);
+  });
+
+  testWidgets(
+    'share sheet can close under DiaryScale without dependents crash',
+    (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+
+      final friends = [
+        Friend(
+          id: 'f1',
+          name: '민수',
+          username: '@minsoo',
+          avatar: '',
+          isFollowing: true,
+          wishlistCount: 1,
+          itemCount: 2,
+        ),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) =>
+              DiaryScale.wrap(context, child ?? const SizedBox.shrink()),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                return TextButton(
+                  onPressed: () {
+                    showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      useRootNavigator: true,
+                      builder: (_) => ShareToFriendsSheet(following: friends),
+                    );
+                  },
+                  child: const Text('공유하기'),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('공유하기'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '사 말아');
+      await tester.pump();
+      await tester.tap(find.text('민수'));
+      await tester.pump();
+      await tester.tap(find.text('보내기 (1)'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ShareToFriendsSheet), findsNothing);
+    },
+  );
+
   testWidgets('OneLineText does not wrap in a narrow box', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -69,4 +145,23 @@ void main() {
     expect(text.maxLines, 1);
     expect(tester.getSize(find.text('마이페이지')).height, lessThan(24));
   });
+}
+
+MediaQueryData? _lastInnerMediaQuery;
+
+class _ZeroSizeScaleProbe extends StatelessWidget {
+  const _ZeroSizeScaleProbe();
+
+  @override
+  Widget build(BuildContext context) {
+    return DiaryScale.wrap(
+      context,
+      Builder(
+        builder: (inner) {
+          _lastInnerMediaQuery = MediaQuery.maybeOf(inner);
+          return const SizedBox();
+        },
+      ),
+    );
+  }
 }

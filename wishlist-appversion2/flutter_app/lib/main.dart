@@ -149,8 +149,10 @@ class _WishlistAppState extends State<WishlistApp> {
         theme: DiaryTheme.light,
         routerConfig: router,
         builder: (context, child) {
-          final scaled =
-              DiaryScale.wrap(context, child ?? const SizedBox.shrink());
+          final scaled = DiaryScale.wrap(
+            context,
+            child ?? const SizedBox.shrink(),
+          );
           return WebViewExtractHost(child: scaled);
         },
       ),
@@ -163,7 +165,7 @@ GoRouter _buildRouter(AppStore store) {
     initialLocation: store.isLoggedIn
         ? (store.showSignupWelcome ? '/welcome' : '/')
         : (store.awaitingEmailVerification ? '/verify-email' : '/login'),
-    refreshListenable: store,
+    refreshListenable: store.authRouteTick,
     redirect: (context, state) {
       final loggedIn = store.isLoggedIn;
       final awaiting = store.awaitingEmailVerification;
@@ -309,9 +311,8 @@ GoRouter _buildRouter(AppStore store) {
       ),
       GoRoute(
         path: '/shared/:id',
-        builder: (context, state) => SharedBasketDetailScreen(
-          basketId: state.pathParameters['id']!,
-        ),
+        builder: (context, state) =>
+            SharedBasketDetailScreen(basketId: state.pathParameters['id']!),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
