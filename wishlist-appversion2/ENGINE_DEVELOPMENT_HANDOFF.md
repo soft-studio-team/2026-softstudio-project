@@ -12,6 +12,13 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 이 문서는 새 대화에서 wishkit 엔진 개발을 즉시 이어가기 위한 기준 문서다. 아래의 "다음 대화 시작 프롬프트"와 함께 이 파일을 읽도록 지시하면 된다.
 
+## 0.0 2026-08-21 현황 (읽기 시작점)
+
+- **가격 엔진(50몰 live compare)**: Tab S7 MATCH 인증 완료. 지원/미지원 목록 → [`MALL_SUPPORT.md`](./MALL_SUPPORT.md)
+- **브랜치**: `fix/price-owner-spa` + `fix/price-teammate-cafe24` → `feat/webview-scraper-stabilize`에 병합됨
+- **남은 일**: PR #28 draft 해제·main 머지 준비, (선택) 50몰 전체 Tab 회귀
+- **의도적 미지원**: Gap·LF·NUGU·SHEIN·네이버(기권), 쿠팡(차단). 리바이스 대기 늘리지 않음
+
 ## 0. 2026-08-16 후속 작업 결과
 
 기준 브랜치: `feat/webview-engine-handoff` (`aaac9ca`, PR #27 미병합)

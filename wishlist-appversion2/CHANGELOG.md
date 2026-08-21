@@ -1,5 +1,17 @@
 # 변경 이력 (CHANGELOG)
 
+## 2026-08-21 - PRICE 브랜치 통합 · 몰 지원 목록
+
+🌟 **쉬운 설명**
+- 기기 소유자(SPA)와 팀원(Cafe24) 가격 패치를 안정화 브랜치에 합쳤고, 지원하는 쇼핑몰·지원하지 않는 쇼핑몰 목록을 문서로 남겼습니다.
+
+🔧 **기술 설명**
+- `fix/price-owner-spa` · `fix/price-teammate-cafe24` → `feat/webview-scraper-stabilize` 병합.
+- [`MALL_SUPPORT.md`](./MALL_SUPPORT.md): Tab MATCH 50몰 / 기권·차단 / 미인증 몰 구분.
+- ENGINE 핸드오프 상단에 2026-08-21 현황 추가.
+
+---
+
 ## 2026-08-21 - 에이블리·SSG 보류 해소 (Tab MATCH 3)
 
 🌟 **쉬운 설명**

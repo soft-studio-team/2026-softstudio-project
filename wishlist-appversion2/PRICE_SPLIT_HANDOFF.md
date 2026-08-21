@@ -22,7 +22,7 @@ Tab S7(`R54RB01SMVB`)은 **나만** 돌린다. 팀원은 Tab/adb/`run_tab_s7_com
 ### 나 — SPA / 대형 + 전체 Tab
 브랜치(패치용): `fix/price-owner-spa`  
 몰(패치): **올리브영, 롯데온, 지그재그, KREAM, Aritzia, 11번가(IMAGE), 이랜드몰(IMAGE), 에이블리, SSG**  
-추가 의무: 팀원 브랜치까지 pull 해서 Tab MATCH 확인
+추가 의무: 팀원 브랜치까지 pull 해서 Tab MATCH 확인 · **2026-08-21 두 브랜치 모두 `feat/webview-scraper-stabilize`에 병합 완료**
 
 ## 이미 끝난 것 (둘 다 건드리지 말 것)
 미쏘·립합·마하그리드·프롬비기닝·리·필루미네이트·어반스터프·파브레가·비바·나이키·CJ·4910·더현대Hi·앤더슨벨·W컨셉 등 정가 MATCH 3 완료분.
