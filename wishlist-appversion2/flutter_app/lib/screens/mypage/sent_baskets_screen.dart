@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +6,7 @@ import '../../data/app_store.dart';
 import '../../models/models.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
+import '../salkamalka/share_to_friends_sheet.dart';
 
 class SentBasketsScreen extends StatelessWidget {
   const SentBasketsScreen({super.key});
@@ -35,7 +35,7 @@ class SentBasketsScreen extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  '아직 보낸 살까말까가 없어요.\n살까말까 탭에서 친구에게 보내거나 링크를 만들면 여기에 쌓여요',
+                  '아직 보낸 살까말까가 없어요.\n살까말까 탭에서 친구에게 보내면 여기에 쌓여요.',
                   textAlign: TextAlign.center,
                   style: DiaryTheme.body(14, color: DiaryColors.inkMuted),
                 ),
@@ -60,6 +60,15 @@ class SentBasketsScreen extends StatelessWidget {
                         _subtitle(b),
                         style: DiaryTheme.body(12, color: DiaryColors.inkMuted),
                       ),
+                      if (b.memo.trim().isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          b.memo.trim(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: DiaryTheme.body(13),
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       SizedBox(
                         height: 56,
@@ -115,7 +124,7 @@ class SentBasketsScreen extends StatelessWidget {
           : '';
       return '$when  ·  $names$extra  ·  상품 ${b.items.length}개';
     }
-    return '$when  ·  링크 공유  ·  상품 ${b.items.length}개';
+    return '$when  ·  상품 ${b.items.length}개';
   }
 }
 
@@ -124,149 +133,24 @@ Future<void> showSentBasketShareSheet(
   AppStore store,
   SharedBasket basket,
 ) async {
-  await showModalBottomSheet<void>(
+  final picked = await showShareToFriendsSheet(
     context: context,
-    backgroundColor: DiaryColors.paper,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (sheetCtx) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('다시 보내기', style: DiaryTheme.body(16, weight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.people_outline),
-                title: Text('앱 친구에게 보내기', style: DiaryTheme.body(14)),
-                onTap: () async {
-                  Navigator.pop(sheetCtx);
-                  await _resendToFriends(context, store, basket);
-                },
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.link),
-                title: Text('링크 복사', style: DiaryTheme.body(14)),
-                onTap: () async {
-                  final url = store.shareUrlFor(basket);
-                  await Clipboard.setData(ClipboardData(text: url));
-                  if (sheetCtx.mounted) Navigator.pop(sheetCtx);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('링크 복사됨 · $url')),
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      );
-    },
+    store: store,
+    title: '다시 보낼 친구',
+    confirmLabel: '다시 보내기',
+    initialMemo: basket.memo,
   );
-}
-
-Future<void> _resendToFriends(
-  BuildContext context,
-  AppStore store,
-  SharedBasket basket,
-) async {
-  final following = store.friends.where((f) => f.isFollowing).toList();
-  if (following.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('팔로잉한 친구가 없어요. 먼저 친구를 추가해 주세요.')),
-    );
-    return;
-  }
-
-  final selected = <String>{};
-  final confirmed = await showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: DiaryColors.paper,
-    builder: (sheetCtx) {
-      return StatefulBuilder(
-        builder: (context, setModalState) {
-          return SafeArea(
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-              ),
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height * 0.55,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      '다시 보낼 친구',
-                      style: DiaryTheme.body(16, weight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: following.length,
-                        itemBuilder: (context, i) {
-                          final f = following[i];
-                          final checked = selected.contains(f.id);
-                          return CheckboxListTile(
-                            value: checked,
-                            onChanged: (v) {
-                              setModalState(() {
-                                if (v == true) {
-                                  selected.add(f.id);
-                                } else {
-                                  selected.remove(f.id);
-                                }
-                              });
-                            },
-                            secondary: CircleAvatar(
-                              backgroundImage: NetworkImage(f.avatar),
-                            ),
-                            title: Text(f.name),
-                            subtitle: Text(f.username),
-                          );
-                        },
-                      ),
-                    ),
-                    FilledButton(
-                      onPressed: selected.isEmpty
-                          ? null
-                          : () => Navigator.pop(sheetCtx, true),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: DiaryColors.ink,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: Text('보내기 (${selected.length})'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      );
-    },
-  );
-
-  if (confirmed != true || selected.isEmpty || !context.mounted) return;
+  if (picked == null || picked.friendIds.isEmpty || !context.mounted) return;
   try {
     await store.resendBasketToFriends(
       items: basket.items,
-      friendIds: selected.toList(),
+      friendIds: picked.friendIds.toList(),
       existingId: basket.id,
+      memo: picked.memo,
     );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${selected.length}명의 친구에게 다시 보냈어요')),
+      SnackBar(content: Text('${picked.friendIds.length}명의 친구에게 다시 보냈어요')),
     );
   } catch (e) {
     if (!context.mounted) return;

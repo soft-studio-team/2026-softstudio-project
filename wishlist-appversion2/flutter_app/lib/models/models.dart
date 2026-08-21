@@ -244,6 +244,14 @@ class FriendWishlist {
   final List<Product> items;
 }
 
+/// How a [SharedBasket] left the app. A basket can carry more than one
+/// channel — e.g. a link share that was later re-sent to app friends.
+class SharedChannel {
+  static const friends = 'friends';
+  static const link = 'link';
+  static const kakao = 'kakao';
+}
+
 /// Snapshot of a basket shared via URL or sent to a friend in-app.
 class SharedBasket {
   SharedBasket({
@@ -257,6 +265,13 @@ class SharedBasket {
     this.fromAvatar = '',
     this.recipientUids = const [],
     this.recipientNames = const [],
+    this.channels = const [],
+    this.lastSharedAt,
+    this.publicPageId,
+    this.publicUrl,
+    this.publicUrlExpiresAt,
+    this.memo = '',
+    this.threadId = '',
   });
 
   final String id;
@@ -269,10 +284,55 @@ class SharedBasket {
   final String fromAvatar;
   final List<String> recipientUids;
   final List<String> recipientNames;
+  final List<String> channels;
+
+  /// When the basket was last sent out. Null on records written before this
+  /// existed, and on baskets never re-shared — [sharedAt] falls back to
+  /// [createdAt] in both cases.
+  final DateTime? lastSharedAt;
+
+  /// Stable id for the hosted HTML snapshot in Storage (`share-pages/...`).
+  final String? publicPageId;
+
+  /// Public Firebase Storage URL for the HTML page. Empty until a link share.
+  final String? publicUrl;
+
+  /// When the hosted HTML is due to be deleted. Link copy refreshes this.
+  final DateTime? publicUrlExpiresAt;
+
+  /// Note the sender wrote when sharing — why they're on the fence.
+  final String memo;
+
+  /// Canonical id for the comment thread. Sender archive id and every
+  /// recipient copy point at the same thread.
+  final String threadId;
+
+  /// Only friend-sent baskets belong in the 내 친구 탭 feed; link / KakaoTalk
+  /// shares stay in 마이페이지 > 내가 보낸 살까말까.
+  bool get sharedToFriends => channels.contains(SharedChannel.friends);
+
+  /// Id used to load comments. New shares store [threadId]; older friend
+  /// sends fall back to this archive's own id.
+  String get commentThreadId {
+    if (threadId.isNotEmpty) return threadId;
+    if (recipientUids.isNotEmpty) return id;
+    return '';
+  }
+
+  /// Sort key for the friends feed — a re-sent basket rises back to the top.
+  /// 마이페이지 keeps ordering by [createdAt] so the archive stays chronological.
+  DateTime get sharedAt => lastSharedAt ?? createdAt;
 
   SharedBasket copyWith({
     List<String>? recipientUids,
     List<String>? recipientNames,
+    List<String>? channels,
+    DateTime? lastSharedAt,
+    String? publicPageId,
+    String? publicUrl,
+    DateTime? publicUrlExpiresAt,
+    String? memo,
+    String? threadId,
   }) {
     return SharedBasket(
       id: id,
@@ -285,44 +345,165 @@ class SharedBasket {
       fromAvatar: fromAvatar,
       recipientUids: recipientUids ?? this.recipientUids,
       recipientNames: recipientNames ?? this.recipientNames,
+      channels: channels ?? this.channels,
+      lastSharedAt: lastSharedAt ?? this.lastSharedAt,
+      publicPageId: publicPageId ?? this.publicPageId,
+      publicUrl: publicUrl ?? this.publicUrl,
+      publicUrlExpiresAt: publicUrlExpiresAt ?? this.publicUrlExpiresAt,
+      memo: memo ?? this.memo,
+      threadId: threadId ?? this.threadId,
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'ownerName': ownerName,
-    'fromUid': fromUid,
-    'fromHandle': fromHandle,
-    'fromAvatar': fromAvatar,
-    'createdAt': createdAt.toIso8601String(),
-    'items': items.map((p) => p.toJson()).toList(),
-    'recipientUids': recipientUids,
-    'recipientNames': recipientNames,
-  };
+        'id': id,
+        'title': title,
+        'ownerName': ownerName,
+        'fromUid': fromUid,
+        'fromHandle': fromHandle,
+        'fromAvatar': fromAvatar,
+        'createdAt': createdAt.toIso8601String(),
+        'items': items.map((p) => p.toJson()).toList(),
+        'recipientUids': recipientUids,
+        'recipientNames': recipientNames,
+        'channels': channels,
+        'lastSharedAt': lastSharedAt?.toIso8601String(),
+        'publicPageId': publicPageId,
+        'publicUrl': publicUrl,
+        'publicUrlExpiresAt': publicUrlExpiresAt?.toIso8601String(),
+        'memo': memo,
+        'threadId': threadId,
+      };
 
   factory SharedBasket.fromJson(Map<String, dynamic> json) => SharedBasket(
-    id: json['id'] as String? ?? '',
-    title: json['title'] as String? ?? '살까말까 공유',
-    ownerName: json['ownerName'] as String? ?? '',
-    fromUid: json['fromUid'] as String? ?? '',
-    fromHandle: json['fromHandle'] as String? ?? '',
-    fromAvatar: json['fromAvatar'] as String? ?? '',
-    items: (json['items'] as List? ?? [])
-        .map((p) => Product.fromJson(Map<String, dynamic>.from(p as Map)))
-        .toList(),
-    createdAt:
-        DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
-    recipientUids: (json['recipientUids'] as List? ?? [])
-        .map((e) => e.toString())
-        .toList(),
-    recipientNames: (json['recipientNames'] as List? ?? [])
-        .map((e) => e.toString())
-        .toList(),
-  );
+        id: json['id'] as String? ?? '',
+        title: json['title'] as String? ?? '살까말까 공유',
+        ownerName: json['ownerName'] as String? ?? '',
+        fromUid: json['fromUid'] as String? ?? '',
+        fromHandle: json['fromHandle'] as String? ?? '',
+        fromAvatar: json['fromAvatar'] as String? ?? '',
+        items: (json['items'] as List? ?? [])
+            .map((p) => Product.fromJson(Map<String, dynamic>.from(p as Map)))
+            .toList(),
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+            DateTime.now(),
+        recipientUids: (json['recipientUids'] as List? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        recipientNames: (json['recipientNames'] as List? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        // Records written before channels existed: a basket with recipients
+        // went out to app friends, anything else was a link share.
+        channels: (json['channels'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            ((json['recipientUids'] as List? ?? []).isNotEmpty
+                ? const [SharedChannel.friends]
+                : const [SharedChannel.link]),
+        lastSharedAt: DateTime.tryParse(json['lastSharedAt'] as String? ?? ''),
+        publicPageId: json['publicPageId'] as String?,
+        publicUrl: json['publicUrl'] as String?,
+        publicUrlExpiresAt:
+            DateTime.tryParse(json['publicUrlExpiresAt'] as String? ?? ''),
+        memo: json['memo'] as String? ?? '',
+        threadId: json['threadId'] as String? ?? '',
+      );
 }
 
-enum AppNotificationType { follow, basket, review, list }
+/// One comment (or reply) on a shared 살까말까 basket.
+class BasketComment {
+  BasketComment({
+    required this.id,
+    required this.threadId,
+    required this.authorUid,
+    required this.authorName,
+    required this.authorHandle,
+    required this.authorAvatar,
+    required this.text,
+    required this.createdAt,
+    this.parentId = '',
+  });
+
+  final String id;
+  final String threadId;
+  final String parentId;
+  final String authorUid;
+  final String authorName;
+  final String authorHandle;
+  final String authorAvatar;
+  final String text;
+  final DateTime createdAt;
+
+  bool get isReply => parentId.isNotEmpty;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'threadId': threadId,
+        'parentId': parentId,
+        'authorUid': authorUid,
+        'authorName': authorName,
+        'authorHandle': authorHandle,
+        'authorAvatar': authorAvatar,
+        'text': text,
+        'createdAt': createdAt.toIso8601String(),
+      };
+
+  factory BasketComment.fromJson(Map<String, dynamic> json) => BasketComment(
+        id: json['id'] as String? ?? '',
+        threadId: json['threadId'] as String? ?? '',
+        parentId: json['parentId'] as String? ?? '',
+        authorUid: json['authorUid'] as String? ?? '',
+        authorName: json['authorName'] as String? ?? '',
+        authorHandle: json['authorHandle'] as String? ?? '',
+        authorAvatar: json['authorAvatar'] as String? ?? '',
+        text: json['text'] as String? ?? '',
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+            DateTime.now(),
+      );
+}
+
+/// Instagram-style grouping: top-level comments with one level of replies.
+class BasketCommentThread {
+  BasketCommentThread({required this.root, required this.replies});
+
+  final BasketComment root;
+  final List<BasketComment> replies;
+}
+
+/// Collapses nested replies onto the nearest top-level comment.
+String flattenCommentParentId(
+  String parentId,
+  List<BasketComment> comments,
+) {
+  if (parentId.isEmpty) return '';
+  final parent = comments.where((c) => c.id == parentId).firstOrNull;
+  if (parent == null || parent.parentId.isEmpty) return parentId;
+  return parent.parentId;
+}
+
+List<BasketCommentThread> groupBasketComments(List<BasketComment> comments) {
+  final byParent = <String, List<BasketComment>>{};
+  final roots = <BasketComment>[];
+  for (final comment in comments) {
+    if (comment.parentId.isEmpty) {
+      roots.add(comment);
+    } else {
+      byParent.putIfAbsent(comment.parentId, () => []).add(comment);
+    }
+  }
+  roots.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  return [
+    for (final root in roots)
+      BasketCommentThread(
+        root: root,
+        replies: List<BasketComment>.from(byParent[root.id] ?? [])
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt)),
+      ),
+  ];
+}
+
+enum AppNotificationType { follow, basket, review, list, comment }
 
 class AppNotification {
   AppNotification({
@@ -383,6 +564,7 @@ class AppNotification {
         'basket' => AppNotificationType.basket,
         'review' => AppNotificationType.review,
         'list' => AppNotificationType.list,
+        'comment' => AppNotificationType.comment,
         _ => AppNotificationType.follow,
       },
       fromUid: json['fromUid'] as String? ?? '',

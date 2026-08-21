@@ -25,11 +25,14 @@ import 'screens/reviews/review_compose_screen.dart';
 import 'screens/reviews/review_detail_screen.dart';
 import 'screens/salkamalka/salkamalka_screen.dart';
 import 'screens/share/share_intake_screen.dart';
+import 'screens/shared/shared_basket_detail_screen.dart';
 import 'screens/shared/shared_wishlist_screen.dart';
 import 'screens/wishlist/wishlist_screen.dart';
 import 'services/share_input.dart';
 import 'services/webview_extract_host.dart';
+import 'theme/diary_scale.dart';
 import 'theme/diary_theme.dart';
+import 'widgets/diary_widgets.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -146,7 +149,9 @@ class _WishlistAppState extends State<WishlistApp> {
         theme: DiaryTheme.light,
         routerConfig: router,
         builder: (context, child) {
-          return WebViewExtractHost(child: child ?? const SizedBox.shrink());
+          final scaled =
+              DiaryScale.wrap(context, child ?? const SizedBox.shrink());
+          return WebViewExtractHost(child: scaled);
         },
       ),
     );
@@ -304,31 +309,9 @@ GoRouter _buildRouter(AppStore store) {
       ),
       GoRoute(
         path: '/shared/:id',
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          final store = context.read<AppStore>();
-          final shared = store.sharedBasketById(id);
-          if (shared == null) {
-            return Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.pop(),
-                ),
-              ),
-              body: const Center(child: Text('공유 링크를 찾을 수 없어요')),
-            );
-          }
-          return SharedWishlistScreen(
-            title: shared.title,
-            subtitle: '${shared.ownerName} 님이 공유한 살까말까 바구니',
-            products: shared.items,
-            accentColor: DiaryColors.folderPeach,
-            onShare: store.sharedBaskets.containsKey(id)
-                ? () => showSentBasketShareSheet(context, store, shared)
-                : null,
-          );
-        },
+        builder: (context, state) => SharedBasketDetailScreen(
+          basketId: state.pathParameters['id']!,
+        ),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
@@ -482,14 +465,18 @@ class _NavItem extends StatelessWidget {
                   : DiaryColors.ink.withValues(alpha: 0.35),
             ),
             const SizedBox(height: 2),
-            Text(
-              label,
-              style: DiaryTheme.body(
-                11,
-                weight: active ? FontWeight.w700 : FontWeight.w400,
-                color: active
-                    ? DiaryColors.ink
-                    : DiaryColors.ink.withValues(alpha: 0.4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: OneLineText(
+                label,
+                textAlign: TextAlign.center,
+                style: DiaryTheme.body(
+                  11,
+                  weight: active ? FontWeight.w700 : FontWeight.w400,
+                  color: active
+                      ? DiaryColors.ink
+                      : DiaryColors.ink.withValues(alpha: 0.4),
+                ),
               ),
             ),
           ],

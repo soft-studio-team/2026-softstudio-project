@@ -100,6 +100,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           AppNotificationType.list => Icons.folder_open_outlined,
                           AppNotificationType.follow =>
                             Icons.person_add_alt_1_outlined,
+                          AppNotificationType.comment =>
+                            Icons.chat_bubble_outline,
                         },
                         size: 18,
                         color: DiaryColors.inkMuted,
@@ -126,13 +128,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
       return;
     }
-    if (n.type == AppNotificationType.basket) {
-      if (n.fromUid.isNotEmpty) {
-        context.push('/friend-salkamalka/${n.fromUid}');
+    if (n.type == AppNotificationType.comment) {
+      if (n.relatedId != null && n.relatedId!.isNotEmpty) {
+        context.push('/shared/${n.relatedId}');
         return;
       }
-      if (n.relatedId != null) {
+      if (n.fromUid.isNotEmpty) {
+        context.push('/friend-salkamalka/${n.fromUid}');
+      }
+      return;
+    }
+    if (n.type == AppNotificationType.basket) {
+      if (n.relatedId != null && n.relatedId!.isNotEmpty) {
         context.push('/shared/${n.relatedId}');
+        return;
+      }
+      if (n.fromUid.isNotEmpty) {
+        context.push('/friend-salkamalka/${n.fromUid}');
       }
       return;
     }

@@ -9,12 +9,14 @@ class DiaryGridPaper extends StatelessWidget {
     this.color = DiaryColors.paper,
     this.padding = const EdgeInsets.all(12),
     this.borderRadius = 16,
+    this.border,
   });
 
   final Widget child;
   final Color color;
   final EdgeInsets padding;
   final double borderRadius;
+  final BoxBorder? border;
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +24,7 @@ class DiaryGridPaper extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(borderRadius),
+        border: border,
       ),
       child: CustomPaint(
         painter: _GridPainter(color: DiaryColors.grid.withValues(alpha: 0.45)),
@@ -58,52 +61,28 @@ class SpiralNotebook extends StatelessWidget {
     super.key,
     required this.child,
     this.folderColor = DiaryColors.folderBlue,
+    this.border,
   });
 
   final Widget child;
   final Color folderColor;
+  final BoxBorder? border;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: folderColor,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 18,
-            child: CustomPaint(painter: _SpiralPainter()),
-          ),
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(0, 8, 10, 8),
-              child: DiaryGridPaper(
-                borderRadius: 12,
-                padding: EdgeInsets.zero,
-                child: child,
-              ),
-            ),
-          ),
-        ],
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        child: DiaryGridPaper(
+          borderRadius: 12,
+          padding: EdgeInsets.zero,
+          border: border,
+          child: child,
+        ),
       ),
     );
   }
-}
-
-class _SpiralPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF555555)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    for (double y = 16; y < size.height - 8; y += 22) {
-      canvas.drawCircle(Offset(size.width / 2, y), 4.5, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class MineBadge extends StatelessWidget {
@@ -209,12 +188,25 @@ class PersonRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: DiaryTheme.body(14, weight: FontWeight.w700)),
-                Text(handle,
-                    style: DiaryTheme.body(12, color: DiaryColors.inkMuted)),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DiaryTheme.body(14, weight: FontWeight.w700),
+                ),
+                Text(
+                  handle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: DiaryTheme.body(12, color: DiaryColors.inkMuted),
+                ),
                 if (subtitle != null)
-                  Text(subtitle!,
-                      style: DiaryTheme.body(11, color: DiaryColors.accent)),
+                  Text(
+                    subtitle!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: DiaryTheme.body(11, color: DiaryColors.accent),
+                  ),
               ],
             ),
           ),
@@ -266,7 +258,13 @@ class DiaryButton extends StatelessWidget {
                   Icon(icon, size: 18, color: DiaryColors.ink),
                   const SizedBox(width: 6),
                 ],
-                Text(label, style: DiaryTheme.body(13, weight: FontWeight.w600)),
+                Flexible(
+                  child: OneLineText(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: DiaryTheme.body(13, weight: FontWeight.w600),
+                  ),
+                ),
               ],
             ),
           ),
@@ -323,6 +321,42 @@ class _PasswordTextFieldState extends State<PasswordTextField> {
             color: DiaryColors.inkMuted,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Label that must stay on one line: shrinks to fit instead of wrapping.
+class OneLineText extends StatelessWidget {
+  const OneLineText(
+    this.text, {
+    super.key,
+    required this.style,
+    this.textAlign,
+  });
+
+  final String text;
+  final TextStyle style;
+  final TextAlign? textAlign;
+
+  Alignment get _alignment => switch (textAlign) {
+        TextAlign.center => Alignment.center,
+        TextAlign.right || TextAlign.end => Alignment.centerRight,
+        _ => Alignment.centerLeft,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: _alignment,
+      child: Text(
+        text,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.fade,
+        textAlign: textAlign,
+        style: style,
       ),
     );
   }
