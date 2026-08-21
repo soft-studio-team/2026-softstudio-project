@@ -1,0 +1,323 @@
+{
+  "title": "wishkit iOS 패션 Top 10 live field compare smoke",
+  "date": "2026-08-21",
+  "branch": "main",
+  "head": "2588cbe",
+  "pr": 28,
+  "app": "wishlist-appversion2/flutter_app",
+  "runner": "integration_test/live_field_compare_test.dart",
+  "catalog": "integration_test/live_field_compare_catalog.dart",
+  "unitTests": {
+    "command": "flutter test test/product_extract_js_sync_test.dart test/webview_scraper_result_test.dart test/parsing_bridge_test.dart test/live_field_compare_test.dart",
+    "passed": true,
+    "count": 35
+  },
+  "device": {
+    "preferred": {
+      "name": "지으닝 (wireless)",
+      "id": "00008140-001202993CEB001C",
+      "os": "iOS 26.6 23G71",
+      "ok": false,
+      "error": "Cannot start app on wirelessly tethered iOS device. Try running again with the --publish-port flag"
+    },
+    "publishPort": "flutter test 에는 --publish-port 옵션이 없음",
+    "usbIphone": "미연결",
+    "used": {
+      "name": "iPhone 17",
+      "id": "F1FAFF04-97E5-4838-BDC0-09A977AC46B2",
+      "kind": "simulator",
+      "os": "iOS 26.5"
+    }
+  },
+  "notes": [
+    "전체 몰 감사가 아니라 패션 인기몰 10개만 실행.",
+    "LIVE_COMPARE_MALLS 1~2몰씩, --no-uninstall.",
+    "엔진 코드는 수정하지 않음.",
+    "live_field_compare_test 는 source.price 를 출력하지 않아 site-adapter 여부는 이 러너 JSON으로 확인 불가. PASS 판정은 이름·양수 가격·이미지 MATCH.",
+    "POPULAR_MALL_RESEARCH.md 는 main에 없음. 몰 이름은 live_field_compare_catalog.dart LiveCompareMall 과 MALL_SUPPORT 지원 표를 사용. SSF샵 카탈로그 이름 확인.",
+    "안드 Tab MATCH 3 기준은 MALL_SUPPORT.md / CHANGELOG (PR #28). 같은 몰이 안드 MATCH·iOS 실패면 OS 차이로 표시. 양수 가격이 카탈로그와만 다르면 카탈로그 드리프트 가능성도 병기."
+  ],
+  "summary": {
+    "malls": 10,
+    "skus": 30,
+    "matchSkus": 24,
+    "failSkus": 6,
+    "fullMatchMalls": ["KREAM", "4910", "W컨셉", "SSF샵", "올리브영"],
+    "partialMalls": ["에이블리", "무신사", "지그재그", "퀸잇", "29CM"]
+  },
+  "malls": [
+    {
+      "order": 1,
+      "mall": "에이블리",
+      "verdict": "FAIL",
+      "match": "2/3",
+      "androidTab": "MATCH 3",
+      "osDiff": true,
+      "classifications": ["PRICE", "MATCH", "MATCH"],
+      "skus": [
+        {
+          "index": 1,
+          "classification": "PRICE",
+          "url": "https://mobile.a-bly.com/goods/75432976",
+          "elapsedMs": 68243,
+          "engineName": "[하이넥/간절기필수🍂] 톤텔 루즈 사선 지퍼 후드집업 - 에이블리",
+          "enginePrice": null,
+          "engineImage": "https://imgb.a-bly.com/data/goods/7b7beef563b76b4fa88149111c73b23f.gif",
+          "liveName": "[하이넥/간절기필수🍂] 톤텔 루즈 사선 지퍼 후드집업",
+          "livePrice": 26500,
+          "liveImage": "https://imgb.a-bly.com/data/goods/7b7beef563b76b4fa88149111c73b23f.gif",
+          "nameMatch": true,
+          "priceMatch": false,
+          "imageMatch": true,
+          "failureReason": "price_ambiguous",
+          "finalUrl": "https://mobile.a-bly.com/goods/75432976",
+          "note": "same-site finalUrl 유지. 이름·이미지 MATCH, 가격 null."
+        },
+        {
+          "index": 2,
+          "classification": "MATCH",
+          "url": "https://mobile.a-bly.com/goods/75506878",
+          "elapsedMs": 40991,
+          "enginePrice": 23270,
+          "livePrice": 23270,
+          "failureReason": null
+        },
+        {
+          "index": 3,
+          "classification": "MATCH",
+          "url": "https://mobile.a-bly.com/goods/28244036",
+          "elapsedMs": 40965,
+          "enginePrice": 20000,
+          "livePrice": 20000,
+          "failureReason": null
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "mall": "무신사",
+      "verdict": "FAIL",
+      "match": "2/3",
+      "androidTab": "MATCH 3",
+      "osDiff": true,
+      "classifications": ["MATCH", "PRICE", "MATCH"],
+      "skus": [
+        {
+          "index": 1,
+          "classification": "MATCH",
+          "url": "https://www.musinsa.com/products/4341120",
+          "elapsedMs": 16244,
+          "enginePrice": 105990,
+          "livePrice": 105990
+        },
+        {
+          "index": 2,
+          "classification": "PRICE",
+          "url": "https://www.musinsa.com/products/6797005",
+          "elapsedMs": 16243,
+          "engineName": "Days Comfort Fit Shirt_White",
+          "enginePrice": 80100,
+          "engineImage": "https://image.msscdn.net/images/goods_img/20260707/6797005/6797005_17852305721496_500.jpg",
+          "liveName": "Days Comfort Fit Shirt_White",
+          "livePrice": 84550,
+          "liveImage": "https://image.msscdn.net/images/goods_img/20260707/6797005/6797005_17852305721496_500.jpg",
+          "nameMatch": true,
+          "priceMatch": false,
+          "imageMatch": true,
+          "failureReason": null,
+          "got": 80100,
+          "expected": 84550,
+          "note": "양수 가격 추출. 카탈로그 84550 vs 엔진 80100."
+        },
+        {
+          "index": 3,
+          "classification": "MATCH",
+          "url": "https://www.musinsa.com/products/6677115",
+          "elapsedMs": 15597,
+          "enginePrice": 24900,
+          "livePrice": 24900
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "mall": "지그재그",
+      "verdict": "FAIL",
+      "match": "2/3",
+      "androidTab": "MATCH 3",
+      "osDiff": true,
+      "classifications": ["MATCH", "MATCH", "PRICE"],
+      "skus": [
+        {
+          "index": 1,
+          "classification": "MATCH",
+          "url": "https://zigzag.kr/catalog/products/159126270",
+          "elapsedMs": 16048,
+          "enginePrice": 17000,
+          "livePrice": 17000
+        },
+        {
+          "index": 2,
+          "classification": "MATCH",
+          "url": "https://zigzag.kr/catalog/products/168362278",
+          "elapsedMs": 16033,
+          "enginePrice": 179000,
+          "livePrice": 179000
+        },
+        {
+          "index": 3,
+          "classification": "PRICE",
+          "url": "https://zigzag.kr/catalog/products/161980550",
+          "elapsedMs": 16048,
+          "engineName": "뷰티크 [조말론] 블랙베리 앤 베이 코롱 100ml (블랙베리향) (+선물포장)",
+          "enginePrice": 194150,
+          "liveName": "🌹뷰티페스타 특가🌹 [조말론] 블랙베리 앤 베이 코롱 100ml (블랙베리향) (+선물포장)",
+          "livePrice": 185580,
+          "nameMatch": true,
+          "priceMatch": false,
+          "imageMatch": true,
+          "failureReason": null,
+          "got": 194150,
+          "expected": 185580,
+          "note": "양수 가격. 카탈로그 185580(특가 표기) vs 엔진 194150."
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "mall": "퀸잇",
+      "verdict": "FAIL",
+      "match": "1/3",
+      "androidTab": "MATCH 3",
+      "osDiff": true,
+      "classifications": ["PRICE", "MATCH", "PRICE"],
+      "skus": [
+        {
+          "index": 1,
+          "classification": "PRICE",
+          "url": "https://web.queenit.kr/product/421b849e05731238976b9f01d96c7e31",
+          "elapsedMs": 16248,
+          "enginePrice": 29900,
+          "livePrice": 32900,
+          "nameMatch": true,
+          "priceMatch": false,
+          "imageMatch": true,
+          "failureReason": null,
+          "got": 29900,
+          "expected": 32900
+        },
+        {
+          "index": 2,
+          "classification": "MATCH",
+          "url": "https://web.queenit.kr/product/360e9e7089a6346d2e9b5de2b2d8e121",
+          "elapsedMs": 16048,
+          "enginePrice": 33900,
+          "livePrice": 33900
+        },
+        {
+          "index": 3,
+          "classification": "PRICE",
+          "url": "https://web.queenit.kr/product/b52c66c75291c8ef4d9f136282cac90c",
+          "elapsedMs": 16248,
+          "enginePrice": 33387,
+          "livePrice": 35900,
+          "nameMatch": true,
+          "priceMatch": false,
+          "imageMatch": true,
+          "failureReason": null,
+          "got": 33387,
+          "expected": 35900
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "mall": "KREAM",
+      "verdict": "PASS",
+      "match": "3/3",
+      "androidTab": "MATCH 3",
+      "osDiff": false,
+      "classifications": ["MATCH", "MATCH", "MATCH"]
+    },
+    {
+      "order": 6,
+      "mall": "29CM",
+      "verdict": "FAIL",
+      "match": "2/3",
+      "androidTab": "MATCH 3",
+      "osDiff": true,
+      "classifications": ["MATCH", "PRICE", "MATCH"],
+      "skus": [
+        {
+          "index": 1,
+          "classification": "MATCH",
+          "url": "https://www.29cm.co.kr/products/3769341",
+          "elapsedMs": 16244,
+          "enginePrice": 141950,
+          "livePrice": 141950
+        },
+        {
+          "index": 2,
+          "classification": "PRICE",
+          "url": "https://www.29cm.co.kr/products/3423314",
+          "elapsedMs": 16244,
+          "engineName": "[Atelier Edition] W/Two Way Vegan Leather Jacket_2COLOR(WC25-OT09)",
+          "enginePrice": 180400,
+          "livePrice": 117260,
+          "nameMatch": true,
+          "priceMatch": false,
+          "imageMatch": true,
+          "failureReason": null,
+          "got": 180400,
+          "expected": 117260,
+          "note": "양수 가격. 카탈로그 할인가 117260 vs 엔진 180400."
+        },
+        {
+          "index": 3,
+          "classification": "MATCH",
+          "url": "https://www.29cm.co.kr/products/3765311",
+          "elapsedMs": 16248,
+          "enginePrice": 197100,
+          "livePrice": 197100
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "mall": "4910",
+      "verdict": "PASS",
+      "match": "3/3",
+      "androidTab": "MATCH 3",
+      "osDiff": false,
+      "classifications": ["MATCH", "MATCH", "MATCH"],
+      "note": "finalUrl 이 4910.kr/desktop/goods/... 로 바뀌었으나 이름·가격·이미지 MATCH."
+    },
+    {
+      "order": 8,
+      "mall": "W컨셉",
+      "verdict": "PASS",
+      "match": "3/3",
+      "androidTab": "MATCH 3",
+      "osDiff": false,
+      "classifications": ["MATCH", "MATCH", "MATCH"]
+    },
+    {
+      "order": 9,
+      "mall": "SSF샵",
+      "verdict": "PASS",
+      "match": "3/3",
+      "androidTab": "MATCH 3",
+      "osDiff": false,
+      "classifications": ["MATCH", "MATCH", "MATCH"]
+    },
+    {
+      "order": 10,
+      "mall": "올리브영",
+      "verdict": "PASS",
+      "match": "3/3",
+      "androidTab": "MATCH 3",
+      "osDiff": false,
+      "classifications": ["MATCH", "MATCH", "MATCH"]
+    }
+  ]
+}
