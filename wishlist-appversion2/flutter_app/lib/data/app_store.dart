@@ -34,6 +34,17 @@ class AppStore extends ChangeNotifier {
 
   final AccountRepository _repo;
   final bool _firebaseConfigured;
+
+  /// GoRouter redirects only need login / verify / welcome changes.
+  /// Refreshing the navigator on every share notify can hit Flutter's
+  /// `_dependents.isEmpty` assertion while the 살까말까 sheet is closing.
+  final ValueNotifier<int> authRouteTick = ValueNotifier<int>(0);
+
+  void _notifyAuthRoute() {
+    authRouteTick.value++;
+    notifyListeners();
+  }
+
   StreamSubscription<List<AppNotification>>? _notificationSub;
   StreamSubscription<List<SharedBasket>>? _receivedBasketSub;
 
@@ -324,7 +335,7 @@ class AppStore extends ChangeNotifier {
     awaitingEmailVerification = true;
     pendingVerificationEmail = email.trim();
     isLoggedIn = false;
-    notifyListeners();
+    _notifyAuthRoute();
   }
 
   Future<void> login({required String email, required String password}) async {
@@ -340,12 +351,12 @@ class AppStore extends ChangeNotifier {
       awaitingEmailVerification = true;
       pendingVerificationEmail = fresh.email ?? email.trim();
       isLoggedIn = false;
-      notifyListeners();
+      _notifyAuthRoute();
       return;
     }
     await _hydrateSession(fresh);
     await _restoreBasketForUser();
-    notifyListeners();
+    _notifyAuthRoute();
   }
 
   Future<void> resendVerificationEmail() async {
@@ -364,14 +375,14 @@ class AppStore extends ChangeNotifier {
     await _hydrateSession(user);
     await _restoreBasketForUser();
     showSignupWelcome = true;
-    notifyListeners();
+    _notifyAuthRoute();
     return true;
   }
 
   void dismissSignupWelcome() {
     if (!showSignupWelcome) return;
     showSignupWelcome = false;
-    notifyListeners();
+    _notifyAuthRoute();
   }
 
   Future<void> cancelEmailVerification() async {
@@ -381,7 +392,7 @@ class AppStore extends ChangeNotifier {
     }
     await _clearPendingProfileDraft();
     await _clearSessionLocal();
-    notifyListeners();
+    _notifyAuthRoute();
   }
 
   Future<void> logout() async {
@@ -390,7 +401,7 @@ class AppStore extends ChangeNotifier {
       await _repo.logout();
     }
     await _clearSessionLocal();
-    notifyListeners();
+    _notifyAuthRoute();
   }
 
   Future<void> deleteAccount({required String password}) async {
@@ -414,7 +425,7 @@ class AppStore extends ChangeNotifier {
     }
     await _clearPendingProfileDraft();
     await _clearSessionLocal();
-    notifyListeners();
+    _notifyAuthRoute();
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
@@ -846,11 +857,14 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _persistHiddenFeed() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('${_hiddenFeedKey}_${uid ?? 'guest'}', jsonEncode({
-      'hidden': _hiddenFeedIds.toList(),
-      'pendingHide': _pendingHideIds.toList(),
-      'pendingUnhide': _pendingUnhideIds.toList(),
-    }));
+    await prefs.setString(
+      '${_hiddenFeedKey}_${uid ?? 'guest'}',
+      jsonEncode({
+        'hidden': _hiddenFeedIds.toList(),
+        'pendingHide': _pendingHideIds.toList(),
+        'pendingUnhide': _pendingUnhideIds.toList(),
+      }),
+    );
   }
 
   Future<void> _restoreHiddenFeedLocal() async {
@@ -997,9 +1011,7 @@ class AppStore extends ChangeNotifier {
               n.type != AppNotificationType.review &&
               n.type != AppNotificationType.list) {
             if (notificationsEnabled) {
-              unawaited(
-                PushNotificationService.instance.showInboxBanner(n),
-              );
+              unawaited(PushNotificationService.instance.showInboxBanner(n));
             }
           }
         }
@@ -1115,10 +1127,7 @@ class AppStore extends ChangeNotifier {
       ...recipientNames,
     }.where((n) => n.isNotEmpty).toList();
     // Channels accumulate: a link share re-sent to friends counts as both.
-    final mergedChannels = {
-      ...?existing?.channels,
-      ...channels,
-    }.toList();
+    final mergedChannels = {...?existing?.channels, ...channels}.toList();
     final shared = SharedBasket(
       id: id,
       title: title,
@@ -1187,8 +1196,9 @@ class AppStore extends ChangeNotifier {
     if (userId == null) {
       throw Exception('로그인된 계정이 없어요.');
     }
-    final existingBasket =
-        existingId == null ? null : sharedBaskets[existingId];
+    final existingBasket = existingId == null
+        ? null
+        : sharedBaskets[existingId];
     final threadId = existingBasket?.commentThreadId.isNotEmpty == true
         ? existingBasket!.commentThreadId
         : (existingId ?? 'sb-${DateTime.now().millisecondsSinceEpoch}');
@@ -1249,11 +1259,7 @@ class AppStore extends ChangeNotifier {
       text: trimmed,
       parentId: parentId,
       ownerUid: ownerUid,
-      participantUids: {
-        ownerUid,
-        userId,
-        ...basket.recipientUids,
-      }.toList(),
+      participantUids: {ownerUid, userId, ...basket.recipientUids}.toList(),
       memo: basket.memo,
     );
   }
@@ -1267,7 +1273,8 @@ class AppStore extends ChangeNotifier {
     if (userId == null || !isLoggedIn) {
       throw Exception('로그인하면 링크로 공유할 수 있어요.');
     }
-    final pageId = (basket.publicPageId != null && basket.publicPageId!.isNotEmpty)
+    final pageId =
+        (basket.publicPageId != null && basket.publicPageId!.isNotEmpty)
         ? basket.publicPageId!
         : const Uuid().v4();
     final expiresAt = DateTime.now().add(kSharePageTtl);
@@ -1338,8 +1345,7 @@ class AppStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     notificationsEnabled = _readNotificationsEnabled(prefs, uid ?? 'guest');
     if (sharedBaskets.isEmpty) {
-      final sharedRaw =
-          prefs.getString('${_sharedKey}_${uid ?? 'guest'}');
+      final sharedRaw = prefs.getString('${_sharedKey}_${uid ?? 'guest'}');
       if (sharedRaw != null) {
         final list = jsonDecode(sharedRaw) as List;
         for (final e in list) {

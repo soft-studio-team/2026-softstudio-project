@@ -37,6 +37,7 @@ void main() {
     expect(shared.memo, '살까 말까 고민 중');
     expect(shared.threadId, shared.id);
     expect(store.sharedBasketById(shared.id), isNotNull);
+    expect(store.authRouteTick.value, 0);
   });
 
   test('reorderTabs uses adjusted onReorderItem destination index', () async {
@@ -195,43 +196,58 @@ void main() {
     expect(grouped.first.replies.map((c) => c.id), ['c2']);
   });
 
-  test('salkamalka feed does not show another account sent basket as mine', () async {
-    SharedPreferences.setMockInitialValues({});
-    final store = AppStore(firebaseConfigured: false);
-    await store.init();
-    store.currentUser = AppUser(
-      uid: 'account-b',
-      name: '지은B',
-      handle: '@b',
-      avatarUrl: 'https://example.com/b.png',
-    );
-    store.sharedBaskets['sb-from-a'] = SharedBasket(
-      id: 'sb-from-a',
-      title: '지은A의 살까말까',
-      ownerName: '지은A',
-      fromUid: 'account-a',
-      createdAt: DateTime(2026, 8, 17),
-      items: const [],
-      recipientUids: const ['account-b'],
-      recipientNames: const ['지은B'],
-      channels: const [SharedChannel.friends],
-    );
-    store.receivedBaskets = [
-      SharedBasket(
-        id: 'recv-1',
+  test(
+    'salkamalka feed does not show another account sent basket as mine',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final store = AppStore(firebaseConfigured: false);
+      await store.init();
+      store.currentUser = AppUser(
+        uid: 'account-b',
+        name: '지은B',
+        handle: '@b',
+        avatarUrl: 'https://example.com/b.png',
+      );
+      store.sharedBaskets['sb-from-a'] = SharedBasket(
+        id: 'sb-from-a',
         title: '지은A의 살까말까',
         ownerName: '지은A',
         fromUid: 'account-a',
         createdAt: DateTime(2026, 8, 17),
         items: const [],
+        recipientUids: const ['account-b'],
+        recipientNames: const ['지은B'],
         channels: const [SharedChannel.friends],
-        threadId: 'sb-from-a',
-      ),
-    ];
+      );
+      store.receivedBaskets = [
+        SharedBasket(
+          id: 'recv-1',
+          title: '지은A의 살까말까',
+          ownerName: '지은A',
+          fromUid: 'account-a',
+          createdAt: DateTime(2026, 8, 17),
+          items: const [],
+          channels: const [SharedChannel.friends],
+          threadId: 'sb-from-a',
+        ),
+      ];
 
-    final feed = store.salkamalkaFeed;
-    expect(feed, hasLength(1));
-    expect(feed.first.isMine, isFalse);
-    expect(feed.first.basket.fromUid, 'account-a');
+      final feed = store.salkamalkaFeed;
+      expect(feed, hasLength(1));
+      expect(feed.first.isMine, isFalse);
+      expect(feed.first.basket.fromUid, 'account-a');
+    },
+  );
+
+  test('dismissSignupWelcome ticks the auth route listenable', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    var ticks = 0;
+    store.authRouteTick.addListener(() => ticks++);
+    store.showSignupWelcome = true;
+    store.dismissSignupWelcome();
+    expect(ticks, 1);
+    expect(store.authRouteTick.value, 1);
   });
 }
