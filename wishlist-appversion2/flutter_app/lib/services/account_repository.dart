@@ -1035,17 +1035,12 @@ class AccountRepository {
   }) async {
     if (recipientUids.isEmpty || items.isEmpty || threadId.isEmpty) return;
     final now = DateTime.now();
-    try {
-      await upsertBasketThread(
-        threadId: threadId,
-        ownerUid: from.uid,
-        participantUids: recipientUids,
-        memo: memo,
-      );
-    } catch (_) {
-      // Sharing still goes out if the comment room write fails; the
-      // recipient copy keeps [threadId] so they can comment once it exists.
-    }
+    await upsertBasketThread(
+      threadId: threadId,
+      ownerUid: from.uid,
+      participantUids: recipientUids,
+      memo: memo,
+    );
     final batch = _db.batch();
     for (final recipientUid in recipientUids) {
       if (recipientUid == from.uid) continue;
@@ -1089,12 +1084,21 @@ class AccountRepository {
     if (threadId.isEmpty || ownerUid.isEmpty) return;
     final participants = {ownerUid, ...participantUids}.toList();
     final ref = _basketThreads.doc(threadId);
+    final snap = await ref.get();
+    if (!snap.exists) {
+      // Plain list so security rules can check `uid in participantUids`.
+      // FieldValue.arrayUnion on create is not a list in rules.
+      await ref.set({
+        'id': threadId,
+        'ownerUid': ownerUid,
+        'participantUids': participants,
+        'memo': memo,
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+      return;
+    }
     await ref.set({
-      'id': threadId,
-      'ownerUid': ownerUid,
       'participantUids': FieldValue.arrayUnion(participants),
-      'memo': memo,
-      'createdAt': DateTime.now().toIso8601String(),
     }, SetOptions(merge: true));
   }
 
@@ -1125,20 +1129,23 @@ class AccountRepository {
     final trimmed = text.trim();
     if (threadId.isEmpty || from.uid.isEmpty || trimmed.isEmpty) return;
     final threadRef = _basketThreads.doc(threadId);
-    var threadSnap = await threadRef.get();
-    if (!threadSnap.exists) {
+    var exists = false;
+    try {
+      exists = (await threadRef.get()).exists;
+    } catch (_) {}
+    if (!exists) {
       final owner = ownerUid.isNotEmpty ? ownerUid : from.uid;
       if (from.uid != owner && !participantUids.contains(from.uid)) {
         throw Exception('댓글 방을 찾을 수 없어요.');
       }
-      await upsertBasketThread(
-        threadId: threadId,
-        ownerUid: owner,
-        participantUids: participantUids,
-        memo: memo,
-      );
-      threadSnap = await threadRef.get();
     }
+    await upsertBasketThread(
+      threadId: threadId,
+      ownerUid: ownerUid.isNotEmpty ? ownerUid : from.uid,
+      participantUids: participantUids,
+      memo: memo,
+    );
+    final threadSnap = await threadRef.get();
     final comments = await _basketComments(threadId).get();
     final existing = comments.docs.map((d) {
       final data = Map<String, dynamic>.from(d.data());
