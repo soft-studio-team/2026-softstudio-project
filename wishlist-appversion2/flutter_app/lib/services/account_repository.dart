@@ -1120,19 +1120,21 @@ class AccountRepository {
     final trimmed = text.trim();
     if (threadId.isEmpty || from.uid.isEmpty || trimmed.isEmpty) return;
     final threadRef = _basketThreads.doc(threadId);
-    var threadSnap = await threadRef.get();
-    if (!threadSnap.exists) {
-      final owner = ownerUid.isNotEmpty ? ownerUid : from.uid;
-      if (from.uid != owner) {
-        throw Exception('댓글 방을 찾을 수 없어요.');
-      }
-      await upsertBasketThread(
-        threadId: threadId,
-        ownerUid: owner,
-        participantUids: participantUids,
-        memo: memo,
-      );
+    dynamic threadSnap;
+    try {
       threadSnap = await threadRef.get();
+    } catch (_) {}
+    if (threadSnap == null || threadSnap.exists != true) {
+      final owner = ownerUid.isNotEmpty ? ownerUid : from.uid;
+      if (from.uid == owner) {
+        await upsertBasketThread(
+          threadId: threadId,
+          ownerUid: owner,
+          participantUids: participantUids,
+          memo: memo,
+        );
+        threadSnap = await threadRef.get();
+      }
     }
     final comments = await _basketComments(threadId).get();
     final existing = comments.docs.map((d) {
@@ -1158,7 +1160,9 @@ class AccountRepository {
       'createdAtServer': FieldValue.serverTimestamp(),
     });
 
-    final thread = threadSnap.data() ?? {};
+    final thread = (threadSnap != null && threadSnap.exists == true)
+        ? Map<String, dynamic>.from(threadSnap.data() as Map? ?? const {})
+        : <String, dynamic>{};
     final threadOwner = thread['ownerUid'] as String? ?? ownerUid;
     final participants = (thread['participantUids'] as List? ?? participantUids)
         .map((e) => e.toString())

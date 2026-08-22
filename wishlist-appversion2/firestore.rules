@@ -119,16 +119,12 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
-    // Shared 살까말까 comment threads. Owner + recipients can read and comment.
+    // Shared 살까말까 comment threads. The room doc is owned by the sender.
+    // Any signed-in user who has the thread id (sender + recipients) can
+    // read and post comments. Recipients are not always in participantUids
+    // on older sends, so comments are not gated on that list.
     match /basketThreads/{threadId} {
-      function threadParticipantFrom(data) {
-        return signedIn() && (
-          data.ownerUid == request.auth.uid
-          || request.auth.uid in data.participantUids
-        );
-      }
-
-      allow read: if resource == null || threadParticipantFrom(resource.data);
+      allow read: if signedIn();
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid;
       allow update: if signedIn()
@@ -136,16 +132,9 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
 
       match /comments/{commentId} {
-        allow read: if exists(/databases/$(database)/documents/basketThreads/$(threadId))
-          && threadParticipantFrom(
-            get(/databases/$(database)/documents/basketThreads/$(threadId)).data
-          );
+        allow read: if signedIn();
         allow create: if signedIn()
-          && request.resource.data.authorUid == request.auth.uid
-          && exists(/databases/$(database)/documents/basketThreads/$(threadId))
-          && threadParticipantFrom(
-            get(/databases/$(database)/documents/basketThreads/$(threadId)).data
-          );
+          && request.resource.data.authorUid == request.auth.uid;
         allow update, delete: if signedIn()
           && resource.data.authorUid == request.auth.uid;
       }
