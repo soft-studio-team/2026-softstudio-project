@@ -259,9 +259,8 @@ void main() {
       createdAt: DateTime(2026, 8, 17),
       items: const [],
     );
-    expect(legacy.commentThreadId, 'recv-old');
-    expect(legacy.allowsComments(myUid: 'account-b'), isTrue);
-    expect(legacy.allowsComments(myUid: 'account-a'), isFalse);
+    expect(legacy.commentThreadId, isEmpty);
+    expect(legacy.allowsComments(myUid: 'account-b'), isFalse);
   });
 
   test('link-only sent basket does not open comments for the sender', () {

@@ -312,13 +312,12 @@ class SharedBasket {
   bool get sharedToFriends => channels.contains(SharedChannel.friends);
 
   /// Id used to load comments. New shares store [threadId]; older friend
-  /// sends fall back to this archive's own id. Received copies used to omit
-  /// [recipientUids], so a friend-sent basket still uses this copy's id
-  /// when [threadId] was not written.
+  /// sends fall back to this archive's own id. Received copies without
+  /// [threadId] cannot invent a room from their copy id — that is a
+  /// different document from the sender's thread.
   String get commentThreadId {
     if (threadId.isNotEmpty) return threadId;
     if (recipientUids.isNotEmpty) return id;
-    if (fromUid.isNotEmpty) return id;
     return '';
   }
 
