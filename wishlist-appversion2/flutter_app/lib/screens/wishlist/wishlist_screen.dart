@@ -853,6 +853,18 @@ class WishlistProductCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    if (product.memo?.trim().isNotEmpty == true) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        product.memo!.trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: DiaryTheme.product(
+                          12,
+                          color: DiaryColors.inkMuted,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

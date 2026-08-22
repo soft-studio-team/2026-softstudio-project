@@ -159,7 +159,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('메모',
+                              Text('고민하는 이유',
                                   style: DiaryTheme.body(14,
                                       weight: FontWeight.w700)),
                               if (isOwn)
@@ -167,7 +167,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   controller: memoCtrl,
                                   maxLines: 4,
                                   decoration: InputDecoration(
-                                    hintText: '이 상품에 대한 메모를 남겨보세요',
+                                    hintText: '이 상품을 고민하는 이유를 남겨보세요',
                                     hintStyle: DiaryTheme.body(13,
                                         color: DiaryColors.inkSoft),
                                     border: InputBorder.none,

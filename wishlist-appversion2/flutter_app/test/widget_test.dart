@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:figmadesign/data/app_store.dart';
 import 'package:figmadesign/models/models.dart';
+import 'package:figmadesign/utils/tap_cooldown.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -233,5 +234,90 @@ void main() {
     expect(feed, hasLength(1));
     expect(feed.first.isMine, isFalse);
     expect(feed.first.basket.fromUid, 'account-a');
+  });
+
+  ParsedProductInfo parsed({
+    String name = '테스트 후드',
+    String url = 'https://example.com/hood',
+  }) {
+    return ParsedProductInfo(
+      name: name,
+      price: 39000,
+      platform: '테스트몰',
+      image: 'https://example.com/hood.png',
+      productUrl: url,
+    );
+  }
+
+  test('addParsedProduct keeps the consideration memo', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    store.tabs = [
+      WishlistTab(id: 'all', name: '전체', isPublic: true),
+      WishlistTab(id: 'summer', name: '여름', isPublic: false),
+    ];
+
+    final product = await store.addParsedProduct(
+      parsed(),
+      listId: 'summer',
+      memo: '  색이 고민돼요  ',
+    );
+
+    expect(product, isNotNull);
+    expect(product!.memo, '색이 고민돼요');
+    expect(store.products.single.memo, '색이 고민돼요');
+  });
+
+  test('addParsedProduct ignores a second save inside 2 seconds', () async {
+    SharedPreferences.setMockInitialValues({});
+    var now = DateTime(2026, 8, 22, 19);
+    final store = AppStore(
+      firebaseConfigured: false,
+      actionCooldown: TapCooldown(clock: () => now),
+    );
+    await store.init();
+    store.tabs = [
+      WishlistTab(id: 'all', name: '전체', isPublic: true),
+      WishlistTab(id: 'summer', name: '여름', isPublic: false),
+    ];
+
+    final first = await store.addParsedProduct(parsed(), listId: 'summer');
+    final duplicate = await store.addParsedProduct(parsed(), listId: 'summer');
+    expect(first, isNotNull);
+    expect(duplicate, isNull);
+    expect(store.products, hasLength(1));
+
+    final other = await store.addParsedProduct(
+      parsed(name: '다른 상품', url: 'https://example.com/other'),
+      listId: 'summer',
+    );
+    expect(other, isNotNull);
+    expect(store.products, hasLength(2));
+
+    now = now.add(const Duration(seconds: 2));
+    final later = await store.addParsedProduct(parsed(), listId: 'summer');
+    expect(later, isNotNull);
+    expect(store.products, hasLength(3));
+  });
+
+  test('setNotificationsEnabled ignores a second tap inside 2 seconds', () async {
+    SharedPreferences.setMockInitialValues({});
+    var now = DateTime(2026, 8, 22, 19);
+    final store = AppStore(
+      firebaseConfigured: false,
+      actionCooldown: TapCooldown(clock: () => now),
+    );
+    await store.init();
+
+    expect(store.notificationsEnabled, isTrue);
+    expect(await store.setNotificationsEnabled(false), isTrue);
+    expect(store.notificationsEnabled, isFalse);
+    expect(await store.setNotificationsEnabled(true), isFalse);
+    expect(store.notificationsEnabled, isFalse);
+
+    now = now.add(const Duration(seconds: 2));
+    expect(await store.setNotificationsEnabled(true), isTrue);
+    expect(store.notificationsEnabled, isTrue);
   });
 }

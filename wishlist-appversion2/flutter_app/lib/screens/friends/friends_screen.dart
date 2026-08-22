@@ -252,7 +252,7 @@ class _FollowingList extends StatelessWidget {
   final List<Friend> following;
   final List<Friend> discover;
   final bool searching;
-  final Future<void> Function(Friend friend) onToggleFollow;
+  final Future<bool> Function(Friend friend) onToggleFollow;
 
   @override
   Widget build(BuildContext context) {
@@ -304,8 +304,8 @@ class _FollowingList extends StatelessWidget {
   Future<void> _toggle(BuildContext context, Friend f) async {
     final willFollow = !f.isFollowing;
     try {
-      await onToggleFollow(f);
-      if (!context.mounted) return;
+      final changed = await onToggleFollow(f);
+      if (!changed || !context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

@@ -7,6 +7,7 @@ import '../../models/models.dart';
 import '../../services/parsing_bridge.dart';
 import '../../services/webview_scraper.dart';
 import '../../theme/diary_theme.dart';
+import '../../utils/tap_cooldown.dart';
 import '../../widgets/diary_widgets.dart';
 
 /// Shown when another app shares a product URL into this app.
@@ -24,7 +25,10 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
   final urlCtrl = TextEditingController();
   final titleCtrl = TextEditingController();
   final priceCtrl = TextEditingController();
+  final memoCtrl = TextEditingController();
+  final saveCooldown = TapCooldown();
   bool loading = false;
+  bool saving = false;
   String? error;
   ParsedProductInfo? parsed;
   String? selectedListId;
@@ -48,6 +52,7 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
     urlCtrl.dispose();
     titleCtrl.dispose();
     priceCtrl.dispose();
+    memoCtrl.dispose();
     super.dispose();
   }
 
@@ -73,7 +78,7 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
   }
 
   Future<void> _save() async {
-    if (parsed == null || selectedListId == null) return;
+    if (parsed == null || selectedListId == null || saving) return;
     final name = titleCtrl.text.trim().isEmpty
         ? parsed!.name
         : titleCtrl.text.trim();
@@ -88,6 +93,7 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
       setState(() => error = '가격을 입력해 주세요');
       return;
     }
+    if (!saveCooldown.begin()) return;
 
     final info = ParsedProductInfo(
       name: name,
@@ -108,17 +114,28 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
       extractFailureReason: parsed!.extractFailureReason,
     );
 
-    final store = context.read<AppStore>();
-    final product = await store.addParsedProduct(
-      info,
-      listId: selectedListId!,
-    );
-    store.setPendingShareUrl(null);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product.name} 을(를) 저장했어요')),
+    setState(() {
+      saving = true;
+      error = null;
+    });
+    try {
+      final store = context.read<AppStore>();
+      final product = await store.addParsedProduct(
+        info,
+        listId: selectedListId!,
+        memo: memoCtrl.text,
       );
-      context.go('/');
+      if (product == null) return;
+      store.setPendingShareUrl(null);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${product.name} 을(를) 저장했어요')),
+        );
+        context.go('/');
+      }
+    } finally {
+      saveCooldown.end();
+      if (mounted) setState(() => saving = false);
     }
   }
 
@@ -294,12 +311,26 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                         ),
                     ],
                   ),
+                  const SizedBox(height: 14),
+                  Text('고민하는 이유',
+                      style: DiaryTheme.body(14, weight: FontWeight.w700)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: memoCtrl,
+                    maxLines: 3,
+                    maxLength: 500,
+                    decoration: const InputDecoration(
+                      hintText: '이 상품을 고민하는 이유를 남겨보세요',
+                      filled: true,
+                      fillColor: DiaryColors.white,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   DiaryButton(
-                    label: '이 리스트에 저장',
+                    label: saving ? '저장하는 중...' : '이 리스트에 저장',
                     filled: true,
                     color: DiaryColors.folderMint,
-                    onPressed: _save,
+                    onPressed: saving ? null : _save,
                   ),
                 ],
               ],
