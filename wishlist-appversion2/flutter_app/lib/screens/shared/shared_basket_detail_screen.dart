@@ -51,7 +51,7 @@ class _SharedBasketDetailScreenState extends State<SharedBasketDetailScreen> {
     final isMine = store.sharedBaskets.containsKey(basket.id) ||
         (store.uid != null && basket.fromUid == store.uid);
     final threadId = basket.commentThreadId;
-    final canComment = store.isLoggedIn && basket.allowsComments(myUid: store.uid);
+    final canComment = threadId.isNotEmpty && store.isLoggedIn;
 
     return Scaffold(
       backgroundColor: DiaryColors.canvas,
@@ -313,12 +313,8 @@ class _SharedBasketDetailScreenState extends State<SharedBasketDetailScreen> {
       setState(() => _replyingTo = null);
     } catch (e) {
       if (!mounted) return;
-      final raw = e.toString();
-      final message = raw.contains('permission-denied')
-          ? '댓글을 남길 권한이 없어요. 앱을 다시 실행한 뒤 시도해 주세요.'
-          : raw.replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     }
   }

@@ -1035,18 +1035,23 @@ class AccountRepository {
   }) async {
     if (recipientUids.isEmpty || items.isEmpty || threadId.isEmpty) return;
     final now = DateTime.now();
-    await upsertBasketThread(
-      threadId: threadId,
-      ownerUid: from.uid,
-      participantUids: recipientUids,
-      memo: memo,
-    );
+    try {
+      await upsertBasketThread(
+        threadId: threadId,
+        ownerUid: from.uid,
+        participantUids: recipientUids,
+        memo: memo,
+      );
+    } catch (_) {
+      // Sharing the basket must not depend on the comment thread existing.
+    }
     final batch = _db.batch();
     for (final recipientUid in recipientUids) {
       if (recipientUid == from.uid) continue;
-      final basketRef = _receivedBaskets(recipientUid).doc(threadId);
+      final basketRef = _receivedBaskets(recipientUid).doc();
+      final basketId = basketRef.id;
       final basket = SharedBasket(
-        id: threadId,
+        id: basketId,
         title: '${from.name}의 살까말까',
         ownerName: from.name,
         fromUid: from.uid,
@@ -1054,7 +1059,6 @@ class AccountRepository {
         fromAvatar: from.avatarUrl,
         items: items,
         createdAt: now,
-        recipientUids: recipientUids,
         channels: const [SharedChannel.friends],
         memo: memo,
         threadId: threadId,
@@ -1120,21 +1124,19 @@ class AccountRepository {
     final trimmed = text.trim();
     if (threadId.isEmpty || from.uid.isEmpty || trimmed.isEmpty) return;
     final threadRef = _basketThreads.doc(threadId);
-    dynamic threadSnap;
-    try {
-      threadSnap = await threadRef.get();
-    } catch (_) {}
-    if (threadSnap == null || threadSnap.exists != true) {
+    var threadSnap = await threadRef.get();
+    if (!threadSnap.exists) {
       final owner = ownerUid.isNotEmpty ? ownerUid : from.uid;
-      if (from.uid == owner) {
-        await upsertBasketThread(
-          threadId: threadId,
-          ownerUid: owner,
-          participantUids: participantUids,
-          memo: memo,
-        );
-        threadSnap = await threadRef.get();
+      if (from.uid != owner) {
+        throw Exception('댓글 방을 찾을 수 없어요.');
       }
+      await upsertBasketThread(
+        threadId: threadId,
+        ownerUid: owner,
+        participantUids: participantUids,
+        memo: memo,
+      );
+      threadSnap = await threadRef.get();
     }
     final comments = await _basketComments(threadId).get();
     final existing = comments.docs.map((d) {
@@ -1160,9 +1162,7 @@ class AccountRepository {
       'createdAtServer': FieldValue.serverTimestamp(),
     });
 
-    final thread = (threadSnap != null && threadSnap.exists == true)
-        ? Map<String, dynamic>.from(threadSnap.data() as Map? ?? const {})
-        : <String, dynamic>{};
+    final thread = threadSnap.data() ?? {};
     final threadOwner = thread['ownerUid'] as String? ?? ownerUid;
     final participants = (thread['participantUids'] as List? ?? participantUids)
         .map((e) => e.toString())

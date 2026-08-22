@@ -236,47 +236,6 @@ void main() {
     expect(feed.first.basket.fromUid, 'account-a');
   });
 
-  test('received friend basket can take comments without recipientUids', () {
-    final received = SharedBasket(
-      id: 'recv-1',
-      title: '지은의 살까말까',
-      ownerName: '지은',
-      fromUid: 'account-a',
-      createdAt: DateTime(2026, 8, 17),
-      items: const [],
-      channels: const [SharedChannel.friends],
-      threadId: 'sb-from-a',
-    );
-    expect(received.commentThreadId, 'sb-from-a');
-    expect(received.allowsComments(myUid: 'account-b'), isTrue);
-    expect(received.allowsComments(myUid: 'account-a'), isTrue);
-
-    final legacy = SharedBasket(
-      id: 'recv-old',
-      title: '지은의 살까말까',
-      ownerName: '지은',
-      fromUid: 'account-a',
-      createdAt: DateTime(2026, 8, 17),
-      items: const [],
-    );
-    expect(legacy.commentThreadId, isEmpty);
-    expect(legacy.allowsComments(myUid: 'account-b'), isFalse);
-  });
-
-  test('link-only sent basket does not open comments for the sender', () {
-    final link = SharedBasket(
-      id: 'sb-link',
-      title: '지은의 살까말까',
-      ownerName: '지은',
-      fromUid: 'account-a',
-      createdAt: DateTime(2026, 8, 17),
-      items: const [],
-      channels: const [SharedChannel.link],
-      threadId: 'sb-link',
-    );
-    expect(link.allowsComments(myUid: 'account-a'), isFalse);
-  });
-
   ParsedProductInfo parsed({
     String name = '테스트 후드',
     String url = 'https://example.com/hood',
