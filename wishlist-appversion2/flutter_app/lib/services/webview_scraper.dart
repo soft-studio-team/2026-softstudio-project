@@ -114,7 +114,13 @@ class OnDeviceExtract {
   static OnDeviceExtract? fromRaw(dynamic raw) {
     if (raw == null) return null;
     try {
-      final decoded = raw is String ? jsonDecode(raw) : raw;
+      var decoded = raw;
+      // iOS WKWebView는 JSON.stringify 결과를 문자열로 한 겹 더 감쌀 수 있다.
+      for (var i = 0; i < 2 && decoded is String; i++) {
+        final text = decoded.trim();
+        if (text.isEmpty || text == 'null') return null;
+        decoded = jsonDecode(text);
+      }
       if (decoded is! Map) return null;
       final map = decoded.cast<String, dynamic>();
       return OnDeviceExtract(
@@ -490,12 +496,30 @@ class WebViewScraper {
 
   static const String desktopUa = _desktopUa;
 
-  static final InAppWebViewSettings extractSettings = InAppWebViewSettings(
-    userAgent: _desktopUa,
+  /// 실기기 iPhone WKWebView는 데스크톱 Chrome UA면 빈 페이지·차단이 나기 쉽다.
+  /// 시뮬레이터는 데스크톱 페이지도 잘 열리므로 이 차이가 잘 안 보인다.
+  static const String iosSafariUa =
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) '
+      'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 '
+      'Mobile/15E148 Safari/604.1';
+
+  static String userAgentForHost(String host) {
+    final h = host.toLowerCase();
+    final isAbly = h == 'a-bly.com' || h.endsWith('.a-bly.com');
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return iosSafariUa;
+    }
+    return isAbly ? mobileUa : desktopUa;
+  }
+
+  static InAppWebViewSettings get extractSettings => InAppWebViewSettings(
+    userAgent: defaultTargetPlatform == TargetPlatform.iOS
+        ? iosSafariUa
+        : _desktopUa,
     javaScriptEnabled: true,
     clearCache: false,
     mediaPlaybackRequiresUserGesture: true,
-    transparentBackground: true,
+    transparentBackground: false,
     useHybridComposition: true,
   );
 

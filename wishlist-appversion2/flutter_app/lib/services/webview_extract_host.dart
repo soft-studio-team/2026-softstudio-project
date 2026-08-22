@@ -10,6 +10,9 @@ import 'webview_scraper.dart';
 /// Headless는 Activity content 자식이 없으면 뷰 계층에 붙지 못한다.
 /// 추출 순간에만 WebView를 만들면 `onWebViewCreated`가 15초 안에
 /// 오지 않을 수 있어, about:blank로 미리 붙여 둔다.
+///
+/// 시뮬레이터는 앱 뒤에 가려 둬도 JS가 도는 경우가 많다. 실기기 iPhone은
+/// 가려진 WKWebView를 멈추므로, 추출하는 동안만 앞으로 올린다.
 class WebViewExtractHost extends StatefulWidget {
   const WebViewExtractHost({
     super.key,
@@ -30,6 +33,7 @@ class WebViewExtractHost extends StatefulWidget {
 class WebViewExtractHostState extends State<WebViewExtractHost> {
   static WebViewExtractHostState? _instance;
 
+  final _webViewKey = GlobalKey();
   bool _busy = false;
   InAppWebViewController? _controller;
   WebViewExtractLoop? _loop;
@@ -75,6 +79,10 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
       );
     }
     _busy = true;
+    if (mounted) setState(() {});
+    // 실기기 iOS는 뒤에 가려진 WKWebView에서 로드/JS를 멈춘다.
+    // 추출 중에만 앞으로 올린 뒤 한 프레임을 기다린다.
+    await WidgetsBinding.instance.endOfFrame;
     final requestHost = Uri.tryParse(url)?.host.toLowerCase() ?? '';
     final isAbly = requestHost == 'a-bly.com' ||
         requestHost.endsWith('.a-bly.com');
@@ -105,8 +113,7 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
       try {
         await controller.setSettings(
           settings: InAppWebViewSettings(
-            userAgent:
-                isAbly ? WebViewScraper.mobileUa : WebViewScraper.desktopUa,
+            userAgent: WebViewScraper.userAgentForHost(requestHost),
           ),
         );
       } catch (_) {}
@@ -134,6 +141,7 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
       _activeRequestUrl = null;
       _acceptAnyHostLoad = false;
       _busy = false;
+      if (mounted) setState(() {});
     }
   }
 
@@ -180,59 +188,68 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
     return isSameExtractSite(active, url);
   }
 
+  Widget _extractWebView() {
+    return Positioned(
+      left: 0,
+      top: 0,
+      width: 360,
+      height: 640,
+      child: IgnorePointer(
+        child: InAppWebView(
+          key: _webViewKey,
+          initialUrlRequest: URLRequest(url: WebUri('about:blank')),
+          initialSettings: WebViewScraper.extractSettings,
+          onWebViewCreated: (controller) {
+            _controller = controller;
+            if (!_created.isCompleted) _created.complete(controller);
+          },
+          onLoadStart: (controller, uri) {
+            _controller = controller;
+            final url = uri?.toString();
+            if (_isResetting || !_shouldForward(url)) return;
+            _loop?.onLoadStart(url);
+          },
+          onLoadStop: (controller, uri) {
+            _controller = controller;
+            final url = uri?.toString();
+            if (_isResetting) {
+              if (isAboutBlankUrl(url)) _finishBlankReset();
+              return;
+            }
+            if (!_shouldForward(url)) return;
+            _loop?.onLoadStop(url);
+          },
+          onUpdateVisitedHistory: (controller, uri, _) {
+            _controller = controller;
+            final url = uri?.toString();
+            if (_isResetting || !_shouldForward(url)) return;
+            _loop?.onHistoryUpdate(url);
+          },
+          onReceivedError: (controller, _, __) {
+            _controller = controller;
+            if (_isResetting) {
+              _finishBlankReset();
+              return;
+            }
+            _loop?.onNetworkError();
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final webView = widget.mountWebView && WebViewScraper.isSupported
+        ? _extractWebView()
+        : null;
+    // 평소에는 앱 뒤에 두고, 추출 중에만 앞으로 올려 실기기 WKWebView가 돌게 한다.
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (widget.mountWebView && WebViewScraper.isSupported)
-          Positioned(
-            left: 0,
-            top: 0,
-            width: 360,
-            height: 640,
-            child: IgnorePointer(
-              child: InAppWebView(
-                initialUrlRequest: URLRequest(url: WebUri('about:blank')),
-                initialSettings: WebViewScraper.extractSettings,
-                onWebViewCreated: (controller) {
-                  _controller = controller;
-                  if (!_created.isCompleted) _created.complete(controller);
-                },
-                onLoadStart: (controller, uri) {
-                  _controller = controller;
-                  final url = uri?.toString();
-                  if (_isResetting || !_shouldForward(url)) return;
-                  _loop?.onLoadStart(url);
-                },
-                onLoadStop: (controller, uri) {
-                  _controller = controller;
-                  final url = uri?.toString();
-                  if (_isResetting) {
-                    if (isAboutBlankUrl(url)) _finishBlankReset();
-                    return;
-                  }
-                  if (!_shouldForward(url)) return;
-                  _loop?.onLoadStop(url);
-                },
-                onUpdateVisitedHistory: (controller, uri, _) {
-                  _controller = controller;
-                  final url = uri?.toString();
-                  if (_isResetting || !_shouldForward(url)) return;
-                  _loop?.onHistoryUpdate(url);
-                },
-                onReceivedError: (controller, _, __) {
-                  _controller = controller;
-                  if (_isResetting) {
-                    _finishBlankReset();
-                    return;
-                  }
-                  _loop?.onNetworkError();
-                },
-              ),
-            ),
-          ),
+        if (webView != null && !_busy) webView,
         widget.child,
+        if (webView != null && _busy) webView,
       ],
     );
   }
