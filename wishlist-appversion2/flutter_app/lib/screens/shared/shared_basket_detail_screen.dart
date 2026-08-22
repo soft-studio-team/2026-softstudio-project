@@ -24,6 +24,7 @@ class _SharedBasketDetailScreenState extends State<SharedBasketDetailScreen> {
   final _commentCtrl = TextEditingController();
   final _commentFocus = FocusNode();
   BasketComment? _replyingTo;
+  bool _sending = false;
 
   @override
   void dispose() {
@@ -48,7 +49,8 @@ class _SharedBasketDetailScreenState extends State<SharedBasketDetailScreen> {
       );
     }
 
-    final isMine = store.sharedBaskets.containsKey(basket.id) ||
+    final isMine =
+        store.sharedBaskets.containsKey(basket.id) ||
         (store.uid != null && basket.fromUid == store.uid);
     final threadId = basket.commentThreadId;
     final canComment = threadId.isNotEmpty && store.isLoggedIn;
@@ -126,10 +128,7 @@ class _SharedBasketDetailScreenState extends State<SharedBasketDetailScreen> {
                     ),
                     if (basket.memo.trim().isNotEmpty) ...[
                       const SizedBox(height: 12),
-                      Text(
-                        basket.memo.trim(),
-                        style: DiaryTheme.body(15),
-                      ),
+                      Text(basket.memo.trim(), style: DiaryTheme.body(15)),
                     ],
                     const SizedBox(height: 16),
                     Text(
@@ -152,7 +151,8 @@ class _SharedBasketDetailScreenState extends State<SharedBasketDetailScreen> {
                       for (final p in basket.items) ...[
                         WishlistProductCard(
                           product: p,
-                          onOpen: () => context.push('/catalog-product/${p.id}'),
+                          onOpen: () =>
+                              context.push('/catalog-product/${p.id}'),
                         ),
                         const SizedBox(height: 10),
                       ],
@@ -267,11 +267,11 @@ class _SharedBasketDetailScreenState extends State<SharedBasketDetailScreen> {
                       minLines: 1,
                       maxLines: 4,
                       textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _submit(store, basket),
+                      onSubmitted: _sending
+                          ? null
+                          : (_) => _submit(store, basket),
                       decoration: InputDecoration(
-                        hintText: _replyingTo == null
-                            ? '댓글 달기...'
-                            : '답글 달기...',
+                        hintText: _replyingTo == null ? '댓글 달기...' : '답글 달기...',
                         filled: true,
                         fillColor: DiaryColors.paper,
                         contentPadding: const EdgeInsets.symmetric(
@@ -286,8 +286,14 @@ class _SharedBasketDetailScreenState extends State<SharedBasketDetailScreen> {
                     ),
                   ),
                   IconButton(
-                    onPressed: () => _submit(store, basket),
-                    icon: const Icon(Icons.send),
+                    onPressed: _sending ? null : () => _submit(store, basket),
+                    icon: _sending
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.send),
                     color: DiaryColors.ink,
                   ),
                 ],
@@ -300,15 +306,18 @@ class _SharedBasketDetailScreenState extends State<SharedBasketDetailScreen> {
   }
 
   Future<void> _submit(AppStore store, SharedBasket basket) async {
+    if (_sending) return;
     final text = _commentCtrl.text.trim();
     if (text.isEmpty) return;
     final parentId = _replyingTo?.id ?? '';
+    setState(() => _sending = true);
     try {
-      await store.postBasketComment(
+      final posted = await store.postBasketComment(
         basket: basket,
         text: text,
         parentId: parentId,
       );
+      if (!posted) return;
       _commentCtrl.clear();
       setState(() => _replyingTo = null);
     } catch (e) {
@@ -316,6 +325,8 @@ class _SharedBasketDetailScreenState extends State<SharedBasketDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
       );
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
   }
 }
@@ -355,10 +366,7 @@ class _CommentTile extends StatelessWidget {
                         style: DiaryTheme.body(13, weight: FontWeight.w700),
                       ),
                       const TextSpan(text: '  '),
-                      TextSpan(
-                        text: comment.text,
-                        style: DiaryTheme.body(13),
-                      ),
+                      TextSpan(text: comment.text, style: DiaryTheme.body(13)),
                     ],
                   ),
                 ),
@@ -367,10 +375,7 @@ class _CommentTile extends StatelessWidget {
                   children: [
                     Text(
                       relativeTime(comment.createdAt),
-                      style: DiaryTheme.body(
-                        11,
-                        color: DiaryColors.inkMuted,
-                      ),
+                      style: DiaryTheme.body(11, color: DiaryColors.inkMuted),
                     ),
                     const SizedBox(width: 12),
                     GestureDetector(

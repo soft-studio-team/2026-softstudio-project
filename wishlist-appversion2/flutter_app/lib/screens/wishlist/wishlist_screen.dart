@@ -51,7 +51,8 @@ class _WishlistScreenState extends State<WishlistScreen> {
                 store: store,
                 onDoubleTapTab: (t) => _openListEditSheet(context, store, t),
                 onAdd: () => _showAddListDialog(context, store),
-                onMoveProduct: (p, t) => _handleMoveProduct(context, store, p, t),
+                onMoveProduct: (p, t) =>
+                    _handleMoveProduct(context, store, p, t),
               ),
             ),
             const SizedBox(height: 10),
@@ -119,8 +120,8 @@ class _WishlistScreenState extends State<WishlistScreen> {
                                             onDragUpdate: (details) =>
                                                 _tabsRowKey.currentState
                                                     ?.updateAutoScroll(
-                                                  details.globalPosition,
-                                                ),
+                                                      details.globalPosition,
+                                                    ),
                                             onDragEnd: (_) => _tabsRowKey
                                                 .currentState
                                                 ?.endAutoScrollDrag(),
@@ -168,9 +169,9 @@ class _WishlistScreenState extends State<WishlistScreen> {
       await store.moveProduct(product.id, tab.id);
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('이동에 실패했어요: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('이동에 실패했어요: $e')));
     }
   }
 
@@ -315,7 +316,8 @@ class _WishlistScreenState extends State<WishlistScreen> {
   Future<void> _showAddListDialog(BuildContext context, AppStore store) async {
     final controller = TextEditingController();
     var isPublic = false;
-    final ok = await showDialog<bool>(
+    var submitting = false;
+    await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
@@ -345,13 +347,29 @@ class _WishlistScreenState extends State<WishlistScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
+              onPressed: submitting ? null : () => Navigator.pop(ctx, false),
               child: Text('취소', style: DiaryTheme.ui(14)),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      final name = controller.text.trim();
+                      if (name.isEmpty) return;
+                      setLocal(() => submitting = true);
+                      final created = await store.addTab(
+                        name,
+                        isPublic: isPublic,
+                      );
+                      if (!ctx.mounted) return;
+                      if (created) {
+                        Navigator.pop(ctx, true);
+                        return;
+                      }
+                      setLocal(() => submitting = false);
+                    },
               child: Text(
-                '추가',
+                submitting ? '추가하는 중...' : '추가',
                 style: DiaryTheme.ui(
                   14,
                   weight: FontWeight.w700,
@@ -363,9 +381,6 @@ class _WishlistScreenState extends State<WishlistScreen> {
         ),
       ),
     );
-    if (ok == true && controller.text.trim().isNotEmpty) {
-      await store.addTab(controller.text.trim(), isPublic: isPublic);
-    }
   }
 }
 
@@ -436,12 +451,16 @@ class _TabsRowState extends State<_TabsRow> {
     }
     double pxPerTick = 0;
     if (local.dx < _autoScrollEdgeZone) {
-      final depth = (_autoScrollEdgeZone - local.dx)
-          .clamp(0.0, _autoScrollEdgeZone);
+      final depth = (_autoScrollEdgeZone - local.dx).clamp(
+        0.0,
+        _autoScrollEdgeZone,
+      );
       pxPerTick = -_speedForDepth(depth);
     } else if (local.dx > size.width - _autoScrollEdgeZone) {
-      final depth = (_autoScrollEdgeZone - (size.width - local.dx))
-          .clamp(0.0, _autoScrollEdgeZone);
+      final depth = (_autoScrollEdgeZone - (size.width - local.dx)).clamp(
+        0.0,
+        _autoScrollEdgeZone,
+      );
       pxPerTick = _speedForDepth(depth);
     }
     if (pxPerTick == 0) {
@@ -449,7 +468,10 @@ class _TabsRowState extends State<_TabsRow> {
       return;
     }
     _autoScrollPxPerTick = pxPerTick;
-    _autoScrollTimer ??= Timer.periodic(_autoScrollTick, (_) => _autoScrollStep());
+    _autoScrollTimer ??= Timer.periodic(
+      _autoScrollTick,
+      (_) => _autoScrollStep(),
+    );
   }
 
   double _speedForDepth(double depth) {
@@ -461,8 +483,10 @@ class _TabsRowState extends State<_TabsRow> {
   void _autoScrollStep() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
-    final next = (position.pixels + _autoScrollPxPerTick)
-        .clamp(position.minScrollExtent, position.maxScrollExtent);
+    final next = (position.pixels + _autoScrollPxPerTick).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
     if (next == position.pixels) return;
     _scrollController.jumpTo(next);
   }
@@ -630,7 +654,9 @@ class _FolderTab extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: highlighted ? DiaryColors.accent.withValues(alpha: 0.35) : bg,
+            color: highlighted
+                ? DiaryColors.accent.withValues(alpha: 0.35)
+                : bg,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
             border: Border.all(
               color: highlighted

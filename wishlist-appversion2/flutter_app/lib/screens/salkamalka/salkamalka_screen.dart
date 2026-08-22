@@ -46,15 +46,18 @@ class SalkamalkaScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text('📌 선택된 아이템 총 $selected개',
-                          style: DiaryTheme.body(13, weight: FontWeight.w600)),
+                      Text(
+                        '📌 선택된 아이템 총 $selected개',
+                        style: DiaryTheme.body(13, weight: FontWeight.w600),
+                      ),
                       const SizedBox(height: 8),
                       Expanded(
                         child: store.basket.isEmpty
                             ? Center(
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 16),
+                                    horizontal: 16,
+                                  ),
                                   child: OneLineText(
                                     '고민중인 상품을 담아 친구와 공유해보세요',
                                     textAlign: TextAlign.center,
@@ -81,9 +84,10 @@ class SalkamalkaScreen extends StatelessWidget {
                                           children: [
                                             Checkbox(
                                               value: item.isSelected,
-                                              onChanged: (_) => store
-                                                  .toggleBasketSelected(
-                                                      item.product.id),
+                                              onChanged: (_) =>
+                                                  store.toggleBasketSelected(
+                                                    item.product.id,
+                                                  ),
                                             ),
                                             ClipRRect(
                                               borderRadius:
@@ -101,11 +105,14 @@ class SalkamalkaScreen extends StatelessWidget {
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
-                                                  Text(item.product.platform,
-                                                      style: DiaryTheme.body(
-                                                          11,
-                                                          color: DiaryColors
-                                                              .inkMuted)),
+                                                  Text(
+                                                    item.product.platform,
+                                                    style: DiaryTheme.body(
+                                                      11,
+                                                      color:
+                                                          DiaryColors.inkMuted,
+                                                    ),
+                                                  ),
                                                   Text(
                                                     item.product.name,
                                                     maxLines: 2,
@@ -117,21 +124,26 @@ class SalkamalkaScreen extends StatelessWidget {
                                                     ),
                                                   ),
                                                   Text(
-                                                      formatWon(
-                                                          item.product.price),
-                                                      style: DiaryTheme.body(
-                                                          13,
-                                                          weight: FontWeight
-                                                              .w600)),
+                                                    formatWon(
+                                                      item.product.price,
+                                                    ),
+                                                    style: DiaryTheme.body(
+                                                      13,
+                                                      weight: FontWeight.w600,
+                                                    ),
+                                                  ),
                                                 ],
                                               ),
                                             ),
                                             IconButton(
-                                              onPressed: () => store
-                                                  .removeFromBasket(
-                                                      item.product.id),
-                                              icon: const Icon(Icons.close,
-                                                  size: 18),
+                                              onPressed: () =>
+                                                  store.removeFromBasket(
+                                                    item.product.id,
+                                                  ),
+                                              icon: const Icon(
+                                                Icons.close,
+                                                size: 18,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -139,10 +151,12 @@ class SalkamalkaScreen extends StatelessWidget {
                                       Positioned(
                                         left: 8,
                                         top: 2,
-                                        child: Icon(Icons.push_pin,
-                                            size: 18,
-                                            color: pinColors[
-                                                i % pinColors.length]),
+                                        child: Icon(
+                                          Icons.push_pin,
+                                          size: 18,
+                                          color:
+                                              pinColors[i % pinColors.length],
+                                        ),
                                       ),
                                     ],
                                   );
@@ -161,16 +175,9 @@ class SalkamalkaScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: DiaryButton(
-                              label: selected == 0
-                                  ? '공유하기'
-                                  : '공유하기 ($selected)',
-                              filled: true,
-                              color: DiaryColors.folderPeach,
-                              icon: Icons.ios_share,
-                              onPressed: selected == 0
-                                  ? null
-                                  : () => _openShareSheet(context, store),
+                            child: _ShareBasketButton(
+                              store: store,
+                              selected: selected,
                             ),
                           ),
                         ],
@@ -187,7 +194,9 @@ class SalkamalkaScreen extends StatelessWidget {
   }
 
   Future<void> _openPickFromWishlistSheet(
-      BuildContext context, AppStore store) async {
+    BuildContext context,
+    AppStore store,
+  ) async {
     final picked = await showModalBottomSheet<List<Product>>(
       context: context,
       isScrollControlled: true,
@@ -196,37 +205,62 @@ class SalkamalkaScreen extends StatelessWidget {
     if (picked == null || picked.isEmpty) return;
     await store.addManyToBasket(picked);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${picked.length}개를 담았어요')),
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('${picked.length}개를 담았어요')));
+  }
+}
+
+class _ShareBasketButton extends StatefulWidget {
+  const _ShareBasketButton({required this.store, required this.selected});
+
+  final AppStore store;
+  final int selected;
+
+  @override
+  State<_ShareBasketButton> createState() => _ShareBasketButtonState();
+}
+
+class _ShareBasketButtonState extends State<_ShareBasketButton> {
+  bool _sharing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return DiaryButton(
+      label: _sharing
+          ? '보내는 중...'
+          : widget.selected == 0
+          ? '공유하기'
+          : '공유하기 (${widget.selected})',
+      filled: true,
+      color: DiaryColors.folderPeach,
+      icon: Icons.ios_share,
+      onPressed: widget.selected == 0 || _sharing ? null : _share,
     );
   }
 
-  Future<void> _openShareSheet(BuildContext context, AppStore store) async {
-    await _openFriendPicker(context, store);
-  }
-
-  Future<void> _openFriendPicker(BuildContext context, AppStore store) async {
-    final picked = await showShareToFriendsSheet(
-      context: context,
-      store: store,
-    );
-    if (picked == null || picked.friendIds.isEmpty) return;
+  Future<void> _share() async {
+    if (_sharing) return;
+    setState(() => _sharing = true);
     try {
-      await store.sendBasketToFriends(
+      final picked = await showShareToFriendsSheet(
+        context: context,
+        store: widget.store,
+      );
+      if (picked == null || picked.friendIds.isEmpty) return;
+      final sent = await widget.store.sendBasketToFriends(
         picked.friendIds.toList(),
         memo: picked.memo,
       );
-      if (!context.mounted) return;
+      if (!sent || !mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${picked.friendIds.length}명의 친구에게 살까말까를 보냈어요'),
-        ),
+        SnackBar(content: Text('${picked.friendIds.length}명의 친구에게 살까말까를 보냈어요')),
       );
     } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e')),
-      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _sharing = false);
     }
   }
 }

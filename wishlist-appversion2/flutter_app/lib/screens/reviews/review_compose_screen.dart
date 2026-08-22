@@ -13,11 +13,7 @@ import '../../widgets/diary_widgets.dart';
 import 'review_widgets.dart';
 
 class ReviewComposeScreen extends StatefulWidget {
-  const ReviewComposeScreen({
-    super.key,
-    this.productId,
-    this.reviewId,
-  });
+  const ReviewComposeScreen({super.key, this.productId, this.reviewId});
 
   final int? productId;
   final String? reviewId;
@@ -50,7 +46,8 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
         : null;
 
     if (existing != null) {
-      selected = store.findCatalogProduct(existing.productId) ??
+      selected =
+          store.findCatalogProduct(existing.productId) ??
           Product(
             id: existing.productId,
             listId: '',
@@ -84,9 +81,9 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
 
   Future<void> _pickPhotos() async {
     if (_photoCount >= _maxPhotos) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('사진은 최대 $_maxPhotos장까지 넣을 수 있어요')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('사진은 최대 $_maxPhotos장까지 넣을 수 있어요')));
       return;
     }
     final source = await showModalBottomSheet<ImageSource>(
@@ -127,9 +124,7 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
       );
       if (picked.isEmpty) return;
       setState(() {
-        newPhotos.addAll(
-          picked.take(remaining).map((x) => File(x.path)),
-        );
+        newPhotos.addAll(picked.take(remaining).map((x) => File(x.path)));
       });
     } else {
       final shot = await picker.pickImage(
@@ -143,11 +138,12 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
   }
 
   Future<void> _publish() async {
+    if (saving) return;
     final product = selected;
     if (product == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('리뷰할 상품을 골라 주세요')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('리뷰할 상품을 골라 주세요')));
       return;
     }
     setState(() => saving = true);
@@ -163,7 +159,7 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
         newPhotos: newPhotos,
         existingId: existing?.id,
       );
-      if (!mounted) return;
+      if (!mounted || review == null) return;
       context.pushReplacement('/reviews/${review.id}');
     } catch (e) {
       if (!mounted) return;
@@ -178,8 +174,8 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
-    final editing = selected != null &&
-        store.myReviewForProduct(selected!.id) != null;
+    final editing =
+        selected != null && store.myReviewForProduct(selected!.id) != null;
 
     return Scaffold(
       backgroundColor: DiaryColors.canvas,
@@ -330,10 +326,7 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
               ],
             ),
             const SizedBox(height: 18),
-            Text(
-              '사진 첨부',
-              style: DiaryTheme.body(15, weight: FontWeight.w700),
-            ),
+            Text('사진 첨부', style: DiaryTheme.body(15, weight: FontWeight.w700)),
             const SizedBox(height: 8),
             SizedBox(
               height: 88,
@@ -343,7 +336,8 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
                   for (var i = 0; i < existingPhotos.length; i++)
                     _PhotoThumb(
                       child: ReviewPhoto(src: existingPhotos[i]),
-                      onRemove: () => setState(() => existingPhotos.removeAt(i)),
+                      onRemove: () =>
+                          setState(() => existingPhotos.removeAt(i)),
                     ),
                   for (var i = 0; i < newPhotos.length; i++)
                     _PhotoThumb(
@@ -370,10 +364,7 @@ class _ReviewComposeScreenState extends State<ReviewComposeScreen> {
                             children: [
                               const Icon(Icons.add_photo_alternate_outlined),
                               const SizedBox(height: 4),
-                              Text(
-                                '추가',
-                                style: DiaryTheme.body(11),
-                              ),
+                              Text('추가', style: DiaryTheme.body(11)),
                             ],
                           ),
                         ),
@@ -449,10 +440,7 @@ class _PhotoThumb extends StatelessWidget {
 }
 
 class _ProductPicker extends StatelessWidget {
-  const _ProductPicker({
-    required this.products,
-    required this.onPick,
-  });
+  const _ProductPicker({required this.products, required this.onPick});
 
   final List<Product> products;
   final ValueChanged<Product> onPick;
@@ -513,10 +501,7 @@ class _ProductPicker extends StatelessWidget {
                         p.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: DiaryTheme.product(
-                          13,
-                          weight: FontWeight.w700,
-                        ),
+                        style: DiaryTheme.product(13, weight: FontWeight.w700),
                       ),
                       Text(
                         p.platform,

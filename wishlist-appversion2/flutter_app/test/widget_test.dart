@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:figmadesign/data/app_store.dart';
 import 'package:figmadesign/models/models.dart';
+import 'package:figmadesign/utils/action_lock.dart';
+import 'package:figmadesign/utils/tap_cooldown.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -83,12 +85,76 @@ void main() {
       mood: 5,
     );
 
-    expect(review.title, '보풀은 나지만 따뜻해요');
+    expect(review!.title, '보풀은 나지만 따뜻해요');
     expect(store.myReviews, hasLength(1));
     expect(store.myReviewForProduct(7)?.body, contains('솔직 후기'));
     expect(store.reviewFeed.first.id, review.id);
     expect(review.mood, 5);
     expect(review.imageUrls, isEmpty);
+  });
+
+  test('overlapping addTab keeps a single new list', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    final before = store.tabs.length;
+
+    final first = store.addTab('여름');
+    final second = store.addTab('겨울');
+    expect(await Future.wait([first, second]), [true, false]);
+    expect(store.tabs.length, before + 1);
+    expect(store.tabs.last.name, '여름');
+  });
+
+  test('held addTab lock skips a second list', () async {
+    SharedPreferences.setMockInitialValues({});
+    final lock = ActionLock();
+    lock.begin('addTab');
+    final store = AppStore(firebaseConfigured: false, actionLock: lock);
+    await store.init();
+    final before = store.tabs.length;
+
+    expect(await store.addTab('여름'), isFalse);
+    expect(store.tabs.length, before);
+
+    lock.end('addTab');
+    expect(await store.addTab('여름'), isTrue);
+    expect(store.tabs.last.name, '여름');
+  });
+
+  test('overlapping publishReview keeps a single review', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    store.currentUser = AppUser(
+      uid: 'user-1',
+      name: '나',
+      handle: '@me',
+      avatarUrl: 'https://example.com/me.png',
+    );
+    final product = Product(
+      id: 7,
+      listId: 'all',
+      name: '테스트 니트',
+      price: 32000,
+      image: 'https://example.com/knit.png',
+      platform: '테스트몰',
+    );
+
+    final first = store.publishReview(
+      product: product,
+      title: '첫번째',
+      body: '먼저 올린 후기입니다.',
+    );
+    final second = store.publishReview(
+      product: product,
+      title: '두번째',
+      body: '겹친 후기입니다.',
+    );
+    final results = await Future.wait([first, second]);
+    expect(results.where((r) => r != null), hasLength(1));
+    expect(store.myReviews, hasLength(1));
+    expect(store.myReviews.first.title, '첫번째');
   });
 
   test('Product json round-trips list privacy', () {
@@ -195,43 +261,124 @@ void main() {
     expect(grouped.first.replies.map((c) => c.id), ['c2']);
   });
 
-  test('salkamalka feed does not show another account sent basket as mine', () async {
-    SharedPreferences.setMockInitialValues({});
-    final store = AppStore(firebaseConfigured: false);
-    await store.init();
-    store.currentUser = AppUser(
-      uid: 'account-b',
-      name: '지은B',
-      handle: '@b',
-      avatarUrl: 'https://example.com/b.png',
-    );
-    store.sharedBaskets['sb-from-a'] = SharedBasket(
-      id: 'sb-from-a',
-      title: '지은A의 살까말까',
-      ownerName: '지은A',
-      fromUid: 'account-a',
-      createdAt: DateTime(2026, 8, 17),
-      items: const [],
-      recipientUids: const ['account-b'],
-      recipientNames: const ['지은B'],
-      channels: const [SharedChannel.friends],
-    );
-    store.receivedBaskets = [
-      SharedBasket(
-        id: 'recv-1',
+  test(
+    'salkamalka feed does not show another account sent basket as mine',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final store = AppStore(firebaseConfigured: false);
+      await store.init();
+      store.currentUser = AppUser(
+        uid: 'account-b',
+        name: '지은B',
+        handle: '@b',
+        avatarUrl: 'https://example.com/b.png',
+      );
+      store.sharedBaskets['sb-from-a'] = SharedBasket(
+        id: 'sb-from-a',
         title: '지은A의 살까말까',
         ownerName: '지은A',
         fromUid: 'account-a',
         createdAt: DateTime(2026, 8, 17),
         items: const [],
+        recipientUids: const ['account-b'],
+        recipientNames: const ['지은B'],
         channels: const [SharedChannel.friends],
-        threadId: 'sb-from-a',
+      );
+      store.receivedBaskets = [
+        SharedBasket(
+          id: 'recv-1',
+          title: '지은A의 살까말까',
+          ownerName: '지은A',
+          fromUid: 'account-a',
+          createdAt: DateTime(2026, 8, 17),
+          items: const [],
+          channels: const [SharedChannel.friends],
+          threadId: 'sb-from-a',
+        ),
+      ];
+
+      final feed = store.salkamalkaFeed;
+      expect(feed, hasLength(1));
+      expect(feed.first.isMine, isFalse);
+      expect(feed.first.basket.fromUid, 'account-a');
+    },
+  );
+
+  ParsedProductInfo parsed({
+    String name = '테스트 후드',
+    String url = 'https://example.com/hood',
+  }) {
+    return ParsedProductInfo(
+      name: name,
+      price: 39000,
+      platform: '테스트몰',
+      image: 'https://example.com/hood.png',
+      productUrl: url,
+    );
+  }
+
+  test('addParsedProduct keeps the consideration memo', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    store.tabs = [
+      WishlistTab(id: 'all', name: '전체', isPublic: true),
+      WishlistTab(id: 'summer', name: '여름', isPublic: false),
+    ];
+
+    final product = await store.addParsedProduct(
+      parsed(),
+      listId: 'summer',
+      memo: '  색이 고민돼요  ',
+    );
+
+    expect(product, isNotNull);
+    expect(product!.memo, '색이 고민돼요');
+    expect(store.products.single.memo, '색이 고민돼요');
+  });
+
+  test('overlapping addParsedProduct keeps a single product', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    store.tabs = [
+      WishlistTab(id: 'all', name: '전체', isPublic: true),
+      WishlistTab(id: 'summer', name: '여름', isPublic: false),
+    ];
+
+    final first = store.addParsedProduct(parsed(), listId: 'summer');
+    final second = store.addParsedProduct(parsed(), listId: 'summer');
+    final results = await Future.wait([first, second]);
+    expect(results.where((p) => p != null), hasLength(1));
+    expect(store.products, hasLength(1));
+  });
+
+  test('toggleFollow ignores a second tap inside 2 seconds', () async {
+    SharedPreferences.setMockInitialValues({});
+    var now = DateTime(2026, 8, 22, 19);
+    final cooldown = TapCooldown(clock: () => now);
+    cooldown.begin('follow:u2');
+    final store = AppStore(firebaseConfigured: false, actionCooldown: cooldown);
+    await store.init();
+    store.currentUser = AppUser(
+      uid: 'me',
+      name: '나',
+      handle: '@me',
+      avatarUrl: 'https://example.com/me.png',
+    );
+    store.friends = [
+      Friend(
+        id: 'u2',
+        name: '민수',
+        username: '@min',
+        avatar: 'https://example.com/a.png',
+        isFollowing: false,
+        wishlistCount: 1,
+        itemCount: 2,
       ),
     ];
 
-    final feed = store.salkamalkaFeed;
-    expect(feed, hasLength(1));
-    expect(feed.first.isMine, isFalse);
-    expect(feed.first.basket.fromUid, 'account-a');
+    expect(await store.toggleFollow('u2'), isFalse);
+    expect(store.friends.single.isFollowing, isFalse);
   });
 }

@@ -23,6 +23,7 @@ Future<({Set<String> friendIds, String memo})?> showShareToFriendsSheet({
 
   final selected = <String>{};
   final memoCtrl = TextEditingController(text: initialMemo);
+  var confirming = false;
   final confirmed = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
@@ -50,10 +51,7 @@ Future<({Set<String> friendIds, String memo})?> showShareToFriendsSheet({
                     const SizedBox(height: 8),
                     Text(
                       '고민되는 이유를 짧게 적어 같이 보내요',
-                      style: DiaryTheme.body(
-                        12,
-                        color: DiaryColors.inkMuted,
-                      ),
+                      style: DiaryTheme.body(12, color: DiaryColors.inkMuted),
                     ),
                     const SizedBox(height: 10),
                     TextField(
@@ -99,9 +97,12 @@ Future<({Set<String> friendIds, String memo})?> showShareToFriendsSheet({
                       ),
                     ),
                     FilledButton(
-                      onPressed: selected.isEmpty
+                      onPressed: selected.isEmpty || confirming
                           ? null
-                          : () => Navigator.pop(sheetCtx, true),
+                          : () {
+                              setModalState(() => confirming = true);
+                              Navigator.pop(sheetCtx, true);
+                            },
                       style: FilledButton.styleFrom(
                         backgroundColor: DiaryColors.ink,
                         foregroundColor: Colors.white,
