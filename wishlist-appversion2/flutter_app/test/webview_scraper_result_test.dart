@@ -103,14 +103,11 @@ void main() {
     expect(result.price, 12900);
   });
 
-  test('iOS extract UA is Safari, Android Ably stays mobile Chrome', () {
+  test('iOS는 기본 UA를 쓰고 Android Ably는 mobile Chrome을 쓴다', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    expect(
-      WebViewScraper.userAgentForHost('www.musinsa.com'),
-      contains('iPhone'),
-    );
-    expect(WebViewScraper.userAgentForHost('m.a-bly.com'), contains('iPhone'));
+    expect(WebViewScraper.userAgentForHost('www.musinsa.com'), isNull);
+    expect(WebViewScraper.userAgentForHost('m.a-bly.com'), isNull);
 
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     expect(
