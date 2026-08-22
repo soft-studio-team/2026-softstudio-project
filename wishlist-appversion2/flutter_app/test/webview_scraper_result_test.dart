@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:figmadesign/services/webview_extract_host.dart';
+import 'package:figmadesign/services/ios_extract_webview.dart';
 import 'package:figmadesign/services/webview_scraper.dart';
 
 class _FakeClock implements ExtractClock {
@@ -108,8 +109,10 @@ void main() {
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     expect(WebViewScraper.userAgentForHost('www.musinsa.com'), isNull);
     expect(WebViewScraper.userAgentForHost('m.a-bly.com'), isNull);
+    expect(IosNativeExtractHost.isAvailable, isTrue);
 
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    expect(IosNativeExtractHost.isAvailable, isFalse);
     expect(
       WebViewScraper.userAgentForHost('m.a-bly.com'),
       WebViewScraper.mobileUa,

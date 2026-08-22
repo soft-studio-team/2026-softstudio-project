@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../models/models.dart';
 import 'share_input.dart';
 import 'webview_scraper.dart';
@@ -37,8 +39,12 @@ class ParsingBridge {
     OnDeviceExtract? extracted;
     if (url.isNotEmpty && (_extract != null || WebViewScraper.isSupported)) {
       try {
-        extracted = await (_extract ?? _webView.extract)(url);
-      } catch (_) {
+      extracted = await (_extract ?? _webView.extract)(url);
+      debugPrint(
+        'WISHKIT_EXTRACT reason=${extracted?.failureReason} '
+        'name=${extracted?.name} price=${extracted?.price}',
+      );
+    } catch (_) {
         extracted = OnDeviceExtract(
           failureReason: ExtractFailureReason.networkError,
         );

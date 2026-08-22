@@ -5,6 +5,7 @@ import 'dart:ui' show Size;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import 'ios_extract_webview.dart';
 import 'product_extract_js.dart';
 import 'webview_extract_host.dart';
 
@@ -540,6 +541,13 @@ class WebViewScraper {
             : (requestHost == '4910.kr' || requestHost.endsWith('.4910.kr')
                 ? const Duration(seconds: 20)
                 : maxWait));
+
+    if (IosNativeExtractHost.isAvailable) {
+      return IosNativeExtractHost(clock: _clock).extract(
+        url,
+        maxWait: effectiveMaxWait,
+      );
+    }
 
     final host = WebViewExtractHost.maybeInstance;
     if (host != null) {

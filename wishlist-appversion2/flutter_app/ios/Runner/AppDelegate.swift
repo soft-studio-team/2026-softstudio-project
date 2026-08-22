@@ -99,5 +99,6 @@ enum NativeShareBridge {
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     NativeShareBridge.bind(to: engineBridge.applicationRegistrar.messenger())
+    ProductExtractHost.bind(to: engineBridge.applicationRegistrar.messenger())
   }
 }
