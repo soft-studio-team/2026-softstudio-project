@@ -99,11 +99,8 @@ class SentBasketsScreen extends StatelessWidget {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () => showSentBasketShareSheet(
-                            context,
-                            store,
-                            b,
-                          ),
+                          onPressed: () =>
+                              showSentBasketShareSheet(context, store, b),
                           child: const Text('다시 보내기'),
                         ),
                       ),
@@ -142,13 +139,13 @@ Future<void> showSentBasketShareSheet(
   );
   if (picked == null || picked.friendIds.isEmpty || !context.mounted) return;
   try {
-    await store.resendBasketToFriends(
+    final sent = await store.resendBasketToFriends(
       items: basket.items,
       friendIds: picked.friendIds.toList(),
       existingId: basket.id,
       memo: picked.memo,
     );
-    if (!context.mounted) return;
+    if (!sent || !context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${picked.friendIds.length}명의 친구에게 다시 보냈어요')),
     );

@@ -15,6 +15,7 @@ import '../services/account_repository.dart';
 import '../services/push_notification_service.dart';
 import '../services/share_page_html.dart';
 import '../theme/diary_theme.dart';
+import '../utils/action_lock.dart';
 
 class AppStore extends ChangeNotifier {
   static const _basketKey = 'basket_items';
@@ -28,12 +29,17 @@ class AppStore extends ChangeNotifier {
   static const _reviewsKey = 'my_reviews';
   static const _hiddenFeedKey = 'hidden_feed_baskets';
 
-  AppStore({AccountRepository? repository, bool? firebaseConfigured})
-    : _repo = repository ?? AccountRepository(),
-      _firebaseConfigured = firebaseConfigured ?? isFirebaseConfigured;
+  AppStore({
+    AccountRepository? repository,
+    bool? firebaseConfigured,
+    ActionLock? actionLock,
+  }) : _repo = repository ?? AccountRepository(),
+       _firebaseConfigured = firebaseConfigured ?? isFirebaseConfigured,
+       _actionLock = actionLock ?? ActionLock();
 
   final AccountRepository _repo;
   final bool _firebaseConfigured;
+  final ActionLock _actionLock;
   StreamSubscription<List<AppNotification>>? _notificationSub;
   StreamSubscription<List<SharedBasket>>? _receivedBasketSub;
 
@@ -548,20 +554,25 @@ class AppStore extends ChangeNotifier {
     await _repo.saveTabs(id, tabs);
   }
 
-  Future<void> addTab(String name, {bool isPublic = false}) async {
-    final color = nextFileColor();
-    final hex =
-        '#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
-    final tab = WishlistTab(
-      id: 'list-${DateTime.now().millisecondsSinceEpoch}',
-      name: name,
-      isPublic: isPublic,
-      colorHex: hex,
-    );
-    tabs = [...tabs, tab];
-    selectedTabId = tab.id;
-    await _persistTabs();
-    notifyListeners();
+  /// Returns false when another list is already being created.
+  Future<bool> addTab(String name, {bool isPublic = false}) async {
+    final created = await _withLock('addTab', () async {
+      final color = nextFileColor();
+      final hex =
+          '#${color.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
+      final tab = WishlistTab(
+        id: 'list-${DateTime.now().millisecondsSinceEpoch}',
+        name: name,
+        isPublic: isPublic,
+        colorHex: hex,
+      );
+      tabs = [...tabs, tab];
+      selectedTabId = tab.id;
+      await _persistTabs();
+      notifyListeners();
+      return true;
+    });
+    return created ?? false;
   }
 
   Future<void> renameTab(String id, String name) async {
@@ -846,11 +857,14 @@ class AppStore extends ChangeNotifier {
 
   Future<void> _persistHiddenFeed() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('${_hiddenFeedKey}_${uid ?? 'guest'}', jsonEncode({
-      'hidden': _hiddenFeedIds.toList(),
-      'pendingHide': _pendingHideIds.toList(),
-      'pendingUnhide': _pendingUnhideIds.toList(),
-    }));
+    await prefs.setString(
+      '${_hiddenFeedKey}_${uid ?? 'guest'}',
+      jsonEncode({
+        'hidden': _hiddenFeedIds.toList(),
+        'pendingHide': _pendingHideIds.toList(),
+        'pendingUnhide': _pendingUnhideIds.toList(),
+      }),
+    );
   }
 
   Future<void> _restoreHiddenFeedLocal() async {
@@ -997,9 +1011,7 @@ class AppStore extends ChangeNotifier {
               n.type != AppNotificationType.review &&
               n.type != AppNotificationType.list) {
             if (notificationsEnabled) {
-              unawaited(
-                PushNotificationService.instance.showInboxBanner(n),
-              );
+              unawaited(PushNotificationService.instance.showInboxBanner(n));
             }
           }
         }
@@ -1115,10 +1127,7 @@ class AppStore extends ChangeNotifier {
       ...recipientNames,
     }.where((n) => n.isNotEmpty).toList();
     // Channels accumulate: a link share re-sent to friends counts as both.
-    final mergedChannels = {
-      ...?existing?.channels,
-      ...channels,
-    }.toList();
+    final mergedChannels = {...?existing?.channels, ...channels}.toList();
     final shared = SharedBasket(
       id: id,
       title: title,
@@ -1152,7 +1161,8 @@ class AppStore extends ChangeNotifier {
     return shared;
   }
 
-  Future<void> sendBasketToFriends(
+  /// Returns false when a send for the same basket is already in flight.
+  Future<bool> sendBasketToFriends(
     List<String> friendIds, {
     String memo = '',
   }) async {
@@ -1163,14 +1173,15 @@ class AppStore extends ChangeNotifier {
     if (selected.isEmpty) {
       throw Exception('공유할 상품을 선택해 주세요.');
     }
-    await resendBasketToFriends(
+    return resendBasketToFriends(
       items: selected,
       friendIds: friendIds,
       memo: memo,
     );
   }
 
-  Future<void> resendBasketToFriends({
+  /// Returns false when a send for the same basket is already in flight.
+  Future<bool> resendBasketToFriends({
     required List<Product> items,
     required List<String> friendIds,
     String? existingId,
@@ -1182,39 +1193,44 @@ class AppStore extends ChangeNotifier {
     if (friendIds.isEmpty) {
       throw Exception('보낼 친구를 선택해 주세요.');
     }
-    _ensureFirebase();
-    final userId = uid;
-    if (userId == null) {
-      throw Exception('로그인된 계정이 없어요.');
-    }
-    final existingBasket =
-        existingId == null ? null : sharedBaskets[existingId];
-    final threadId = existingBasket?.commentThreadId.isNotEmpty == true
-        ? existingBasket!.commentThreadId
-        : (existingId ?? 'sb-${DateTime.now().millisecondsSinceEpoch}');
-    await _repo.sendBasketToFriends(
-      from: currentUser.copyWith(uid: userId),
-      recipientUids: friendIds,
-      items: items,
-      threadId: threadId,
-      memo: memo,
-    );
-    final names = [
-      for (final id in friendIds) friendById(id)?.name ?? '',
-    ].where((n) => n.isNotEmpty).toList();
-    final shared = await rememberSentBasket(
-      items: items,
-      title: '${currentUser.name}의 살까말까',
-      recipientUids: friendIds,
-      recipientNames: names,
-      channels: const [SharedChannel.friends],
-      existingId: threadId,
-      touchSharedAt: true,
-      memo: memo,
-    );
-    // Re-sending a basket that was X-ed out of the friends feed brings it back.
-    // Covers both re-used ids (마이페이지 > 다시 보내기) and freshly minted ones.
-    await unhideFromSalkamalkaFeed(shared.id);
+    final sent = await _withLock('sendBasket:${existingId ?? 'new'}', () async {
+      _ensureFirebase();
+      final userId = uid;
+      if (userId == null) {
+        throw Exception('로그인된 계정이 없어요.');
+      }
+      final existingBasket = existingId == null
+          ? null
+          : sharedBaskets[existingId];
+      final threadId = existingBasket?.commentThreadId.isNotEmpty == true
+          ? existingBasket!.commentThreadId
+          : (existingId ?? 'sb-${DateTime.now().millisecondsSinceEpoch}');
+      await _repo.sendBasketToFriends(
+        from: currentUser.copyWith(uid: userId),
+        recipientUids: friendIds,
+        items: items,
+        threadId: threadId,
+        memo: memo,
+      );
+      final names = [
+        for (final id in friendIds) friendById(id)?.name ?? '',
+      ].where((n) => n.isNotEmpty).toList();
+      final shared = await rememberSentBasket(
+        items: items,
+        title: '${currentUser.name}의 살까말까',
+        recipientUids: friendIds,
+        recipientNames: names,
+        channels: const [SharedChannel.friends],
+        existingId: threadId,
+        touchSharedAt: true,
+        memo: memo,
+      );
+      // Re-sending a basket that was X-ed out of the friends feed brings it back.
+      // Covers both re-used ids (마이페이지 > 다시 보내기) and freshly minted ones.
+      await unhideFromSalkamalkaFeed(shared.id);
+      return true;
+    });
+    return sent ?? false;
   }
 
   Stream<List<BasketComment>> watchBasketComments(String threadId) {
@@ -1224,7 +1240,8 @@ class AppStore extends ChangeNotifier {
     return _repo.watchBasketComments(threadId);
   }
 
-  Future<void> postBasketComment({
+  /// Returns false when a comment on this thread is already being posted.
+  Future<bool> postBasketComment({
     required SharedBasket basket,
     required String text,
     String parentId = '',
@@ -1237,25 +1254,25 @@ class AppStore extends ChangeNotifier {
     if (threadId.isEmpty) {
       throw Exception('이 살까말까에는 댓글을 달 수 없어요.');
     }
-    _ensureFirebase();
-    final userId = uid;
-    if (userId == null) {
-      throw Exception('로그인된 계정이 없어요.');
-    }
-    final ownerUid = basket.fromUid.isNotEmpty ? basket.fromUid : userId;
-    await _repo.addBasketComment(
-      threadId: threadId,
-      from: currentUser.copyWith(uid: userId),
-      text: trimmed,
-      parentId: parentId,
-      ownerUid: ownerUid,
-      participantUids: {
-        ownerUid,
-        userId,
-        ...basket.recipientUids,
-      }.toList(),
-      memo: basket.memo,
-    );
+    final posted = await _withLock('comment:$threadId', () async {
+      _ensureFirebase();
+      final userId = uid;
+      if (userId == null) {
+        throw Exception('로그인된 계정이 없어요.');
+      }
+      final ownerUid = basket.fromUid.isNotEmpty ? basket.fromUid : userId;
+      await _repo.addBasketComment(
+        threadId: threadId,
+        from: currentUser.copyWith(uid: userId),
+        text: trimmed,
+        parentId: parentId,
+        ownerUid: ownerUid,
+        participantUids: {ownerUid, userId, ...basket.recipientUids}.toList(),
+        memo: basket.memo,
+      );
+      return true;
+    });
+    return posted ?? false;
   }
 
   /// Hosts an HTML snapshot of [basket] in Storage and returns a public URL.
@@ -1267,7 +1284,8 @@ class AppStore extends ChangeNotifier {
     if (userId == null || !isLoggedIn) {
       throw Exception('로그인하면 링크로 공유할 수 있어요.');
     }
-    final pageId = (basket.publicPageId != null && basket.publicPageId!.isNotEmpty)
+    final pageId =
+        (basket.publicPageId != null && basket.publicPageId!.isNotEmpty)
         ? basket.publicPageId!
         : const Uuid().v4();
     final expiresAt = DateTime.now().add(kSharePageTtl);
@@ -1338,8 +1356,7 @@ class AppStore extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     notificationsEnabled = _readNotificationsEnabled(prefs, uid ?? 'guest');
     if (sharedBaskets.isEmpty) {
-      final sharedRaw =
-          prefs.getString('${_sharedKey}_${uid ?? 'guest'}');
+      final sharedRaw = prefs.getString('${_sharedKey}_${uid ?? 'guest'}');
       if (sharedRaw != null) {
         final list = jsonDecode(sharedRaw) as List;
         for (final e in list) {
@@ -1427,7 +1444,8 @@ class AppStore extends ChangeNotifier {
     );
   }
 
-  Future<ProductReview> publishReview({
+  /// Returns null when a publish for this product is already in flight.
+  Future<ProductReview?> publishReview({
     required Product product,
     required String title,
     required String body,
@@ -1449,63 +1467,74 @@ class AppStore extends ChangeNotifier {
       throw Exception('본문을 입력해 주세요.');
     }
 
-    final now = DateTime.now();
-    final existing = existingId != null
-        ? myReviews.where((r) => r.id == existingId).firstOrNull
-        : myReviewForProduct(product.id);
-    final reviewId = existing?.id ?? 'rv-${now.millisecondsSinceEpoch}';
-    final uploaded = [...imageUrls];
-    for (var i = 0; i < newPhotos.length; i++) {
-      uploaded.add(
-        await _storeReviewPhoto(
-          userId: userId,
-          reviewId: reviewId,
-          file: newPhotos[i],
-          index: uploaded.length,
-        ),
-      );
-    }
+    return _withLock('publishReview:${existingId ?? product.id}', () async {
+      final now = DateTime.now();
+      final existing = existingId != null
+          ? myReviews.where((r) => r.id == existingId).firstOrNull
+          : myReviewForProduct(product.id);
+      final reviewId = existing?.id ?? 'rv-${now.millisecondsSinceEpoch}';
+      final uploaded = [...imageUrls];
+      for (var i = 0; i < newPhotos.length; i++) {
+        uploaded.add(
+          await _storeReviewPhoto(
+            userId: userId,
+            reviewId: reviewId,
+            file: newPhotos[i],
+            index: uploaded.length,
+          ),
+        );
+      }
 
-    final review = existing == null
-        ? ProductReview(
-            id: reviewId,
-            authorUid: userId,
-            authorName: currentUser.name,
-            authorHandle: currentUser.handle,
-            authorAvatar: currentUser.avatarUrl,
-            productId: product.id,
-            productName: product.name,
-            productImage: product.image,
-            productPlatform: product.platform,
-            productPrice: product.price,
-            productUrl: product.productUrl,
-            title: trimmedTitle,
-            body: trimmedBody,
-            createdAt: now,
-            updatedAt: now,
-            mood: mood,
-            imageUrls: uploaded,
-          )
-        : existing.copyWith(
-            title: trimmedTitle,
-            body: trimmedBody,
-            updatedAt: now,
-            authorName: currentUser.name,
-            authorHandle: currentUser.handle,
-            authorAvatar: currentUser.avatarUrl,
-            mood: mood,
-            imageUrls: uploaded,
-          );
+      final review = existing == null
+          ? ProductReview(
+              id: reviewId,
+              authorUid: userId,
+              authorName: currentUser.name,
+              authorHandle: currentUser.handle,
+              authorAvatar: currentUser.avatarUrl,
+              productId: product.id,
+              productName: product.name,
+              productImage: product.image,
+              productPlatform: product.platform,
+              productPrice: product.price,
+              productUrl: product.productUrl,
+              title: trimmedTitle,
+              body: trimmedBody,
+              createdAt: now,
+              updatedAt: now,
+              mood: mood,
+              imageUrls: uploaded,
+            )
+          : existing.copyWith(
+              title: trimmedTitle,
+              body: trimmedBody,
+              updatedAt: now,
+              authorName: currentUser.name,
+              authorHandle: currentUser.handle,
+              authorAvatar: currentUser.avatarUrl,
+              mood: mood,
+              imageUrls: uploaded,
+            );
 
-    myReviews = [review, ...myReviews.where((r) => r.id != review.id)];
-    await _persistLocalReviews();
+      myReviews = [review, ...myReviews.where((r) => r.id != review.id)];
+      await _persistLocalReviews();
+      try {
+        await _repo.upsertReview(userId, review);
+      } catch (_) {
+        // Local review still works if Firestore rules are not deployed yet.
+      }
+      notifyListeners();
+      return review;
+    });
+  }
+
+  Future<T?> _withLock<T>(String key, Future<T> Function() action) async {
+    if (!_actionLock.begin(key)) return null;
     try {
-      await _repo.upsertReview(userId, review);
-    } catch (_) {
-      // Local review still works if Firestore rules are not deployed yet.
+      return await action();
+    } finally {
+      _actionLock.end(key);
     }
-    notifyListeners();
-    return review;
   }
 
   Future<String> _storeReviewPhoto({

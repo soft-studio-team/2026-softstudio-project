@@ -135,8 +135,9 @@ class MyPageScreen extends StatelessWidget {
                           onTap: () {
                             store.selectTab(tab.id);
                             // Switch to wishlist tab in bottom nav.
-                            StatefulNavigationShell.maybeOf(context)
-                                ?.goBranch(0);
+                            StatefulNavigationShell.maybeOf(
+                              context,
+                            )?.goBranch(0);
                             context.go('/');
                           },
                         ),
@@ -146,25 +147,45 @@ class MyPageScreen extends StatelessWidget {
                         width: chipWidth,
                         onTap: () async {
                           final ctrl = TextEditingController();
-                          final name = await showDialog<String>(
+                          var submitting = false;
+                          await showDialog<void>(
                             context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('폴더 추가'),
-                              content: TextField(controller: ctrl),
-                              actions: [
-                                TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: const Text('취소')),
-                                TextButton(
-                                    onPressed: () => Navigator.pop(
-                                        context, ctrl.text.trim()),
-                                    child: const Text('추가')),
-                              ],
+                            builder: (dialogCtx) => StatefulBuilder(
+                              builder: (dialogCtx, setLocal) => AlertDialog(
+                                title: const Text('폴더 추가'),
+                                content: TextField(controller: ctrl),
+                                actions: [
+                                  TextButton(
+                                    onPressed: submitting
+                                        ? null
+                                        : () => Navigator.pop(dialogCtx),
+                                    child: const Text('취소'),
+                                  ),
+                                  TextButton(
+                                    onPressed: submitting
+                                        ? null
+                                        : () async {
+                                            final name = ctrl.text.trim();
+                                            if (name.isEmpty) return;
+                                            setLocal(() => submitting = true);
+                                            final created = await store.addTab(
+                                              name,
+                                            );
+                                            if (!dialogCtx.mounted) return;
+                                            if (created) {
+                                              Navigator.pop(dialogCtx);
+                                              return;
+                                            }
+                                            setLocal(() => submitting = false);
+                                          },
+                                    child: Text(
+                                      submitting ? '추가하는 중...' : '추가',
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
-                          if (name != null && name.isNotEmpty) {
-                            await store.addTab(name);
-                          }
                         },
                       ),
                     ],
@@ -212,7 +233,10 @@ class MyPageScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _openAccountSettings(BuildContext context, AppStore store) async {
+  Future<void> _openAccountSettings(
+    BuildContext context,
+    AppStore store,
+  ) async {
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: DiaryColors.paper,
@@ -261,7 +285,10 @@ class MyPageScreen extends StatelessWidget {
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.person_off_outlined, color: DiaryColors.pin),
+                  leading: Icon(
+                    Icons.person_off_outlined,
+                    color: DiaryColors.pin,
+                  ),
                   title: Text(
                     '탈퇴하기',
                     style: DiaryTheme.body(14, color: DiaryColors.pin),
@@ -306,9 +333,7 @@ class MyPageScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     PasswordTextField(
                       controller: passwordCtrl,
-                      decoration: const InputDecoration(
-                        labelText: '비밀번호 확인',
-                      ),
+                      decoration: const InputDecoration(labelText: '비밀번호 확인'),
                     ),
                     if (error != null) ...[
                       const SizedBox(height: 8),
@@ -353,16 +378,14 @@ class MyPageScreen extends StatelessWidget {
     try {
       await store.deleteAccount(password: passwordCtrl.text);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('탈퇴가 완료되었어요')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('탈퇴가 완료되었어요')));
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-          ),
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
         );
       }
     }
@@ -447,16 +470,14 @@ class MyPageScreen extends StatelessWidget {
         newPassword: nextCtrl.text,
       );
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('비밀번호를 변경했어요')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('비밀번호를 변경했어요')));
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-          ),
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
         );
       }
     }
@@ -494,10 +515,7 @@ class MyPageScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Center(
-                      child: CircleAvatar(
-                        radius: 40,
-                        backgroundImage: preview,
-                      ),
+                      child: CircleAvatar(radius: 40, backgroundImage: preview),
                     ),
                     const SizedBox(height: 14),
                     TextField(
@@ -531,7 +549,8 @@ class MyPageScreen extends StatelessWidget {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: pendingUpload == null &&
+                                  color:
+                                      pendingUpload == null &&
                                           selectedAvatarUrl == url
                                       ? DiaryColors.accent
                                       : Colors.transparent,
@@ -607,8 +626,9 @@ class MyPageScreen extends StatelessWidget {
                           try {
                             var avatarUrl = selectedAvatarUrl;
                             if (pendingUpload != null) {
-                              avatarUrl = await store
-                                  .uploadAvatarFile(pendingUpload!);
+                              avatarUrl = await store.uploadAvatarFile(
+                                pendingUpload!,
+                              );
                             }
                             await store.updateProfile(
                               name: nameCtrl.text,
@@ -619,9 +639,10 @@ class MyPageScreen extends StatelessWidget {
                           } catch (e) {
                             setLocal(() {
                               saving = false;
-                              localError = e
-                                  .toString()
-                                  .replaceFirst('Exception: ', '');
+                              localError = e.toString().replaceFirst(
+                                'Exception: ',
+                                '',
+                              );
                             });
                           }
                         },
@@ -648,9 +669,9 @@ class MyPageScreen extends StatelessWidget {
     );
 
     if (saved == true && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('프로필을 저장했어요')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('프로필을 저장했어요')));
     }
   }
 }
@@ -706,7 +727,10 @@ class _TagPainter extends CustomPainter {
     final paint = Paint()..color = color;
     canvas.drawPath(path, paint);
     canvas.drawCircle(
-        Offset(18, size.height / 2), 5, Paint()..color = DiaryColors.paper);
+      Offset(18, size.height / 2),
+      5,
+      Paint()..color = DiaryColors.paper,
+    );
     canvas.drawCircle(
       Offset(18, size.height / 2),
       5,
