@@ -312,11 +312,22 @@ class SharedBasket {
   bool get sharedToFriends => channels.contains(SharedChannel.friends);
 
   /// Id used to load comments. New shares store [threadId]; older friend
-  /// sends fall back to this archive's own id.
+  /// sends fall back to this archive's own id. Received copies used to omit
+  /// [recipientUids], so a friend-sent basket still uses this copy's id
+  /// when [threadId] was not written.
   String get commentThreadId {
     if (threadId.isNotEmpty) return threadId;
     if (recipientUids.isNotEmpty) return id;
+    if (fromUid.isNotEmpty) return id;
     return '';
+  }
+
+  /// App-friend shares (sent or received) can take comments. Link-only
+  /// copies opened by the sender cannot.
+  bool allowsComments({required String? myUid}) {
+    if (commentThreadId.isEmpty) return false;
+    if (sharedToFriends || recipientUids.isNotEmpty) return true;
+    return fromUid.isNotEmpty && myUid != null && fromUid != myUid;
   }
 
   /// Sort key for the friends feed — a re-sent basket rises back to the top.

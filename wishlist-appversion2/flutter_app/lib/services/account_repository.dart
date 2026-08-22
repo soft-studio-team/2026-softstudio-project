@@ -1043,15 +1043,15 @@ class AccountRepository {
         memo: memo,
       );
     } catch (_) {
-      // Sharing the basket must not depend on the comment thread existing.
+      // Sharing still goes out if the comment room write fails; the
+      // recipient copy keeps [threadId] so they can comment once it exists.
     }
     final batch = _db.batch();
     for (final recipientUid in recipientUids) {
       if (recipientUid == from.uid) continue;
-      final basketRef = _receivedBaskets(recipientUid).doc();
-      final basketId = basketRef.id;
+      final basketRef = _receivedBaskets(recipientUid).doc(threadId);
       final basket = SharedBasket(
-        id: basketId,
+        id: threadId,
         title: '${from.name}의 살까말까',
         ownerName: from.name,
         fromUid: from.uid,
@@ -1059,6 +1059,7 @@ class AccountRepository {
         fromAvatar: from.avatarUrl,
         items: items,
         createdAt: now,
+        recipientUids: recipientUids,
         channels: const [SharedChannel.friends],
         memo: memo,
         threadId: threadId,
@@ -1127,7 +1128,7 @@ class AccountRepository {
     var threadSnap = await threadRef.get();
     if (!threadSnap.exists) {
       final owner = ownerUid.isNotEmpty ? ownerUid : from.uid;
-      if (from.uid != owner) {
+      if (from.uid != owner && !participantUids.contains(from.uid)) {
         throw Exception('댓글 방을 찾을 수 없어요.');
       }
       await upsertBasketThread(

@@ -51,7 +51,7 @@ class _SharedBasketDetailScreenState extends State<SharedBasketDetailScreen> {
     final isMine = store.sharedBaskets.containsKey(basket.id) ||
         (store.uid != null && basket.fromUid == store.uid);
     final threadId = basket.commentThreadId;
-    final canComment = threadId.isNotEmpty && store.isLoggedIn;
+    final canComment = store.isLoggedIn && basket.allowsComments(myUid: store.uid);
 
     return Scaffold(
       backgroundColor: DiaryColors.canvas,

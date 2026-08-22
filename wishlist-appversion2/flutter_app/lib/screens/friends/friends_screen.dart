@@ -577,7 +577,9 @@ class _SalkamalkaFeedPane extends StatelessWidget {
         return WhiteProductCard(
           backgroundColor:
               e.isMine ? DiaryColors.mineCard : DiaryColors.white,
-          onTap: () => context.push('/shared/${b.id}'),
+          onTap: () => context.push(
+            '/shared/${b.commentThreadId.isNotEmpty ? b.commentThreadId : b.id}',
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
