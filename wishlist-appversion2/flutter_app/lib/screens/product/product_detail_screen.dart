@@ -218,7 +218,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           children: [
                             Expanded(
                               child: DiaryButton(
-                                label: '바구니에 추가',
+                                label: '살까말까에 추가',
                                 icon: Icons.shopping_basket_outlined,
                                 onPressed: () async {
                                   await store.addToBasket(product);
