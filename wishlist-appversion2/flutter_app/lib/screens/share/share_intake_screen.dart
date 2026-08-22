@@ -24,7 +24,9 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
   final urlCtrl = TextEditingController();
   final titleCtrl = TextEditingController();
   final priceCtrl = TextEditingController();
+  final memoCtrl = TextEditingController();
   bool loading = false;
+  bool saving = false;
   String? error;
   ParsedProductInfo? parsed;
   String? selectedListId;
@@ -48,6 +50,7 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
     urlCtrl.dispose();
     titleCtrl.dispose();
     priceCtrl.dispose();
+    memoCtrl.dispose();
     super.dispose();
   }
 
@@ -73,7 +76,7 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
   }
 
   Future<void> _save() async {
-    if (parsed == null || selectedListId == null) return;
+    if (parsed == null || selectedListId == null || saving) return;
     final name = titleCtrl.text.trim().isEmpty
         ? parsed!.name
         : titleCtrl.text.trim();
@@ -99,26 +102,34 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
           : parsed!.productUrl,
       originalPrice: parsed!.originalPrice,
       discount: parsed!.discount,
-      missingFields: [
-        if (parsed!.image.isEmpty) 'image_url',
-      ],
+      missingFields: [if (parsed!.image.isEmpty) 'image_url'],
       resolvedTier: parsed!.price > 0 ? parsed!.resolvedTier : 3,
       engineUsed: false,
       onDeviceExtracted: parsed!.onDeviceExtracted,
       extractFailureReason: parsed!.extractFailureReason,
     );
 
-    final store = context.read<AppStore>();
-    final product = await store.addParsedProduct(
-      info,
-      listId: selectedListId!,
-    );
-    store.setPendingShareUrl(null);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product.name} 을(를) 저장했어요')),
+    setState(() {
+      saving = true;
+      error = null;
+    });
+    try {
+      final store = context.read<AppStore>();
+      final product = await store.addParsedProduct(
+        info,
+        listId: selectedListId!,
+        memo: memoCtrl.text,
       );
-      context.go('/');
+      if (product == null) return;
+      store.setPendingShareUrl(null);
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${product.name} 을(를) 저장했어요')));
+        context.go('/');
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
     }
   }
 
@@ -189,8 +200,10 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 10),
-                  Text(error!,
-                      style: DiaryTheme.body(12, color: DiaryColors.pin)),
+                  Text(
+                    error!,
+                    style: DiaryTheme.body(12, color: DiaryColors.pin),
+                  ),
                 ],
                 if (parsed != null) ...[
                   const SizedBox(height: 16),
@@ -218,13 +231,19 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(parsed!.platform,
-                                  style: DiaryTheme.body(12,
-                                      color: DiaryColors.inkMuted)),
+                              Text(
+                                parsed!.platform,
+                                style: DiaryTheme.body(
+                                  12,
+                                  color: DiaryColors.inkMuted,
+                                ),
+                              ),
                               Text(
                                 _statusText(parsed!),
-                                style: DiaryTheme.body(11,
-                                    color: DiaryColors.accent),
+                                style: DiaryTheme.body(
+                                  11,
+                                  color: DiaryColors.accent,
+                                ),
                               ),
                             ],
                           ),
@@ -272,13 +291,14 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                       parsed!.needsManualPrice
                           ? '가격을 직접 입력하면 저장할 수 있어요'
                           : '보완 필요: ${parsed!.missingFields.join(', ')}',
-                      style:
-                          DiaryTheme.body(12, color: DiaryColors.pin),
+                      style: DiaryTheme.body(12, color: DiaryColors.pin),
                     ),
                   ],
                   const SizedBox(height: 14),
-                  Text('어느 리스트로 보낼까요?',
-                      style: DiaryTheme.body(14, weight: FontWeight.w700)),
+                  Text(
+                    '어느 리스트로 보낼까요?',
+                    style: DiaryTheme.body(14, weight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -294,12 +314,28 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                         ),
                     ],
                   ),
+                  const SizedBox(height: 14),
+                  Text(
+                    '고민하는 이유',
+                    style: DiaryTheme.body(14, weight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: memoCtrl,
+                    maxLines: 3,
+                    maxLength: 500,
+                    decoration: const InputDecoration(
+                      hintText: '이 상품을 고민하는 이유를 남겨보세요',
+                      filled: true,
+                      fillColor: DiaryColors.white,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   DiaryButton(
-                    label: '이 리스트에 저장',
+                    label: saving ? '저장하는 중...' : '이 리스트에 저장',
                     filled: true,
                     color: DiaryColors.folderMint,
-                    onPressed: _save,
+                    onPressed: saving ? null : _save,
                   ),
                 ],
               ],

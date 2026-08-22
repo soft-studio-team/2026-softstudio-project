@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:figmadesign/data/app_store.dart';
 import 'package:figmadesign/models/models.dart';
 import 'package:figmadesign/utils/action_lock.dart';
+import 'package:figmadesign/utils/tap_cooldown.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -302,4 +303,82 @@ void main() {
       expect(feed.first.basket.fromUid, 'account-a');
     },
   );
+
+  ParsedProductInfo parsed({
+    String name = '테스트 후드',
+    String url = 'https://example.com/hood',
+  }) {
+    return ParsedProductInfo(
+      name: name,
+      price: 39000,
+      platform: '테스트몰',
+      image: 'https://example.com/hood.png',
+      productUrl: url,
+    );
+  }
+
+  test('addParsedProduct keeps the consideration memo', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    store.tabs = [
+      WishlistTab(id: 'all', name: '전체', isPublic: true),
+      WishlistTab(id: 'summer', name: '여름', isPublic: false),
+    ];
+
+    final product = await store.addParsedProduct(
+      parsed(),
+      listId: 'summer',
+      memo: '  색이 고민돼요  ',
+    );
+
+    expect(product, isNotNull);
+    expect(product!.memo, '색이 고민돼요');
+    expect(store.products.single.memo, '색이 고민돼요');
+  });
+
+  test('overlapping addParsedProduct keeps a single product', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    store.tabs = [
+      WishlistTab(id: 'all', name: '전체', isPublic: true),
+      WishlistTab(id: 'summer', name: '여름', isPublic: false),
+    ];
+
+    final first = store.addParsedProduct(parsed(), listId: 'summer');
+    final second = store.addParsedProduct(parsed(), listId: 'summer');
+    final results = await Future.wait([first, second]);
+    expect(results.where((p) => p != null), hasLength(1));
+    expect(store.products, hasLength(1));
+  });
+
+  test('toggleFollow ignores a second tap inside 2 seconds', () async {
+    SharedPreferences.setMockInitialValues({});
+    var now = DateTime(2026, 8, 22, 19);
+    final cooldown = TapCooldown(clock: () => now);
+    cooldown.begin('follow:u2');
+    final store = AppStore(firebaseConfigured: false, actionCooldown: cooldown);
+    await store.init();
+    store.currentUser = AppUser(
+      uid: 'me',
+      name: '나',
+      handle: '@me',
+      avatarUrl: 'https://example.com/me.png',
+    );
+    store.friends = [
+      Friend(
+        id: 'u2',
+        name: '민수',
+        username: '@min',
+        avatar: 'https://example.com/a.png',
+        isFollowing: false,
+        wishlistCount: 1,
+        itemCount: 2,
+      ),
+    ];
+
+    expect(await store.toggleFollow('u2'), isFalse);
+    expect(store.friends.single.isFollowing, isFalse);
+  });
 }

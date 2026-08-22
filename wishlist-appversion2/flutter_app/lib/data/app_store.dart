@@ -16,6 +16,7 @@ import '../services/push_notification_service.dart';
 import '../services/share_page_html.dart';
 import '../theme/diary_theme.dart';
 import '../utils/action_lock.dart';
+import '../utils/tap_cooldown.dart';
 
 class AppStore extends ChangeNotifier {
   static const _basketKey = 'basket_items';
@@ -33,13 +34,16 @@ class AppStore extends ChangeNotifier {
     AccountRepository? repository,
     bool? firebaseConfigured,
     ActionLock? actionLock,
+    TapCooldown? actionCooldown,
   }) : _repo = repository ?? AccountRepository(),
        _firebaseConfigured = firebaseConfigured ?? isFirebaseConfigured,
-       _actionLock = actionLock ?? ActionLock();
+       _actionLock = actionLock ?? ActionLock(),
+       _actionCooldown = actionCooldown ?? TapCooldown();
 
   final AccountRepository _repo;
   final bool _firebaseConfigured;
   final ActionLock _actionLock;
+  final TapCooldown _actionCooldown;
   StreamSubscription<List<AppNotification>>? _notificationSub;
   StreamSubscription<List<SharedBasket>>? _receivedBasketSub;
 
@@ -691,30 +695,38 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<Product> addParsedProduct(
+  /// Returns null when a save for the same product is already in flight.
+  Future<Product?> addParsedProduct(
     ParsedProductInfo info, {
     required String listId,
+    String memo = '',
   }) async {
-    final id = (products.map((e) => e.id).fold<int>(0, max)) + 1;
-    final product = Product(
-      id: id == 0 ? DateTime.now().millisecondsSinceEpoch : id,
-      listId: listId,
-      name: info.name,
-      price: info.price,
-      image: info.image,
-      platform: info.platform,
-      originalPrice: info.originalPrice,
-      discount: info.discount,
-      productUrl: info.productUrl,
-      isPublic: _isListPublic(listId),
-    );
-    products = [...products, product];
-    final userId = uid;
-    if (userId != null) {
-      await _repo.upsertProduct(userId, product);
-    }
-    notifyListeners();
-    return product;
+    final lockKey =
+        'addParsedProduct:${info.productUrl.isEmpty ? info.name : info.productUrl}';
+    return _withLock(lockKey, () async {
+      final trimmedMemo = memo.trim();
+      final id = (products.map((e) => e.id).fold<int>(0, max)) + 1;
+      final product = Product(
+        id: id == 0 ? DateTime.now().millisecondsSinceEpoch : id,
+        listId: listId,
+        name: info.name,
+        price: info.price,
+        image: info.image,
+        platform: info.platform,
+        originalPrice: info.originalPrice,
+        discount: info.discount,
+        productUrl: info.productUrl,
+        memo: trimmedMemo.isEmpty ? null : trimmedMemo,
+        isPublic: _isListPublic(listId),
+      );
+      products = [...products, product];
+      final userId = uid;
+      if (userId != null) {
+        await _repo.upsertProduct(userId, product);
+      }
+      notifyListeners();
+      return product;
+    });
   }
 
   void setPendingShareUrl(String? url) {
@@ -955,32 +967,39 @@ class AppStore extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> toggleFollow(String friendId) async {
+  /// Returns false when ignored (not signed in, unknown friend, or 2s cooldown).
+  Future<bool> toggleFollow(String friendId) async {
     final userId = uid;
-    if (userId == null) return;
+    if (userId == null) return false;
     final idx = friends.indexWhere((f) => f.id == friendId);
-    if (idx < 0) return;
-    final wasFollowing = friends[idx].isFollowing;
-    final next = !wasFollowing;
-    await _repo.setFollowing(
-      myUid: userId,
-      targetUid: friendId,
-      follow: next,
-      actor: next ? currentUser.copyWith(uid: userId) : null,
-    );
-    friends = [
-      for (var i = 0; i < friends.length; i++)
-        if (i == idx) friends[i].copyWith(isFollowing: next) else friends[i],
-    ];
-    currentUser = currentUser.copyWith(
-      following: friends.where((f) => f.isFollowing).length,
-    );
-    friendWishlists = await _repo.loadFriendWishlists(friends);
+    if (idx < 0) return false;
+    if (!_actionCooldown.begin('follow:$friendId')) return false;
     try {
-      friendReviews = await _repo.loadFriendReviews(friends);
-    } catch (_) {}
-    _syncFriendCounts();
-    notifyListeners();
+      final wasFollowing = friends[idx].isFollowing;
+      final next = !wasFollowing;
+      await _repo.setFollowing(
+        myUid: userId,
+        targetUid: friendId,
+        follow: next,
+        actor: next ? currentUser.copyWith(uid: userId) : null,
+      );
+      friends = [
+        for (var i = 0; i < friends.length; i++)
+          if (i == idx) friends[i].copyWith(isFollowing: next) else friends[i],
+      ];
+      currentUser = currentUser.copyWith(
+        following: friends.where((f) => f.isFollowing).length,
+      );
+      friendWishlists = await _repo.loadFriendWishlists(friends);
+      try {
+        friendReviews = await _repo.loadFriendReviews(friends);
+      } catch (_) {}
+      _syncFriendCounts();
+      notifyListeners();
+      return true;
+    } finally {
+      _actionCooldown.end('follow:$friendId');
+    }
   }
 
   Future<void> removeFollower(String followerUid) async {
