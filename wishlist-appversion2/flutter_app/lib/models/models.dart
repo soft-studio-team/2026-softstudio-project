@@ -423,6 +423,7 @@ class BasketComment {
     required this.text,
     required this.createdAt,
     this.parentId = '',
+    this.updatedAt,
   });
 
   final String id;
@@ -434,8 +435,25 @@ class BasketComment {
   final String authorAvatar;
   final String text;
   final DateTime createdAt;
+  final DateTime? updatedAt;
 
   bool get isReply => parentId.isNotEmpty;
+  bool get isEdited => updatedAt != null;
+
+  BasketComment copyWith({String? text, DateTime? updatedAt}) {
+    return BasketComment(
+      id: id,
+      threadId: threadId,
+      parentId: parentId,
+      authorUid: authorUid,
+      authorName: authorName,
+      authorHandle: authorHandle,
+      authorAvatar: authorAvatar,
+      text: text ?? this.text,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -447,6 +465,7 @@ class BasketComment {
         'authorAvatar': authorAvatar,
         'text': text,
         'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
       };
 
   factory BasketComment.fromJson(Map<String, dynamic> json) => BasketComment(
@@ -460,6 +479,7 @@ class BasketComment {
         text: json['text'] as String? ?? '',
         createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
             DateTime.now(),
+        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
       );
 }
 
@@ -485,8 +505,10 @@ String flattenCommentParentId(
 List<BasketCommentThread> groupBasketComments(List<BasketComment> comments) {
   final byParent = <String, List<BasketComment>>{};
   final roots = <BasketComment>[];
+  final ids = comments.map((c) => c.id).toSet();
   for (final comment in comments) {
-    if (comment.parentId.isEmpty) {
+    // A reply whose parent was deleted is shown as its own top-level comment.
+    if (comment.parentId.isEmpty || !ids.contains(comment.parentId)) {
       roots.add(comment);
     } else {
       byParent.putIfAbsent(comment.parentId, () => []).add(comment);
