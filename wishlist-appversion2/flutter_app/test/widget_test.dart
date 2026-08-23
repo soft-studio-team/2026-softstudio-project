@@ -261,6 +261,126 @@ void main() {
     expect(grouped.first.replies.map((c) => c.id), ['c2']);
   });
 
+  test('BasketComment json keeps edit timestamp', () {
+    final comment = BasketComment(
+      id: 'c1',
+      threadId: 't1',
+      authorUid: 'u1',
+      authorName: '지은',
+      authorHandle: '@jieun',
+      authorAvatar: 'https://example.com/a.png',
+      text: '그냥 사',
+      createdAt: DateTime(2026, 8, 17, 12),
+      updatedAt: DateTime(2026, 8, 17, 13),
+    );
+    expect(comment.isEdited, isTrue);
+    final decoded = BasketComment.fromJson(comment.toJson());
+    expect(decoded.text, '그냥 사');
+    expect(decoded.updatedAt, DateTime(2026, 8, 17, 13));
+    expect(decoded.isEdited, isTrue);
+    expect(
+      BasketComment.fromJson({
+        ...comment.toJson(),
+        'updatedAt': null,
+      }).isEdited,
+      isFalse,
+    );
+  });
+
+  test('groupBasketComments promotes replies whose parent was deleted', () {
+    final reply = BasketComment(
+      id: 'c2',
+      threadId: 't1',
+      parentId: 'c1',
+      authorUid: 'u1',
+      authorName: '지은',
+      authorHandle: '@jieun',
+      authorAvatar: 'https://example.com/b.png',
+      text: '진짜?',
+      createdAt: DateTime(2026, 8, 17, 13),
+    );
+    final grouped = groupBasketComments([reply]);
+    expect(grouped, hasLength(1));
+    expect(grouped.first.root.id, 'c2');
+    expect(grouped.first.replies, isEmpty);
+  });
+
+  test('update and delete basket comment reject empty or foreign edits', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    store.currentUser = AppUser(
+      uid: 'u1',
+      name: '지은',
+      handle: '@jieun',
+      avatarUrl: 'https://example.com/a.png',
+    );
+    final basket = SharedBasket(
+      id: 'sb-1',
+      title: '지은의 살까말까',
+      ownerName: '지은',
+      createdAt: DateTime(2026, 8, 17),
+      items: const [],
+      recipientUids: const ['u2'],
+      threadId: 'sb-1',
+    );
+    final mine = BasketComment(
+      id: 'c1',
+      threadId: 'sb-1',
+      authorUid: 'u1',
+      authorName: '지은',
+      authorHandle: '@jieun',
+      authorAvatar: 'https://example.com/a.png',
+      text: '그냥 사',
+      createdAt: DateTime(2026, 8, 17, 12),
+    );
+    final theirs = BasketComment(
+      id: 'c2',
+      threadId: 'sb-1',
+      authorUid: 'u2',
+      authorName: '민수',
+      authorHandle: '@min',
+      authorAvatar: 'https://example.com/b.png',
+      text: '사지마',
+      createdAt: DateTime(2026, 8, 17, 13),
+    );
+
+    expect(
+      () => store.updateBasketComment(basket: basket, comment: mine, text: '  '),
+      throwsA(
+        isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('댓글을 입력해 주세요'),
+        ),
+      ),
+    );
+    expect(
+      () => store.updateBasketComment(
+        basket: basket,
+        comment: theirs,
+        text: '바꿔',
+      ),
+      throwsA(
+        isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('내 댓글만 수정할 수 있어요'),
+        ),
+      ),
+    );
+    expect(
+      () => store.deleteBasketComment(basket: basket, comment: theirs),
+      throwsA(
+        isA<Exception>().having(
+          (e) => e.toString(),
+          'message',
+          contains('내 댓글만 삭제할 수 있어요'),
+        ),
+      ),
+    );
+  });
+
   test(
     'salkamalka feed does not show another account sent basket as mine',
     () async {

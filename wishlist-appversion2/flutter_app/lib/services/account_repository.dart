@@ -1196,6 +1196,49 @@ class AccountRepository {
     await batch.commit();
   }
 
+  Future<void> updateBasketComment({
+    required String threadId,
+    required String commentId,
+    required String authorUid,
+    required String text,
+  }) async {
+    final trimmed = text.trim();
+    if (threadId.isEmpty || commentId.isEmpty || authorUid.isEmpty) return;
+    if (trimmed.isEmpty) {
+      throw Exception('댓글을 입력해 주세요.');
+    }
+    final ref = _basketComments(threadId).doc(commentId);
+    final snap = await ref.get();
+    if (!snap.exists) {
+      throw Exception('댓글을 찾을 수 없어요.');
+    }
+    final data = snap.data() ?? {};
+    if ((data['authorUid'] as String? ?? '') != authorUid) {
+      throw Exception('내 댓글만 수정할 수 있어요.');
+    }
+    await ref.update({
+      'text': trimmed,
+      'updatedAt': DateTime.now().toIso8601String(),
+      'updatedAtServer': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> deleteBasketComment({
+    required String threadId,
+    required String commentId,
+    required String authorUid,
+  }) async {
+    if (threadId.isEmpty || commentId.isEmpty || authorUid.isEmpty) return;
+    final ref = _basketComments(threadId).doc(commentId);
+    final snap = await ref.get();
+    if (!snap.exists) return;
+    final data = snap.data() ?? {};
+    if ((data['authorUid'] as String? ?? '') != authorUid) {
+      throw Exception('내 댓글만 삭제할 수 있어요.');
+    }
+    await ref.delete();
+  }
+
   /// New accounts start with only the fixed '전체' tab — no demo categories.
   Future<void> _seedDefaultTabs(String uid) async {
     final allTab = WishlistTab(id: 'all', name: '전체', isPublic: true);

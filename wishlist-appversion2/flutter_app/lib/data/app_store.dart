@@ -1294,6 +1294,68 @@ class AppStore extends ChangeNotifier {
     return posted ?? false;
   }
 
+  /// Returns false when this comment is already being edited.
+  Future<bool> updateBasketComment({
+    required SharedBasket basket,
+    required BasketComment comment,
+    required String text,
+  }) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      throw Exception('댓글을 입력해 주세요.');
+    }
+    final threadId = basket.commentThreadId;
+    if (threadId.isEmpty) {
+      throw Exception('이 살까말까에는 댓글을 달 수 없어요.');
+    }
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    if (comment.authorUid != userId) {
+      throw Exception('내 댓글만 수정할 수 있어요.');
+    }
+    final updated = await _withLock('comment-edit:${comment.id}', () async {
+      _ensureFirebase();
+      await _repo.updateBasketComment(
+        threadId: threadId,
+        commentId: comment.id,
+        authorUid: userId,
+        text: trimmed,
+      );
+      return true;
+    });
+    return updated ?? false;
+  }
+
+  /// Returns false when this comment is already being deleted.
+  Future<bool> deleteBasketComment({
+    required SharedBasket basket,
+    required BasketComment comment,
+  }) async {
+    final threadId = basket.commentThreadId;
+    if (threadId.isEmpty) {
+      throw Exception('이 살까말까에는 댓글을 달 수 없어요.');
+    }
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
+    if (comment.authorUid != userId) {
+      throw Exception('내 댓글만 삭제할 수 있어요.');
+    }
+    final deleted = await _withLock('comment-delete:${comment.id}', () async {
+      _ensureFirebase();
+      await _repo.deleteBasketComment(
+        threadId: threadId,
+        commentId: comment.id,
+        authorUid: userId,
+      );
+      return true;
+    });
+    return deleted ?? false;
+  }
+
   /// Hosts an HTML snapshot of [basket] in Storage and returns a public URL.
   /// Re-publishing the same basket overwrites the page and restarts the 28-day
   /// clock so an actively re-shared link stays alive.

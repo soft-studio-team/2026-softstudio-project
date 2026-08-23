@@ -146,7 +146,12 @@ service cloud.firestore {
           && threadParticipantFrom(
             get(/databases/$(database)/documents/basketThreads/$(threadId)).data
           );
-        allow update, delete: if signedIn()
+        allow update: if signedIn()
+          && resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorUid == resource.data.authorUid
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['text', 'updatedAt', 'updatedAtServer']);
+        allow delete: if signedIn()
           && resource.data.authorUid == request.auth.uid;
       }
     }
