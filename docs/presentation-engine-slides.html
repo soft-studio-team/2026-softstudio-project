@@ -10,12 +10,9 @@
       --card: #ffffff;
       --ink: #111111;
       --muted: #6b6b6b;
-      --line: #d8d8d8;
       --brown: #8a5a3a;
-      --chip: #c4a484;
-      --pink: #e8a0b0;
-      --paper: #f6f1e8;
-      --grid: #eee6d8;
+      --box: #f7f4ef;
+      --line: #d8d4cc;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -44,7 +41,7 @@
       height: 100%;
       background: var(--card);
       border-radius: 6px;
-      padding: 28px 40px 24px;
+      padding: 28px 44px 22px;
       position: relative;
     }
     .dots { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -53,191 +50,15 @@
     .dots .y { background: #febc2e; }
     .dots .g { background: #28c840; }
     h1 {
-      font-size: 42px;
+      font-size: 40px;
       letter-spacing: -0.04em;
       font-weight: 800;
-      margin-bottom: 18px;
+      margin-bottom: 8px;
     }
-    .row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: calc(100% - 92px);
-      gap: 20px;
-    }
-    .copy { width: 280px; flex-shrink: 0; }
-    .copy h2 {
-      font-size: 22px;
-      font-weight: 800;
-      margin-bottom: 18px;
-    }
-    .copy ul { list-style: none; }
-    .copy li {
-      position: relative;
-      padding-left: 18px;
-      font-size: 16px;
-      line-height: 1.55;
-      margin-bottom: 14px;
-    }
-    .copy li::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      top: 0.62em;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--ink);
-    }
-    .squiggle {
-      width: 92px;
-      height: 18px;
-      margin-top: 22px;
-    }
-    .phones {
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      gap: 22px;
-      flex: 1;
-    }
-    .phones.five { gap: 10px; }
-    .phone-wrap { text-align: center; }
-    .phone-wrap small {
-      display: block;
-      margin-top: 8px;
-      font-size: 12px;
+    .lead {
       color: var(--muted);
-    }
-    .arrow {
-      color: #888;
-      font-size: 22px;
-      margin-bottom: 38px;
-    }
-    .phone {
-      width: 210px;
-      height: 430px;
-      border: 2px solid #222;
-      border-radius: 28px;
-      background: var(--paper);
-      overflow: hidden;
-      position: relative;
-      box-shadow: none;
-    }
-    .phones.five .phone { width: 168px; height: 344px; border-radius: 22px; }
-    .status {
-      height: 18px;
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 10px 0;
-      font-size: 8px;
-      color: #444;
-    }
-    .bar {
-      padding: 6px 10px 8px;
-      font-weight: 800;
-      font-size: 15px;
-    }
-    .phones.five .bar { font-size: 12px; }
-    .screen { padding: 0 10px 10px; }
-    .field, .card, .chip, .btn, .thumb, .price {
-      border-radius: 8px;
-    }
-    .field {
-      background: #fff;
-      border: 1px solid #ddd;
-      padding: 8px;
-      font-size: 10px;
-      color: #666;
-      margin-bottom: 8px;
-      min-height: 36px;
-    }
-    .btn {
-      background: #7aa7d9;
-      color: #fff;
-      text-align: center;
-      padding: 8px;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .btn.mint { background: #8fbfa8; }
-    .btn.pink { background: var(--pink); }
-    .btn.ghost {
-      background: #eee;
-      color: #999;
-    }
-    .card {
-      background: #fff;
-      border: 1px solid #e6e6e6;
-      padding: 8px;
-      margin-bottom: 8px;
-    }
-    .prod {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .thumb {
-      width: 44px;
-      height: 44px;
-      background: #c9b7a3;
-      flex-shrink: 0;
-    }
-    .thumb.pink { background: #d9a8b4; }
-    .thumb.blue { background: #9bb4c9; }
-    .thumb.green { background: #a8c4b0; }
-    .meta { font-size: 9px; color: #888; }
-    .name { font-size: 11px; font-weight: 700; line-height: 1.3; }
-    .price { font-size: 11px; font-weight: 800; }
-    .old { color: #aaa; text-decoration: line-through; font-weight: 500; margin-right: 4px; }
-    .nav {
-      position: absolute;
-      left: 0; right: 0; bottom: 0;
-      height: 42px;
-      background: #fff;
-      border-top: 1px solid #eee;
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      font-size: 8px;
-      color: #888;
-    }
-    .nav b { color: #111; }
-    .share-app {
-      background: #fff;
-      border-radius: 10px;
-      padding: 8px;
-      margin-top: 70px;
-      border: 1px solid #eee;
-    }
-    .apps {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      text-align: center;
-      font-size: 8px;
-      margin-top: 8px;
-    }
-    .app-icon {
-      width: 28px;
-      height: 28px;
-      border-radius: 7px;
-      margin: 0 auto 3px;
-      background: #ddd;
-    }
-    .app-icon.wish { background: #111; }
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      width: 240px;
-    }
-    .chip {
-      background: #f3eee7;
-      border: 1px solid #e2d6c8;
-      padding: 8px 12px;
-      font-size: 13px;
-      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 22px;
     }
     .hint {
       position: absolute;
@@ -246,34 +67,133 @@
       font-size: 12px;
       color: #999;
     }
-    .bottom-copy {
-      position: absolute;
-      left: 48px;
-      right: 48px;
-      bottom: 28px;
-    }
-    .bottom-copy ul {
+    .flow {
       display: flex;
-      gap: 28px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 8px 0 28px;
+    }
+    .box {
+      flex: 1;
+      min-width: 0;
+      min-height: 84px;
+      background: var(--box);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+    .box.hot {
+      border-color: var(--brown);
+      background: #f3ebe3;
+    }
+    .box b { display: block; font-size: 16px; margin-bottom: 4px; }
+    .box span { display: block; font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .arr { color: #999; font-size: 22px; flex-shrink: 0; }
+    .layers {
+      display: flex;
+      gap: 10px;
+      margin: -8px 0 26px;
+      padding-left: calc(20% + 80px);
+    }
+    .layer {
+      flex: 1;
+      background: #fff;
+      border: 1px dashed #cfc8be;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      text-align: center;
+    }
+    .bullets {
+      display: flex;
+      gap: 36px;
       list-style: none;
     }
-    .bottom-copy li {
+    .bullets li {
       flex: 1;
-      font-size: 14px;
-      line-height: 1.45;
-      padding-left: 14px;
       position: relative;
+      padding-left: 16px;
+      font-size: 16px;
+      line-height: 1.5;
     }
-    .bottom-copy li::before {
+    .bullets li::before {
       content: "";
       position: absolute;
       left: 0;
-      top: 0.55em;
-      width: 5px;
-      height: 5px;
+      top: 0.62em;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: #111;
     }
+    .stats {
+      display: flex;
+      gap: 16px;
+      margin: 8px 0 28px;
+    }
+    .stat {
+      flex: 1;
+      background: var(--box);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 22px 18px 18px;
+    }
+    .stat em {
+      display: block;
+      font-style: normal;
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .stat span { font-size: 15px; color: #444; line-height: 1.4; }
+    .two {
+      display: flex;
+      gap: 36px;
+      align-items: flex-start;
+    }
+    .two .col { flex: 1; }
+    .two h2 {
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+    .list { list-style: none; }
+    .list li {
+      position: relative;
+      padding-left: 16px;
+      font-size: 16px;
+      line-height: 1.55;
+      margin-bottom: 10px;
+    }
+    .list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.62em;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #111;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .chip {
+      background: #f3eee7;
+      border: 1px solid #e2d6c8;
+      padding: 7px 11px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 8px;
+    }
+    .chip.out {
+      background: #f4f4f4;
+      border-color: #ddd;
+      color: #888;
+      font-weight: 600;
+    }
+    .squiggle { width: 92px; height: 18px; margin-top: 18px; }
   </style>
 </head>
 <body>
@@ -281,255 +201,100 @@
     <section class="slide on" data-n="1">
       <div class="window">
         <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-        <h1>가격 추출 엔진</h1>
-        <div class="row">
-          <div class="phone-wrap">
-            <div class="phone">
-              <div class="status"><span>11:20</span><span>5G</span></div>
-              <div class="bar">무신사</div>
-              <div class="screen">
-                <div class="card">
-                  <div class="prod">
-                    <div class="thumb"></div>
-                    <div>
-                      <div class="meta">MUSINSA STANDARD</div>
-                      <div class="name">우먼즈 후드 집업</div>
-                      <div class="price">39,900원</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="share-app">
-                  <div class="meta">공유</div>
-                  <div class="apps">
-                    <div><div class="app-icon"></div>메시지</div>
-                    <div><div class="app-icon wish"></div>wishkit</div>
-                    <div><div class="app-icon"></div>사진</div>
-                    <div><div class="app-icon"></div>더 보기</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="copy">
-            <h2>자동 채움</h2>
-            <ul>
-              <li>쇼핑 앱에서 공유하면 wishkit이 링크를 받음</li>
-              <li>이름 · 정가 · 판매가 · 이미지를 위시 카드로 남김</li>
-              <li>제가 맡은 일은 이 자동 채움</li>
-            </ul>
-            <svg class="squiggle" viewBox="0 0 92 18" fill="none">
-              <path d="M2 11 C 14 2, 22 16, 34 9 S 56 3, 68 12 86 6, 90 10" stroke="#8a5a3a" stroke-width="2.2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div class="phone-wrap">
-            <div class="phone">
-              <div class="status"><span>11:20</span><span>5G</span></div>
-              <div class="bar">공유 담기</div>
-              <div class="screen">
-                <div class="meta" style="margin-bottom:8px">다른 앱에서 공유한 링크를<br>위시리스트 카드로 정리해요</div>
-                <div class="card">
-                  <div class="prod">
-                    <div class="thumb"></div>
-                    <div>
-                      <div class="meta">무신사</div>
-                      <div class="name">우먼즈 후드 집업</div>
-                      <div class="price"><span class="old">59,900</span>39,900원</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="field">상품명 우먼즈 후드 집업</div>
-                <div class="field">기본 판매가 (쿠폰·옵션 제외) 39900</div>
-                <div class="btn mint">이 리스트에 저장</div>
-              </div>
-              <div class="nav"><span>wishkit</span><span>내 친구</span><span>살까말까</span><span>마이페이지</span></div>
-            </div>
-          </div>
+        <h1>구현 방식</h1>
+        <p class="lead">서버에서 긁지 않습니다. 사용자 단말의 WebView가 페이지를 그린 뒤에 읽습니다.</p>
+        <div class="flow">
+          <div class="box"><b>공유 URL</b><span>쇼핑 앱에서 받은 링크</span></div>
+          <div class="arr">→</div>
+          <div class="box"><b>ParsingBridge</b><span>URL만 골라 추출 호출</span></div>
+          <div class="arr">→</div>
+          <div class="box hot"><b>단말 WebView</b><span>미리 붙여 둔 숨은 브라우저</span></div>
+          <div class="arr">→</div>
+          <div class="box hot"><b>ExtractLoop</b><span>그려질 때까지 기다림</span></div>
+          <div class="arr">→</div>
+          <div class="box"><b>위시 카드</b><span>이름 · 정가 · 판매가 · 사진</span></div>
         </div>
-        <div class="hint">1 / 4  ·  방향키</div>
+        <div class="layers">
+          <div class="layer">몰별 어댑터</div>
+          <div class="layer">JSON-LD / OG</div>
+          <div class="layer">화면 DOM</div>
+        </div>
+        <ul class="bullets">
+          <li>공유 담기는 이 한 길. 파이썬 서버는 앱에서 뺐습니다.</li>
+          <li>페이지가 멈춘 뒤 600ms를 기다리고, 값이 두 번 같으면 확정합니다.</li>
+          <li>확인한 몰은 전용 규칙으로만 읽고, 못 읽으면 다른 숫자로 우회하지 않습니다.</li>
+        </ul>
+        <div class="hint">1 / 3  ·  방향키</div>
       </div>
     </section>
 
     <section class="slide" data-n="2">
       <div class="window">
         <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-        <h1>단말에서 페이지를 읽습니다</h1>
-        <div class="phones five">
-          <div class="phone-wrap">
-            <div class="phone">
-              <div class="status"><span>11:20</span><span>5G</span></div>
-              <div class="bar">공유</div>
-              <div class="screen">
-                <div class="card"><div class="prod"><div class="thumb"></div><div><div class="name">후드 집업</div><div class="meta">무신사</div></div></div></div>
-                <div class="share-app"><div class="apps"><div><div class="app-icon wish"></div>wishkit</div><div><div class="app-icon"></div>메시지</div><div><div class="app-icon"></div>사진</div><div><div class="app-icon"></div>더 보기</div></div></div>
-              </div>
-            </div>
-            <small>1 공유</small>
-          </div>
-          <div class="arrow">→</div>
-          <div class="phone-wrap">
-            <div class="phone">
-              <div class="status"><span>11:20</span><span>5G</span></div>
-              <div class="bar">공유 담기</div>
-              <div class="screen">
-                <div class="field">https://musinsa.com/products/...</div>
-                <div class="btn">상품 읽기</div>
-              </div>
-            </div>
-            <small>2 URL</small>
-          </div>
-          <div class="arrow">→</div>
-          <div class="phone-wrap">
-            <div class="phone">
-              <div class="status"><span>11:20</span><span>5G</span></div>
-              <div class="bar">공유 담기</div>
-              <div class="screen">
-                <div class="field">https://musinsa.com/products/...</div>
-                <div class="btn ghost">상품 페이지를 읽는 중...</div>
-                <div class="meta" style="margin-top:16px;text-align:center">단말 WebView가<br>페이지를 그립니다</div>
-              </div>
-            </div>
-            <small>3 단말 WebView</small>
-          </div>
-          <div class="arrow">→</div>
-          <div class="phone-wrap">
-            <div class="phone">
-              <div class="status"><span>11:20</span><span>5G</span></div>
-              <div class="bar">공유 담기</div>
-              <div class="screen">
-                <div class="card"><div class="prod"><div class="thumb"></div><div><div class="meta">무신사 · 휴대폰에서 읽음</div><div class="name">우먼즈 후드 집업</div><div class="price">39,900원</div></div></div></div>
-              </div>
-            </div>
-            <small>4 그려진 뒤 읽기</small>
-          </div>
-          <div class="arrow">→</div>
-          <div class="phone-wrap">
-            <div class="phone">
-              <div class="status"><span>11:20</span><span>5G</span></div>
-              <div class="bar">wishkit</div>
-              <div class="screen">
-                <div class="card"><div class="prod"><div class="thumb"></div><div><div class="meta">상의</div><div class="name">우먼즈 후드 집업</div><div class="price">39,900원</div></div></div></div>
-                <div class="card"><div class="prod"><div class="thumb pink"></div><div><div class="meta">29CM</div><div class="name">울 후드</div><div class="price">62,300원</div></div></div></div>
-              </div>
-              <div class="nav"><b>wishkit</b><span>내 친구</span><span>살까말까</span><span>마이</span></div>
-            </div>
-            <small>5 위시 카드</small>
-          </div>
+        <h1>어떻게 맞춰 봤나</h1>
+        <p class="lead">엔진이 읽은 값과, 탭에서 연 실제 상품 페이지를 같은 기준으로 대조했습니다.</p>
+        <div class="stats">
+          <div class="stat"><em>Tab S7</em><span>Galaxy Tab S7에서<br>실페이지 live compare</span></div>
+          <div class="stat"><em>50몰</em><span>패션·종합몰 카탈로그<br>상품 슬롯 149개</span></div>
+          <div class="stat"><em>3필드</em><span>이름 · 가격 · 이미지가<br>모두 같으면 MATCH</span></div>
+          <div class="stat"><em>12초</em><span>기본 추출 제한.<br>두 번 같으면 그전에 확정</span></div>
         </div>
-        <div class="bottom-copy">
-          <ul>
-            <li>서버에서 긁거나 파이썬 API를 부르지 않음</li>
-            <li>공유 담기는 전부 이 한 길</li>
-            <li>사용자가 보던 그 상품 페이지를 단말에서 그대로 읽음</li>
-          </ul>
-        </div>
-        <div class="hint">2 / 4  ·  방향키</div>
+        <ul class="bullets">
+          <li>정답은 엔진이 아니라 브라우저로 연 화면입니다. 쿠폰가·첫구매가는 정답이 아닙니다.</li>
+          <li>막히거나 기권한 몰은 실패로 세지 않습니다. 지원 범위 밖으로 둡니다.</li>
+          <li>이 코드는 풀 리퀘스트 28로 main에 들어가 있습니다.</li>
+        </ul>
+        <div class="hint">2 / 3  ·  방향키</div>
       </div>
     </section>
 
     <section class="slide" data-n="3">
       <div class="window">
         <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-        <h1>조건 없는 가격만</h1>
-        <div class="row">
-          <div class="phone-wrap">
-            <div class="phone">
-              <div class="status"><span>11:20</span><span>5G</span></div>
-              <div class="bar">공유 담기</div>
-              <div class="screen">
-                <div class="card">
-                  <div class="prod">
-                    <div class="thumb blue"></div>
-                    <div>
-                      <div class="meta">29CM</div>
-                      <div class="name">울 후드 집업</div>
-                      <div class="price"><span class="old">89,000</span>62,300원</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="field">기본 판매가 (쿠폰·옵션 제외, 원)<br><b style="color:#111">62300</b></div>
-                <div class="meta">쿠폰은 제외한 기본 판매가예요.<br>옵션을 선택하면 가격이 달라질 수 있어요.</div>
-              </div>
-            </div>
-          </div>
-          <div class="copy">
-            <h2>가격 기준</h2>
-            <ul>
-              <li>쿠폰가 · 회원가 · 첫구매가는 정답으로 쓰지 않음</li>
-              <li>조건 없는 판매가 · 리스트가를 우선</li>
-              <li>못 읽으면 그 칸만 비우고, 가격은 직접 입력</li>
+        <h1>어디까지 되고, 어디는 안 되나</h1>
+        <p class="lead">지원으로 말하는 몰은 Tab에서 MATCH로 인증한 약 50곳입니다.</p>
+        <div class="two">
+          <div class="col">
+            <h2>되는 쪽</h2>
+            <ul class="list">
+              <li>이름 · 가격 · 사진이 실페이지와 같으면 지원으로 말합니다.</li>
+              <li>회귀할 때는 50곳 전부보다 패션 인기몰을 먼저 봅니다.</li>
+              <li>못 읽은 칸은 비우고, 가격은 직접 입력할 수 있습니다.</li>
             </ul>
+            <div class="chips">
+              <span class="chip">에이블리</span>
+              <span class="chip">무신사</span>
+              <span class="chip">지그재그</span>
+              <span class="chip">퀸잇</span>
+              <span class="chip">KREAM</span>
+              <span class="chip">29CM</span>
+              <span class="chip">4910</span>
+              <span class="chip">W컨셉</span>
+              <span class="chip">SSF샵</span>
+              <span class="chip">올리브영</span>
+            </div>
             <svg class="squiggle" viewBox="0 0 92 18" fill="none">
               <path d="M2 11 C 14 2, 22 16, 34 9 S 56 3, 68 12 86 6, 90 10" stroke="#8a5a3a" stroke-width="2.2" stroke-linecap="round"/>
             </svg>
           </div>
-          <div class="phone-wrap">
-            <div class="phone">
-              <div class="status"><span>11:20</span><span>5G</span></div>
-              <div class="bar">공유 담기</div>
-              <div class="screen">
-                <div class="card">
-                  <div class="prod">
-                    <div class="thumb green"></div>
-                    <div>
-                      <div class="meta">이 쇼핑몰은 자동으로<br>열리지 않아요</div>
-                      <div class="name">공유된 상품</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="field">상품명</div>
-                <div class="field" style="border-color:#c45c5c">판매가 (직접 입력, 원)</div>
-                <div class="meta" style="color:#b14b4b">가격을 직접 입력하면 저장할 수 있어요</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="hint">3 / 4  ·  방향키</div>
-      </div>
-    </section>
-
-    <section class="slide" data-n="4">
-      <div class="window">
-        <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
-        <h1>되는 몰, 안 되는 몰</h1>
-        <div class="row">
-          <div class="phone-wrap">
-            <div class="phone">
-              <div class="status"><span>11:20</span><span>5G</span></div>
-              <div class="bar">wishkit</div>
-              <div class="screen">
-                <div class="card"><div class="prod"><div class="thumb"></div><div><div class="meta">무신사</div><div class="name">우먼즈 후드 집업</div><div class="price">39,900원</div></div></div></div>
-                <div class="card"><div class="prod"><div class="thumb pink"></div><div><div class="meta">29CM</div><div class="name">울 후드</div><div class="price">62,300원</div></div></div></div>
-                <div class="card"><div class="prod"><div class="thumb blue"></div><div><div class="meta">에이블리</div><div class="name">데님 원피스</div><div class="price">32,900원</div></div></div></div>
-                <div class="card"><div class="prod"><div class="thumb green"></div><div><div class="meta">올리브영</div><div class="name">립 밤</div><div class="price">12,000원</div></div></div></div>
-              </div>
-              <div class="nav"><b>wishkit</b><span>내 친구</span><span>살까말까</span><span>마이</span></div>
-            </div>
-          </div>
-          <div class="copy">
-            <h2>지원 범위</h2>
-            <ul>
-              <li>Tab S7에서 이름 · 가격 · 이미지를 맞춰 약 50곳</li>
-              <li>회귀는 패션 인기몰부터</li>
-              <li>쿠팡 · 네이버는 지원 범위 밖</li>
+          <div class="col">
+            <h2>안 되는 쪽</h2>
+            <ul class="list">
+              <li>쿠팡은 접근이 막힙니다. 네이버는 카탈로그형이라 기권합니다.</li>
+              <li>Gap · SHEIN · NUGU처럼 통화가 원이 아닌 몰도 범위 밖입니다.</li>
+              <li>엔진이 전부 실패한 게 아니라, 지원하지 않기로 한 문제입니다.</li>
             </ul>
-            <svg class="squiggle" viewBox="0 0 92 18" fill="none">
-              <path d="M2 11 C 14 2, 22 16, 34 9 S 56 3, 68 12 86 6, 90 10" stroke="#8a5a3a" stroke-width="2.2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <div class="chips">
-            <span class="chip">에이블리</span>
-            <span class="chip">무신사</span>
-            <span class="chip">지그재그</span>
-            <span class="chip">퀸잇</span>
-            <span class="chip">KREAM</span>
-            <span class="chip">29CM</span>
-            <span class="chip">4910</span>
-            <span class="chip">W컨셉</span>
-            <span class="chip">SSF샵</span>
-            <span class="chip">올리브영</span>
+            <div class="chips">
+              <span class="chip out">쿠팡</span>
+              <span class="chip out">네이버</span>
+              <span class="chip out">알리</span>
+              <span class="chip out">테무</span>
+              <span class="chip out">Gap</span>
+              <span class="chip out">SHEIN</span>
+            </div>
           </div>
         </div>
-        <div class="hint">4 / 4  ·  방향키</div>
+        <div class="hint">3 / 3  ·  방향키</div>
       </div>
     </section>
   </div>
@@ -542,7 +307,7 @@
     }
     function show(n) {
       i = (n + slides.length) % slides.length;
-      slides.forEach((s, idx) => s.classList.toggle("on", idx === i));
+      slides.forEach((el, idx) => el.classList.toggle("on", idx === i));
       fit();
     }
     fit();
