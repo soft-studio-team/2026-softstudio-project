@@ -1402,7 +1402,33 @@ class AppStore extends ChangeNotifier {
     );
   }
 
-  Product? findCatalogProduct(int id) {
+  /// Resolves a product card. IDs are per-owner counters, so a friend's
+  /// item 3 is not the same as the current user's item 3 — pass a scope
+  /// when opening someone else's list or the own catalog wins.
+  Product? findCatalogProduct(
+    int id, {
+    String? friendWishlistId,
+    String? sharedBasketId,
+    String? friendId,
+  }) {
+    if (friendWishlistId != null && friendWishlistId.isNotEmpty) {
+      return friendWishlistById(friendWishlistId)
+          ?.items
+          .where((p) => p.id == id)
+          .firstOrNull;
+    }
+    if (sharedBasketId != null && sharedBasketId.isNotEmpty) {
+      return sharedBasketById(sharedBasketId)
+          ?.items
+          .where((p) => p.id == id)
+          .firstOrNull;
+    }
+    if (friendId != null && friendId.isNotEmpty) {
+      return friendSalkamalkaByFriendId(friendId)
+          ?.allProducts
+          .where((p) => p.id == id)
+          .firstOrNull;
+    }
     final own = productById(id);
     if (own != null) return own;
     for (final w in friendWishlists) {

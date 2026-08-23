@@ -6,6 +6,7 @@ import '../../data/app_store.dart';
 import '../../models/models.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
+import '../product/product_detail_screen.dart';
 import '../reviews/review_widgets.dart';
 
 class FriendsScreen extends StatefulWidget {
@@ -490,8 +491,12 @@ class _FriendWishlistsPane extends StatelessWidget {
                           (p) => Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: GestureDetector(
-                              onTap: () =>
-                                  context.push('/catalog-product/${p.id}'),
+                              onTap: () => context.push(
+                                catalogProductLocation(
+                                  p.id,
+                                  wishlistId: w.id,
+                                ),
+                              ),
                               child: Column(
                                 children: [
                                   ClipRRect(

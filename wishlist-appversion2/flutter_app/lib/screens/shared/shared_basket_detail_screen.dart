@@ -6,6 +6,7 @@ import '../../data/app_store.dart';
 import '../../models/models.dart';
 import '../../theme/diary_theme.dart';
 import '../mypage/sent_baskets_screen.dart';
+import '../product/product_detail_screen.dart';
 import '../reviews/review_widgets.dart';
 import '../wishlist/wishlist_screen.dart';
 
@@ -151,8 +152,12 @@ class _SharedBasketDetailScreenState extends State<SharedBasketDetailScreen> {
                       for (final p in basket.items) ...[
                         WishlistProductCard(
                           product: p,
-                          onOpen: () =>
-                              context.push('/catalog-product/${p.id}'),
+                          onOpen: () => context.push(
+                            catalogProductLocation(
+                              p.id,
+                              basketId: widget.basketId,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 10),
                       ],

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/models.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
+import '../product/product_detail_screen.dart';
 import '../wishlist/wishlist_screen.dart';
 
 /// Read-only wishlist list UI (friend lists + shared basket URL views).
@@ -17,6 +18,9 @@ class SharedWishlistScreen extends StatelessWidget {
     this.accentColor,
     this.emptyMessage = '아직 공개된 아이템이 없어요',
     this.onShare,
+    this.wishlistId,
+    this.basketId,
+    this.friendId,
   });
 
   final String title;
@@ -25,6 +29,9 @@ class SharedWishlistScreen extends StatelessWidget {
   final Color? accentColor;
   final String emptyMessage;
   final VoidCallback? onShare;
+  final String? wishlistId;
+  final String? basketId;
+  final String? friendId;
 
   @override
   Widget build(BuildContext context) {
@@ -102,8 +109,14 @@ class SharedWishlistScreen extends StatelessWidget {
                                 final p = products[i];
                                 return WishlistProductCard(
                                   product: p,
-                                  onOpen: () =>
-                                      context.push('/catalog-product/${p.id}'),
+                                  onOpen: () => context.push(
+                                    catalogProductLocation(
+                                      p.id,
+                                      wishlistId: wishlistId,
+                                      basketId: basketId,
+                                      friendId: friendId,
+                                    ),
+                                  ),
                                 );
                               },
                             ),
