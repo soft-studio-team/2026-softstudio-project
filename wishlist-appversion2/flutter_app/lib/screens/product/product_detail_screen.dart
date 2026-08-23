@@ -4,13 +4,43 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/app_store.dart';
+import '../../models/models.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 
+/// Detail route for a product that may belong to someone else.
+/// IDs collide across owners, so friend/basket/friend scopes must travel
+/// with the id.
+String catalogProductLocation(
+  int productId, {
+  String? wishlistId,
+  String? basketId,
+  String? friendId,
+}) {
+  final query = <String, String>{
+    if (wishlistId != null && wishlistId.isNotEmpty) 'wishlist': wishlistId,
+    if (basketId != null && basketId.isNotEmpty) 'basket': basketId,
+    if (friendId != null && friendId.isNotEmpty) 'friend': friendId,
+  };
+  return Uri(
+    path: '/catalog-product/$productId',
+    queryParameters: query.isEmpty ? null : query,
+  ).toString();
+}
+
 class ProductDetailScreen extends StatefulWidget {
-  const ProductDetailScreen({super.key, required this.productId});
+  const ProductDetailScreen({
+    super.key,
+    required this.productId,
+    this.friendWishlistId,
+    this.sharedBasketId,
+    this.friendId,
+  });
 
   final int productId;
+  final String? friendWishlistId;
+  final String? sharedBasketId;
+  final String? friendId;
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -19,12 +49,25 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   late final TextEditingController memoCtrl;
 
+  Product? _lookup(AppStore store) {
+    return store.findCatalogProduct(
+      widget.productId,
+      friendWishlistId: widget.friendWishlistId,
+      sharedBasketId: widget.sharedBasketId,
+      friendId: widget.friendId,
+    );
+  }
+
+  bool get _openedFromSomeoneElse =>
+      (widget.friendWishlistId != null &&
+          widget.friendWishlistId!.isNotEmpty) ||
+      (widget.sharedBasketId != null && widget.sharedBasketId!.isNotEmpty) ||
+      (widget.friendId != null && widget.friendId!.isNotEmpty);
+
   @override
   void initState() {
     super.initState();
-    final product = context.read<AppStore>().findCatalogProduct(
-      widget.productId,
-    );
+    final product = _lookup(context.read<AppStore>());
     memoCtrl = TextEditingController(text: product?.memo ?? '');
   }
 
@@ -37,9 +80,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
-    final product =
-        store.findCatalogProduct(widget.productId) ??
-        store.products.firstOrNull;
+    final product = _lookup(store);
     if (product == null) {
       return Scaffold(
         appBar: AppBar(
@@ -51,7 +92,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         body: const Center(child: Text('상품을 찾을 수 없어요')),
       );
     }
-    final isOwn = store.productById(product.id) != null;
+    final isOwn =
+        !_openedFromSomeoneElse && store.productById(product.id) != null;
     final tab = store.tabs.firstWhere(
       (t) => t.id == product.listId,
       orElse: () => store.tabs.first,

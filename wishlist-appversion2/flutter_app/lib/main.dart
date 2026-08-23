@@ -217,6 +217,9 @@ GoRouter _buildRouter(AppStore store) {
         path: '/catalog-product/:id',
         builder: (context, state) => ProductDetailScreen(
           productId: int.parse(state.pathParameters['id']!),
+          friendWishlistId: state.uri.queryParameters['wishlist'],
+          sharedBasketId: state.uri.queryParameters['basket'],
+          friendId: state.uri.queryParameters['friend'],
         ),
       ),
       GoRoute(
@@ -241,6 +244,7 @@ GoRouter _buildRouter(AppStore store) {
             subtitle: '${list.friendName} 님의 공개 위시리스트',
             products: list.items,
             accentColor: DiaryColors.folderPink,
+            wishlistId: list.id,
           );
         },
       ),
@@ -304,6 +308,7 @@ GoRouter _buildRouter(AppStore store) {
             products: group.allProducts,
             accentColor: DiaryColors.folderPeach,
             emptyMessage: '보낸 상품이 없어요',
+            friendId: friendId,
           );
         },
       ),

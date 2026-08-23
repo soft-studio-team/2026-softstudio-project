@@ -381,4 +381,45 @@ void main() {
     expect(await store.toggleFollow('u2'), isFalse);
     expect(store.friends.single.isFollowing, isFalse);
   });
+
+  test('findCatalogProduct uses friend list scope when ids collide', () async {
+    SharedPreferences.setMockInitialValues({});
+    final store = AppStore(firebaseConfigured: false);
+    await store.init();
+    store.products = [
+      Product(
+        id: 3,
+        listId: 'mine',
+        name: '내 상품',
+        price: 1000,
+        image: 'https://example.com/mine.png',
+        platform: '테스트',
+      ),
+    ];
+    store.friendWishlists = [
+      FriendWishlist(
+        id: 'friend1_list-1',
+        friendId: 'friend-1',
+        friendName: '민수',
+        listName: '여름',
+        isPublic: true,
+        items: [
+          Product(
+            id: 3,
+            listId: 'list-1',
+            name: '친구 상품',
+            price: 5000,
+            image: 'https://example.com/friend.png',
+            platform: '테스트',
+          ),
+        ],
+      ),
+    ];
+
+    expect(store.findCatalogProduct(3)?.name, '내 상품');
+    expect(
+      store.findCatalogProduct(3, friendWishlistId: 'friend1_list-1')?.name,
+      '친구 상품',
+    );
+  });
 }
