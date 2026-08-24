@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:figmadesign/services/webview_extract_host.dart';
+import 'package:figmadesign/services/ios_extract_webview.dart';
 import 'package:figmadesign/services/webview_scraper.dart';
 
 class _FakeClock implements ExtractClock {
@@ -92,6 +94,33 @@ void main() {
     expect(result, isNotNull);
     expect(result!.failureReason, ExtractFailureReason.accessBlocked);
     expect(result.blocked, isTrue);
+  });
+
+  test('iOS evaluateJavascript가 JSON을 한 겹 더 감싸도 읽는다', () {
+    final inner = jsonEncode({'name': '상품', 'price': 12900, 'blocked': false});
+    final result = OnDeviceExtract.fromRaw(jsonEncode(inner));
+    expect(result, isNotNull);
+    expect(result!.name, '상품');
+    expect(result.price, 12900);
+  });
+
+  test('iOS는 기본 UA를 쓰고 Android Ably는 mobile Chrome을 쓴다', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    expect(WebViewScraper.userAgentForHost('www.musinsa.com'), isNull);
+    expect(WebViewScraper.userAgentForHost('m.a-bly.com'), isNull);
+    expect(IosNativeExtractHost.isAvailable, isTrue);
+
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    expect(IosNativeExtractHost.isAvailable, isFalse);
+    expect(
+      WebViewScraper.userAgentForHost('m.a-bly.com'),
+      WebViewScraper.mobileUa,
+    );
+    expect(
+      WebViewScraper.userAgentForHost('www.musinsa.com'),
+      WebViewScraper.desktopUa,
+    );
   });
 
   test('리다이렉트와 SPA 주소 변경이 멈춘 뒤에만 추출한다', () async {

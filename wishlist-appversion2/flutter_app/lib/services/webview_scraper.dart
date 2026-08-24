@@ -5,6 +5,7 @@ import 'dart:ui' show Size;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import 'ios_extract_webview.dart';
 import 'product_extract_js.dart';
 import 'webview_extract_host.dart';
 
@@ -114,7 +115,13 @@ class OnDeviceExtract {
   static OnDeviceExtract? fromRaw(dynamic raw) {
     if (raw == null) return null;
     try {
-      final decoded = raw is String ? jsonDecode(raw) : raw;
+      var decoded = raw;
+      // iOS WKWebView는 JSON.stringify 결과를 문자열로 한 겹 더 감쌀 수 있다.
+      for (var i = 0; i < 2 && decoded is String; i++) {
+        final text = decoded.trim();
+        if (text.isEmpty || text == 'null') return null;
+        decoded = jsonDecode(text);
+      }
       if (decoded is! Map) return null;
       final map = decoded.cast<String, dynamic>();
       return OnDeviceExtract(
@@ -490,13 +497,26 @@ class WebViewScraper {
 
   static const String desktopUa = _desktopUa;
 
-  static final InAppWebViewSettings extractSettings = InAppWebViewSettings(
-    userAgent: _desktopUa,
+  /// iOS는 가짜 Safari UA를 넣지 않는다. 기기 iOS 버전과 다른 UA는
+  /// 쇼핑몰이 봇으로 보고 빈 페이지를 주는 경우가 있다.
+  static String? userAgentForHost(String host) {
+    if (defaultTargetPlatform == TargetPlatform.iOS) return null;
+    final h = host.toLowerCase();
+    final isAbly = h == 'a-bly.com' || h.endsWith('.a-bly.com');
+    return isAbly ? mobileUa : desktopUa;
+  }
+
+  static InAppWebViewSettings get extractSettings => InAppWebViewSettings(
+    userAgent: userAgentForHost(''),
     javaScriptEnabled: true,
+    cacheEnabled: true,
     clearCache: false,
     mediaPlaybackRequiresUserGesture: true,
-    transparentBackground: true,
+    transparentBackground: false,
     useHybridComposition: true,
+    preferredContentMode: defaultTargetPlatform == TargetPlatform.iOS
+        ? UserPreferredContentMode.MOBILE
+        : UserPreferredContentMode.RECOMMENDED,
   );
 
   final ExtractClock _clock;
@@ -521,6 +541,13 @@ class WebViewScraper {
             : (requestHost == '4910.kr' || requestHost.endsWith('.4910.kr')
                 ? const Duration(seconds: 20)
                 : maxWait));
+
+    if (IosNativeExtractHost.isAvailable) {
+      return IosNativeExtractHost(clock: _clock).extract(
+        url,
+        maxWait: effectiveMaxWait,
+      );
+    }
 
     final host = WebViewExtractHost.maybeInstance;
     if (host != null) {

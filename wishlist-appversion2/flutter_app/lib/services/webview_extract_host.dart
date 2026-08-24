@@ -10,6 +10,9 @@ import 'webview_scraper.dart';
 /// Headless는 Activity content 자식이 없으면 뷰 계층에 붙지 못한다.
 /// 추출 순간에만 WebView를 만들면 `onWebViewCreated`가 15초 안에
 /// 오지 않을 수 있어, about:blank로 미리 붙여 둔다.
+///
+/// 시뮬레이터는 앱 뒤에 가려 둬도 JS가 도는 경우가 많다. 실기기 iPhone은
+/// 가려진 WKWebView를 멈추므로, 웹뷰는 항상 앱 **앞**에 두고 추출 중에만 키운다.
 class WebViewExtractHost extends StatefulWidget {
   const WebViewExtractHost({
     super.key,
@@ -30,6 +33,7 @@ class WebViewExtractHost extends StatefulWidget {
 class WebViewExtractHostState extends State<WebViewExtractHost> {
   static WebViewExtractHostState? _instance;
 
+  final _webViewKey = GlobalKey();
   bool _busy = false;
   InAppWebViewController? _controller;
   WebViewExtractLoop? _loop;
@@ -75,6 +79,12 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
       );
     }
     _busy = true;
+    if (mounted) setState(() {});
+    // 레이아웃이 커진 뒤에만 로드한다. 가려진 채로 만든 WKWebView는
+    // 앞으로 옮겨도 프로세스가 안 살아나는 경우가 있다.
+    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await WidgetsBinding.instance.endOfFrame;
     final requestHost = Uri.tryParse(url)?.host.toLowerCase() ?? '';
     final isAbly = requestHost == 'a-bly.com' ||
         requestHost.endsWith('.a-bly.com');
@@ -102,14 +112,15 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
       // 막히면 onLoadStop이 루프에 안 들어온다.
       _acceptAnyHostLoad = isAbly;
       _loop = loop;
-      try {
-        await controller.setSettings(
-          settings: InAppWebViewSettings(
-            userAgent:
-                isAbly ? WebViewScraper.mobileUa : WebViewScraper.desktopUa,
-          ),
-        );
-      } catch (_) {}
+      final ua = WebViewScraper.userAgentForHost(requestHost);
+      if (ua != null) {
+        try {
+          await controller.setSettings(
+            settings: InAppWebViewSettings(userAgent: ua),
+          );
+        } catch (_) {}
+      }
+      await _waitUntilJavascriptReady(controller);
       await controller.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
       return loop.run(
         requestUrl: url,
@@ -134,7 +145,23 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
       _activeRequestUrl = null;
       _acceptAnyHostLoad = false;
       _busy = false;
+      if (mounted) setState(() {});
     }
+  }
+
+  Future<bool> _waitUntilJavascriptReady(
+    InAppWebViewController controller,
+  ) async {
+    for (var i = 0; i < 15; i++) {
+      try {
+        final probe = await controller
+            .evaluateJavascript(source: '1+1')
+            .timeout(const Duration(milliseconds: 800));
+        if (probe == 2 || probe == 2.0 || probe == '2') return true;
+      } catch (_) {}
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    return false;
   }
 
   bool get _isResetting => _blankReady != null;
@@ -180,59 +207,92 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
     return isSameExtractSite(active, url);
   }
 
+  Widget _extractWebView(double width, double height) {
+    return Positioned(
+      left: 0,
+      top: 0,
+      width: width,
+      height: height,
+      child: IgnorePointer(
+        child: ColoredBox(
+          color: Colors.white,
+          child: InAppWebView(
+            key: _webViewKey,
+            initialUrlRequest: URLRequest(url: WebUri('about:blank')),
+            initialSettings: WebViewScraper.extractSettings,
+            onWebViewCreated: (controller) {
+              _controller = controller;
+              if (!_created.isCompleted) _created.complete(controller);
+            },
+            onLoadStart: (controller, uri) {
+              _controller = controller;
+              final url = uri?.toString();
+              if (_isResetting || !_shouldForward(url)) return;
+              _loop?.onLoadStart(url);
+            },
+            onLoadStop: (controller, uri) {
+              _controller = controller;
+              final url = uri?.toString();
+              if (_isResetting) {
+                if (isAboutBlankUrl(url)) _finishBlankReset();
+                return;
+              }
+              if (!_shouldForward(url)) return;
+              _loop?.onLoadStop(url);
+            },
+            onUpdateVisitedHistory: (controller, uri, _) {
+              _controller = controller;
+              final url = uri?.toString();
+              if (_isResetting || !_shouldForward(url)) return;
+              _loop?.onHistoryUpdate(url);
+            },
+            onReceivedError: (controller, _, __) {
+              _controller = controller;
+              if (_isResetting) {
+                _finishBlankReset();
+                return;
+              }
+              _loop?.onNetworkError();
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final show = widget.mountWebView && WebViewScraper.isSupported;
+    // 스택 순서를 바꾸지 않는다. 가렸다가 앞으로 옮기면 실기기 WKWebView가
+    // 죽은 채로 남는다. 항상 앱 앞에 두고, 추출 중에만 화면만 키운다.
+    final width = _busy ? size.width : 8.0;
+    final height = _busy ? size.height : 8.0;
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (widget.mountWebView && WebViewScraper.isSupported)
-          Positioned(
-            left: 0,
-            top: 0,
-            width: 360,
-            height: 640,
+        widget.child,
+        if (show) _extractWebView(width, height),
+        if (_busy)
+          const Positioned(
+            left: 16,
+            right: 16,
+            bottom: 28,
             child: IgnorePointer(
-              child: InAppWebView(
-                initialUrlRequest: URLRequest(url: WebUri('about:blank')),
-                initialSettings: WebViewScraper.extractSettings,
-                onWebViewCreated: (controller) {
-                  _controller = controller;
-                  if (!_created.isCompleted) _created.complete(controller);
-                },
-                onLoadStart: (controller, uri) {
-                  _controller = controller;
-                  final url = uri?.toString();
-                  if (_isResetting || !_shouldForward(url)) return;
-                  _loop?.onLoadStart(url);
-                },
-                onLoadStop: (controller, uri) {
-                  _controller = controller;
-                  final url = uri?.toString();
-                  if (_isResetting) {
-                    if (isAboutBlankUrl(url)) _finishBlankReset();
-                    return;
-                  }
-                  if (!_shouldForward(url)) return;
-                  _loop?.onLoadStop(url);
-                },
-                onUpdateVisitedHistory: (controller, uri, _) {
-                  _controller = controller;
-                  final url = uri?.toString();
-                  if (_isResetting || !_shouldForward(url)) return;
-                  _loop?.onHistoryUpdate(url);
-                },
-                onReceivedError: (controller, _, __) {
-                  _controller = controller;
-                  if (_isResetting) {
-                    _finishBlankReset();
-                    return;
-                  }
-                  _loop?.onNetworkError();
-                },
+              child: Material(
+                color: Color(0xB8000000),
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Text(
+                    '상품 페이지를 읽는 중…',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                ),
               ),
             ),
           ),
-        widget.child,
       ],
     );
   }
