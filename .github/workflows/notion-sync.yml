@@ -2,7 +2,7 @@ name: Notion Task Status Sync
 
 on:
   pull_request:
-    types: [opened, closed]
+    types: [opened, edited, reopened, closed]
 
 jobs:
   update-notion-status:
@@ -17,16 +17,19 @@ jobs:
           script: |
             const prTitle = context.payload.pull_request.title;
             const isMerged = context.payload.pull_request.merged;
-            const action = context.payload.action;
+            const isClosed = context.payload.pull_request.state === 'closed';
 
+            // 상태 결정: Closed/Merged 상태면 '완료', 그 외 열려있는 상태면 '진행 중'
             let targetStatus = '';
-            if (action === 'opened') {
-              targetStatus = '진행 중';
-            } else if (action === 'closed' && isMerged) {
+            if (isClosed && isMerged) {
               targetStatus = '완료';
+            } else if (!isClosed) {
+              targetStatus = '진행 중';
             }
 
             if (!targetStatus) return;
+
+            console.log(`Checking PR Title: "${prTitle}" -> Target Status: "${targetStatus}"`);
 
             const headers = {
               'Authorization': `Bearer ${process.env.NOTION_TOKEN}`,
@@ -41,10 +44,17 @@ jobs:
             });
             const queryData = await queryRes.json();
 
+            if (!queryData.results) {
+              console.error('Notion API Error:', JSON.stringify(queryData, null, 2));
+              throw new Error(`Failed to query database: ${queryData.message || 'Unknown error'}`);
+            }
+
+            let matched = false;
             for (const page of queryData.results) {
               const taskTitle = page.properties['내용']?.title?.[0]?.plain_text;
               if (taskTitle && prTitle.includes(taskTitle)) {
-                await fetch(`https://api.notion.com/v1/pages/${page.id}`, {
+                matched = true;
+                const patchRes = await fetch(`https://api.notion.com/v1/pages/${page.id}`, {
                   method: 'PATCH',
                   headers: headers,
                   body: JSON.stringify({
@@ -55,6 +65,11 @@ jobs:
                     }
                   })
                 });
-                console.log(`Updated "${taskTitle}" status to ${targetStatus}`);
+                const patchData = await patchRes.json();
+                console.log(`Successfully updated "${taskTitle}" status to "${targetStatus}" (Page ID: ${page.id})`);
               }
+            }
+
+            if (!matched) {
+              console.log('No matching Notion task found in PR title.');
             }
