@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>가격 추출 엔진</title>
+  <style>
+    :root {
+      --bg: #ececec;
+      --card: #ffffff;
+      --ink: #111111;
+      --muted: #6b6b6b;
+      --brown: #8a5a3a;
+      --box: #f7f4ef;
+      --line: #d8d4cc;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: #cfcfcf;
+      font-family: "Apple SD Gothic Neo", "Noto Sans KR", Pretendard, sans-serif;
+      color: var(--ink);
+      overflow: hidden;
+    }
+    .deck {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .slide {
+      display: none;
+      width: 1440px;
+      height: 810px;
+      background: var(--bg);
+      padding: 18px;
+      transform-origin: center center;
+    }
+    .slide.on { display: block; }
+    .window {
+      height: 100%;
+      background: var(--card);
+      border-radius: 6px;
+      padding: 28px 44px 22px;
+      position: relative;
+    }
+    .dots { display: flex; gap: 8px; margin-bottom: 10px; }
+    .dots i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+    .dots .r { background: #ff5f57; }
+    .dots .y { background: #febc2e; }
+    .dots .g { background: #28c840; }
+    h1 {
+      font-size: 40px;
+      letter-spacing: -0.04em;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .lead {
+      color: var(--muted);
+      font-size: 16px;
+      margin-bottom: 22px;
+    }
+    .hint {
+      position: absolute;
+      right: 28px;
+      bottom: 16px;
+      font-size: 12px;
+      color: #999;
+    }
+    .flow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 8px 0 28px;
+    }
+    .box {
+      flex: 1;
+      min-width: 0;
+      min-height: 84px;
+      background: var(--box);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+    .box.hot {
+      border-color: var(--brown);
+      background: #f3ebe3;
+    }
+    .box b { display: block; font-size: 16px; margin-bottom: 4px; }
+    .box span { display: block; font-size: 12px; color: var(--muted); line-height: 1.4; }
+    .arr { color: #999; font-size: 22px; flex-shrink: 0; }
+    .layers {
+      display: flex;
+      gap: 10px;
+      margin: -8px 0 26px;
+      padding-left: calc(20% + 80px);
+    }
+    .layer {
+      flex: 1;
+      background: #fff;
+      border: 1px dashed #cfc8be;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      text-align: center;
+    }
+    .bullets {
+      display: flex;
+      gap: 36px;
+      list-style: none;
+    }
+    .bullets li {
+      flex: 1;
+      position: relative;
+      padding-left: 16px;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    .bullets li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.62em;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #111;
+    }
+    .stats {
+      display: flex;
+      gap: 16px;
+      margin: 8px 0 28px;
+    }
+    .stat {
+      flex: 1;
+      background: var(--box);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 22px 18px 18px;
+    }
+    .stat em {
+      display: block;
+      font-style: normal;
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .stat span { font-size: 15px; color: #444; line-height: 1.4; }
+    .two {
+      display: flex;
+      gap: 36px;
+      align-items: flex-start;
+    }
+    .two .col { flex: 1; }
+    .two h2 {
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+    .list { list-style: none; }
+    .list li {
+      position: relative;
+      padding-left: 16px;
+      font-size: 16px;
+      line-height: 1.55;
+      margin-bottom: 10px;
+    }
+    .list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.62em;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #111;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .chip {
+      background: #f3eee7;
+      border: 1px solid #e2d6c8;
+      padding: 7px 11px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 8px;
+    }
+    .chip.out {
+      background: #f4f4f4;
+      border-color: #ddd;
+      color: #888;
+      font-weight: 600;
+    }
+    .squiggle { width: 92px; height: 18px; margin-top: 18px; }
+  </style>
+</head>
+<body>
+  <div class="deck">
+    <section class="slide on" data-n="1">
+      <div class="window">
+        <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+        <h1>구현 방식</h1>
+        <p class="lead">서버에서 긁지 않습니다. 사용자 단말의 WebView가 페이지를 그린 뒤에 읽습니다.</p>
+        <div class="flow">
+          <div class="box"><b>공유 URL</b><span>쇼핑 앱에서 받은 링크</span></div>
+          <div class="arr">→</div>
+          <div class="box"><b>ParsingBridge</b><span>URL만 골라 추출 호출</span></div>
+          <div class="arr">→</div>
+          <div class="box hot"><b>단말 WebView</b><span>미리 붙여 둔 숨은 브라우저</span></div>
+          <div class="arr">→</div>
+          <div class="box hot"><b>ExtractLoop</b><span>그려질 때까지 기다림</span></div>
+          <div class="arr">→</div>
+          <div class="box"><b>위시 카드</b><span>이름 · 정가 · 판매가 · 사진</span></div>
+        </div>
+        <div class="layers">
+          <div class="layer">몰별 어댑터</div>
+          <div class="layer">JSON-LD / OG</div>
+          <div class="layer">화면 DOM</div>
+        </div>
+        <ul class="bullets">
+          <li>공유 담기는 이 한 길. 파이썬 서버는 앱에서 뺐습니다.</li>
+          <li>페이지가 멈춘 뒤 600ms를 기다리고, 값이 두 번 같으면 확정합니다.</li>
+          <li>확인한 몰은 전용 규칙으로만 읽고, 못 읽으면 다른 숫자로 우회하지 않습니다.</li>
+        </ul>
+        <div class="hint">1 / 3  ·  방향키</div>
+      </div>
+    </section>
+
+    <section class="slide" data-n="2">
+      <div class="window">
+        <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+        <h1>어떻게 맞춰 봤나</h1>
+        <p class="lead">엔진이 읽은 값과, 탭에서 연 실제 상품 페이지를 같은 기준으로 대조했습니다.</p>
+        <div class="stats">
+          <div class="stat"><em>Tab S7</em><span>Galaxy Tab S7에서<br>실페이지 live compare</span></div>
+          <div class="stat"><em>50몰</em><span>패션·종합몰 카탈로그<br>상품 슬롯 149개</span></div>
+          <div class="stat"><em>3필드</em><span>이름 · 가격 · 이미지가<br>모두 같으면 MATCH</span></div>
+          <div class="stat"><em>12초</em><span>기본 추출 제한.<br>두 번 같으면 그전에 확정</span></div>
+        </div>
+        <ul class="bullets">
+          <li>정답은 엔진이 아니라 브라우저로 연 화면입니다. 쿠폰가·첫구매가는 정답이 아닙니다.</li>
+          <li>막히거나 기권한 몰은 실패로 세지 않습니다. 지원 범위 밖으로 둡니다.</li>
+          <li>이 코드는 풀 리퀘스트 28로 main에 들어가 있습니다.</li>
+        </ul>
+        <div class="hint">2 / 3  ·  방향키</div>
+      </div>
+    </section>
+
+    <section class="slide" data-n="3">
+      <div class="window">
+        <div class="dots"><i class="r"></i><i class="y"></i><i class="g"></i></div>
+        <h1>어디까지 되고, 어디는 안 되나</h1>
+        <p class="lead">지원으로 말하는 몰은 Tab에서 MATCH로 인증한 약 50곳입니다.</p>
+        <div class="two">
+          <div class="col">
+            <h2>되는 쪽</h2>
+            <ul class="list">
+              <li>이름 · 가격 · 사진이 실페이지와 같으면 지원으로 말합니다.</li>
+              <li>회귀할 때는 50곳 전부보다 패션 인기몰을 먼저 봅니다.</li>
+              <li>못 읽은 칸은 비우고, 가격은 직접 입력할 수 있습니다.</li>
+            </ul>
+            <div class="chips">
+              <span class="chip">에이블리</span>
+              <span class="chip">무신사</span>
+              <span class="chip">지그재그</span>
+              <span class="chip">퀸잇</span>
+              <span class="chip">KREAM</span>
+              <span class="chip">29CM</span>
+              <span class="chip">4910</span>
+              <span class="chip">W컨셉</span>
+              <span class="chip">SSF샵</span>
+              <span class="chip">올리브영</span>
+            </div>
+            <svg class="squiggle" viewBox="0 0 92 18" fill="none">
+              <path d="M2 11 C 14 2, 22 16, 34 9 S 56 3, 68 12 86 6, 90 10" stroke="#8a5a3a" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="col">
+            <h2>안 되는 쪽</h2>
+            <ul class="list">
+              <li>쿠팡은 접근이 막힙니다. 네이버는 카탈로그형이라 기권합니다.</li>
+              <li>Gap · SHEIN · NUGU처럼 통화가 원이 아닌 몰도 범위 밖입니다.</li>
+              <li>엔진이 전부 실패한 게 아니라, 지원하지 않기로 한 문제입니다.</li>
+            </ul>
+            <div class="chips">
+              <span class="chip out">쿠팡</span>
+              <span class="chip out">네이버</span>
+              <span class="chip out">알리</span>
+              <span class="chip out">테무</span>
+              <span class="chip out">Gap</span>
+              <span class="chip out">SHEIN</span>
+            </div>
+          </div>
+        </div>
+        <div class="hint">3 / 3  ·  방향키</div>
+      </div>
+    </section>
+  </div>
+  <script>
+    const slides = [...document.querySelectorAll(".slide")];
+    let i = 0;
+    function fit() {
+      const s = 0.92 * Math.min(window.innerWidth / 1440, window.innerHeight / 810);
+      slides.forEach((el) => { el.style.transform = "scale(" + s + ")"; });
+    }
+    function show(n) {
+      i = (n + slides.length) % slides.length;
+      slides.forEach((el, idx) => el.classList.toggle("on", idx === i));
+      fit();
+    }
+    fit();
+    window.addEventListener("resize", fit);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") show(i + 1);
+      if (e.key === "ArrowLeft" || e.key === "PageUp") show(i - 1);
+    });
+    document.addEventListener("click", (e) => {
+      if (e.clientX > window.innerWidth / 2) show(i + 1);
+      else show(i - 1);
+    });
+  </script>
+</body>
+</html>
