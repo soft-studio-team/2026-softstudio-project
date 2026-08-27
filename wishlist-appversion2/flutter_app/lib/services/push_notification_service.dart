@@ -91,7 +91,15 @@ class PushNotificationService {
     }
 
     if (Platform.isIOS) {
-      await _messaging.getAPNSToken();
+      String? apnsToken;
+      try {
+        apnsToken = await _messaging.getAPNSToken();
+      } catch (e) {
+        debugPrint('FCM skipped: APNS token unavailable ($e)');
+        return;
+      }
+      // Simulators and some devices never get an APNS token.
+      if (apnsToken == null) return;
     }
 
     final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
