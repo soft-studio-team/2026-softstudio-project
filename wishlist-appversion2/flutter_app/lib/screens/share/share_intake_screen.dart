@@ -20,6 +20,22 @@ class ShareIntakeScreen extends StatefulWidget {
 }
 
 class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
+  // 서버/엔진이 내려주는 필드 키(title/price/image_url 등)를 사용자가 보는
+  // 화면에 그대로 노출하지 않기 위한 한글 라벨 변환. 모르는 키는 원문 그대로
+  // 보여줘서(하위 호환) 조용히 정보가 사라지지는 않게 한다.
+  static String _missingFieldLabel(String field) {
+    switch (field) {
+      case 'title':
+        return '상품명';
+      case 'price':
+        return '가격';
+      case 'image_url':
+        return '이미지';
+      default:
+        return field;
+    }
+  }
+
   final bridge = ParsingBridge();
   final urlCtrl = TextEditingController();
   final titleCtrl = TextEditingController();
@@ -200,14 +216,19 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                               Text(parsed!.platform,
                                   style: DiaryTheme.body(12,
                                       color: DiaryColors.inkMuted)),
-                              Text(
-                                parsed!.onDeviceExtracted
-                                    ? 'Tier 2.5 · 단말에서 추출'
-                                    : 'Tier ${parsed!.resolvedTier ?? '-'}'
-                                        '${parsed!.engineUsed ? '' : ' · 오프라인 추정'}',
-                                style: DiaryTheme.body(11,
-                                    color: DiaryColors.accent),
-                              ),
+                              // 티어/추출 방식은 내부 구현 정보라 사용자에게 그대로
+                              // 보여줄 필요가 없다. 자동으로 아예 못 찾은 경우
+                              // (엔진 미사용 · 이전엔 'Tier 3 · 오프라인 추정'으로
+                              // 노출되던 경우)에만 알기 쉬운 말로 안내한다.
+                              if (!parsed!.engineUsed)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    '자동으로 정보를 찾지 못했어요 · 아래에서 직접 입력해주세요',
+                                    style: DiaryTheme.body(11,
+                                        color: DiaryColors.pin),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -249,7 +270,8 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                   if (parsed!.missingFields.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      '보완 필요: ${parsed!.missingFields.join(', ')}',
+                      '보완 필요: '
+                      '${parsed!.missingFields.map(_missingFieldLabel).join(', ')}',
                       style:
                           DiaryTheme.body(12, color: DiaryColors.pin),
                     ),
