@@ -25,11 +25,15 @@ import 'screens/reviews/review_compose_screen.dart';
 import 'screens/reviews/review_detail_screen.dart';
 import 'screens/salkamalka/salkamalka_screen.dart';
 import 'screens/share/share_intake_screen.dart';
+import 'screens/shared/shared_basket_detail_screen.dart';
 import 'screens/shared/shared_wishlist_screen.dart';
 import 'screens/splash/loading_screen.dart';
 import 'screens/wishlist/wishlist_screen.dart';
 import 'services/share_input.dart';
+import 'services/webview_extract_host.dart';
+import 'theme/diary_scale.dart';
 import 'theme/diary_theme.dart';
+import 'widgets/diary_widgets.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -154,6 +158,11 @@ class _WishlistAppState extends State<WishlistApp> {
         debugShowCheckedModeBanner: false,
         theme: DiaryTheme.light,
         routerConfig: router,
+        builder: (context, child) {
+          final scaled =
+              DiaryScale.wrap(context, child ?? const SizedBox.shrink());
+          return WebViewExtractHost(child: scaled);
+        },
       ),
     );
   }
@@ -236,6 +245,9 @@ GoRouter _buildRouter(AppStore store) {
         path: '/catalog-product/:id',
         builder: (context, state) => ProductDetailScreen(
           productId: int.parse(state.pathParameters['id']!),
+          friendWishlistId: state.uri.queryParameters['wishlist'],
+          sharedBasketId: state.uri.queryParameters['basket'],
+          friendId: state.uri.queryParameters['friend'],
         ),
       ),
       GoRoute(
@@ -260,6 +272,7 @@ GoRouter _buildRouter(AppStore store) {
             subtitle: '${list.friendName} 님의 공개 위시리스트',
             products: list.items,
             accentColor: DiaryColors.folderPink,
+            wishlistId: list.id,
           );
         },
       ),
@@ -323,37 +336,16 @@ GoRouter _buildRouter(AppStore store) {
             products: group.allProducts,
             accentColor: DiaryColors.folderPeach,
             emptyMessage: '보낸 상품이 없어요',
+            friendId: friendId,
           );
         },
       ),
       GoRoute(
         path: '/shared/:id',
-        builder: (context, state) {
-          final id = state.pathParameters['id']!;
-          final store = context.read<AppStore>();
-          final shared = store.sharedBasketById(id);
-          if (shared == null) {
-            return Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => context.pop(),
+        builder: (context, state) => SharedBasketDetailScreen(
+          basketId: state.pathParameters['id']!,
                 ),
               ),
-              body: const Center(child: Text('공유 링크를 찾을 수 없어요')),
-            );
-          }
-          return SharedWishlistScreen(
-            title: shared.title,
-            subtitle: '${shared.ownerName} 님이 공유한 살까말까 바구니',
-            products: shared.items,
-            accentColor: DiaryColors.folderPeach,
-            onShare: store.sharedBaskets.containsKey(id)
-                ? () => showSentBasketShareSheet(context, store, shared)
-                : null,
-          );
-        },
-      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return HomeShell(navigationShell: navigationShell);
@@ -506,8 +498,11 @@ class _NavItem extends StatelessWidget {
                   : DiaryColors.ink.withValues(alpha: 0.35),
             ),
             const SizedBox(height: 2),
-            Text(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: OneLineText(
               label,
+                textAlign: TextAlign.center,
               style: DiaryTheme.body(
                 11,
                 weight: active ? FontWeight.w700 : FontWeight.w400,
@@ -515,6 +510,7 @@ class _NavItem extends StatelessWidget {
                     ? DiaryColors.ink
                     : DiaryColors.ink.withValues(alpha: 0.4),
               ),
+            ),
             ),
           ],
         ),

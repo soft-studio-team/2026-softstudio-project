@@ -244,6 +244,14 @@ class FriendWishlist {
   final List<Product> items;
 }
 
+/// How a [SharedBasket] left the app. A basket can carry more than one
+/// channel — e.g. a link share that was later re-sent to app friends.
+class SharedChannel {
+  static const friends = 'friends';
+  static const link = 'link';
+  static const kakao = 'kakao';
+}
+
 /// Snapshot of a basket shared via URL or sent to a friend in-app.
 class SharedBasket {
   SharedBasket({
@@ -257,6 +265,13 @@ class SharedBasket {
     this.fromAvatar = '',
     this.recipientUids = const [],
     this.recipientNames = const [],
+    this.channels = const [],
+    this.lastSharedAt,
+    this.publicPageId,
+    this.publicUrl,
+    this.publicUrlExpiresAt,
+    this.memo = '',
+    this.threadId = '',
   });
 
   final String id;
@@ -269,10 +284,55 @@ class SharedBasket {
   final String fromAvatar;
   final List<String> recipientUids;
   final List<String> recipientNames;
+  final List<String> channels;
+
+  /// When the basket was last sent out. Null on records written before this
+  /// existed, and on baskets never re-shared — [sharedAt] falls back to
+  /// [createdAt] in both cases.
+  final DateTime? lastSharedAt;
+
+  /// Stable id for the hosted HTML snapshot in Storage (`share-pages/...`).
+  final String? publicPageId;
+
+  /// Public Firebase Storage URL for the HTML page. Empty until a link share.
+  final String? publicUrl;
+
+  /// When the hosted HTML is due to be deleted. Link copy refreshes this.
+  final DateTime? publicUrlExpiresAt;
+
+  /// Note the sender wrote when sharing — why they're on the fence.
+  final String memo;
+
+  /// Canonical id for the comment thread. Sender archive id and every
+  /// recipient copy point at the same thread.
+  final String threadId;
+
+  /// Only friend-sent baskets belong in the 내 친구 탭 feed; link / KakaoTalk
+  /// shares stay in 마이페이지 > 내가 보낸 살까말까.
+  bool get sharedToFriends => channels.contains(SharedChannel.friends);
+
+  /// Id used to load comments. New shares store [threadId]; older friend
+  /// sends fall back to this archive's own id.
+  String get commentThreadId {
+    if (threadId.isNotEmpty) return threadId;
+    if (recipientUids.isNotEmpty) return id;
+    return '';
+  }
+
+  /// Sort key for the friends feed — a re-sent basket rises back to the top.
+  /// 마이페이지 keeps ordering by [createdAt] so the archive stays chronological.
+  DateTime get sharedAt => lastSharedAt ?? createdAt;
 
   SharedBasket copyWith({
     List<String>? recipientUids,
     List<String>? recipientNames,
+    List<String>? channels,
+    DateTime? lastSharedAt,
+    String? publicPageId,
+    String? publicUrl,
+    DateTime? publicUrlExpiresAt,
+    String? memo,
+    String? threadId,
   }) {
     return SharedBasket(
       id: id,
@@ -285,44 +345,187 @@ class SharedBasket {
       fromAvatar: fromAvatar,
       recipientUids: recipientUids ?? this.recipientUids,
       recipientNames: recipientNames ?? this.recipientNames,
+      channels: channels ?? this.channels,
+      lastSharedAt: lastSharedAt ?? this.lastSharedAt,
+      publicPageId: publicPageId ?? this.publicPageId,
+      publicUrl: publicUrl ?? this.publicUrl,
+      publicUrlExpiresAt: publicUrlExpiresAt ?? this.publicUrlExpiresAt,
+      memo: memo ?? this.memo,
+      threadId: threadId ?? this.threadId,
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'ownerName': ownerName,
-    'fromUid': fromUid,
-    'fromHandle': fromHandle,
-    'fromAvatar': fromAvatar,
-    'createdAt': createdAt.toIso8601String(),
-    'items': items.map((p) => p.toJson()).toList(),
-    'recipientUids': recipientUids,
-    'recipientNames': recipientNames,
-  };
+        'id': id,
+        'title': title,
+        'ownerName': ownerName,
+        'fromUid': fromUid,
+        'fromHandle': fromHandle,
+        'fromAvatar': fromAvatar,
+        'createdAt': createdAt.toIso8601String(),
+        'items': items.map((p) => p.toJson()).toList(),
+        'recipientUids': recipientUids,
+        'recipientNames': recipientNames,
+        'channels': channels,
+        'lastSharedAt': lastSharedAt?.toIso8601String(),
+        'publicPageId': publicPageId,
+        'publicUrl': publicUrl,
+        'publicUrlExpiresAt': publicUrlExpiresAt?.toIso8601String(),
+        'memo': memo,
+        'threadId': threadId,
+      };
 
   factory SharedBasket.fromJson(Map<String, dynamic> json) => SharedBasket(
-    id: json['id'] as String? ?? '',
-    title: json['title'] as String? ?? '살까말까 공유',
-    ownerName: json['ownerName'] as String? ?? '',
-    fromUid: json['fromUid'] as String? ?? '',
-    fromHandle: json['fromHandle'] as String? ?? '',
-    fromAvatar: json['fromAvatar'] as String? ?? '',
-    items: (json['items'] as List? ?? [])
-        .map((p) => Product.fromJson(Map<String, dynamic>.from(p as Map)))
-        .toList(),
-    createdAt:
-        DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
-    recipientUids: (json['recipientUids'] as List? ?? [])
-        .map((e) => e.toString())
-        .toList(),
-    recipientNames: (json['recipientNames'] as List? ?? [])
-        .map((e) => e.toString())
-        .toList(),
-  );
+        id: json['id'] as String? ?? '',
+        title: json['title'] as String? ?? '살까말까 공유',
+        ownerName: json['ownerName'] as String? ?? '',
+        fromUid: json['fromUid'] as String? ?? '',
+        fromHandle: json['fromHandle'] as String? ?? '',
+        fromAvatar: json['fromAvatar'] as String? ?? '',
+        items: (json['items'] as List? ?? [])
+            .map((p) => Product.fromJson(Map<String, dynamic>.from(p as Map)))
+            .toList(),
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+            DateTime.now(),
+        recipientUids: (json['recipientUids'] as List? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        recipientNames: (json['recipientNames'] as List? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+        // Records written before channels existed: a basket with recipients
+        // went out to app friends, anything else was a link share.
+        channels: (json['channels'] as List?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            ((json['recipientUids'] as List? ?? []).isNotEmpty
+                ? const [SharedChannel.friends]
+                : const [SharedChannel.link]),
+        lastSharedAt: DateTime.tryParse(json['lastSharedAt'] as String? ?? ''),
+        publicPageId: json['publicPageId'] as String?,
+        publicUrl: json['publicUrl'] as String?,
+        publicUrlExpiresAt:
+            DateTime.tryParse(json['publicUrlExpiresAt'] as String? ?? ''),
+        memo: json['memo'] as String? ?? '',
+        threadId: json['threadId'] as String? ?? '',
+      );
 }
 
-enum AppNotificationType { follow, basket, review, list }
+/// One comment (or reply) on a shared 살까말까 basket.
+class BasketComment {
+  BasketComment({
+    required this.id,
+    required this.threadId,
+    required this.authorUid,
+    required this.authorName,
+    required this.authorHandle,
+    required this.authorAvatar,
+    required this.text,
+    required this.createdAt,
+    this.parentId = '',
+    this.updatedAt,
+  });
+
+  final String id;
+  final String threadId;
+  final String parentId;
+  final String authorUid;
+  final String authorName;
+  final String authorHandle;
+  final String authorAvatar;
+  final String text;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
+
+  bool get isReply => parentId.isNotEmpty;
+  bool get isEdited => updatedAt != null;
+
+  BasketComment copyWith({String? text, DateTime? updatedAt}) {
+    return BasketComment(
+      id: id,
+      threadId: threadId,
+      parentId: parentId,
+      authorUid: authorUid,
+      authorName: authorName,
+      authorHandle: authorHandle,
+      authorAvatar: authorAvatar,
+      text: text ?? this.text,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'threadId': threadId,
+        'parentId': parentId,
+        'authorUid': authorUid,
+        'authorName': authorName,
+        'authorHandle': authorHandle,
+        'authorAvatar': authorAvatar,
+        'text': text,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt?.toIso8601String(),
+      };
+
+  factory BasketComment.fromJson(Map<String, dynamic> json) => BasketComment(
+        id: json['id'] as String? ?? '',
+        threadId: json['threadId'] as String? ?? '',
+        parentId: json['parentId'] as String? ?? '',
+        authorUid: json['authorUid'] as String? ?? '',
+        authorName: json['authorName'] as String? ?? '',
+        authorHandle: json['authorHandle'] as String? ?? '',
+        authorAvatar: json['authorAvatar'] as String? ?? '',
+        text: json['text'] as String? ?? '',
+        createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+            DateTime.now(),
+        updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
+      );
+}
+
+/// Instagram-style grouping: top-level comments with one level of replies.
+class BasketCommentThread {
+  BasketCommentThread({required this.root, required this.replies});
+
+  final BasketComment root;
+  final List<BasketComment> replies;
+}
+
+/// Collapses nested replies onto the nearest top-level comment.
+String flattenCommentParentId(
+  String parentId,
+  List<BasketComment> comments,
+) {
+  if (parentId.isEmpty) return '';
+  final parent = comments.where((c) => c.id == parentId).firstOrNull;
+  if (parent == null || parent.parentId.isEmpty) return parentId;
+  return parent.parentId;
+}
+
+List<BasketCommentThread> groupBasketComments(List<BasketComment> comments) {
+  final byParent = <String, List<BasketComment>>{};
+  final roots = <BasketComment>[];
+  final ids = comments.map((c) => c.id).toSet();
+  for (final comment in comments) {
+    // A reply whose parent was deleted is shown as its own top-level comment.
+    if (comment.parentId.isEmpty || !ids.contains(comment.parentId)) {
+      roots.add(comment);
+    } else {
+      byParent.putIfAbsent(comment.parentId, () => []).add(comment);
+    }
+  }
+  roots.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  return [
+    for (final root in roots)
+      BasketCommentThread(
+        root: root,
+        replies: List<BasketComment>.from(byParent[root.id] ?? [])
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt)),
+      ),
+  ];
+}
+
+enum AppNotificationType { follow, basket, review, list, comment }
 
 class AppNotification {
   AppNotification({
@@ -383,6 +586,7 @@ class AppNotification {
         'basket' => AppNotificationType.basket,
         'review' => AppNotificationType.review,
         'list' => AppNotificationType.list,
+        'comment' => AppNotificationType.comment,
         _ => AppNotificationType.follow,
       },
       fromUid: json['fromUid'] as String? ?? '',
@@ -580,7 +784,7 @@ class BasketItem {
   }
 }
 
-/// Normalized product info returned by the parsing bridge (engine untouched).
+/// WebView에서 읽은 상품 정보. 파이썬 서버 응답을 담지 않는다.
 class ParsedProductInfo {
   ParsedProductInfo({
     required this.name,
@@ -592,7 +796,7 @@ class ParsedProductInfo {
     this.discount,
     this.missingFields = const [],
     this.resolvedTier,
-    this.engineUsed = true,
+    this.engineUsed = false,
     this.onDeviceExtracted = false,
     this.purchasePriceStatus = 'unknown',
     this.priceConfidence = 'unknown',
@@ -601,6 +805,7 @@ class ParsedProductInfo {
     this.optionPriceMin,
     this.optionPriceMax,
     this.priceEvidence = const [],
+    this.extractFailureReason,
   });
 
   final String name;
@@ -612,6 +817,8 @@ class ParsedProductInfo {
   final int? discount;
   final List<String> missingFields;
   final int? resolvedTier;
+
+  /// 파이썬 서버를 호출했으면 true. 공유 담기는 항상 false.
   final bool engineUsed;
   final String purchasePriceStatus;
   final String priceConfidence;
@@ -620,6 +827,9 @@ class ParsedProductInfo {
   final int? optionPriceMin;
   final int? optionPriceMax;
   final List<Map<String, dynamic>> priceEvidence;
+  final String? extractFailureReason;
+
+  bool get needsManualPrice => price <= 0;
 
   /// Canonical v2 aliases. 기존 UI의 price/originalPrice는 하위 호환용이다.
   int? get purchasePrice => price > 0 ? price : null;
@@ -628,7 +838,7 @@ class ParsedProductInfo {
   /// 단말 WebView(Tier 2.5)로 정보를 보완했는지. UI 배지 표시용.
   final bool onDeviceExtracted;
 
-  /// 서버가 못 채운 칸을 단말 WebView 추출 결과로 메운다.
+  /// 단말 WebView 추출 결과로 비어 있는 칸을 메운다.
   /// [replacePrice]일 때는 화면에서 검증한 정가·판매가 쌍으로 교체한다.
   ParsedProductInfo mergeOnDevice({
     String? name,
@@ -715,104 +925,7 @@ class ParsedProductInfo {
                   },
                 ])
           : this.priceEvidence,
-    );
-  }
-
-  /// Engine POST /parse response: { product, resolved_tier, missing_fields, ... }
-  factory ParsedProductInfo.fromEngineResponse(Map<String, dynamic> json) {
-    final product = (json['product'] as Map<String, dynamic>?) ?? json;
-    return ParsedProductInfo.fromEngineProduct(
-      product,
-      resolvedTier: json['resolved_tier'] as int?,
-      missingFields:
-          (json['missing_fields'] as List?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          const [],
-    );
-  }
-
-  /// Engine product dict (also used by /api/scrap → product).
-  factory ParsedProductInfo.fromEngineProduct(
-    Map<String, dynamic> product, {
-    int? resolvedTier,
-    List<String> missingFields = const [],
-  }) {
-    final pricing = (product['pricing'] as Map?)?.cast<String, dynamic>();
-    final purchasePrice = pricing != null
-        ? (pricing['purchase_price'] as num?)?.toInt()
-        : (product['price'] as num?)?.toInt();
-    final regularPrice = pricing != null
-        ? (pricing['regular_price'] as num?)?.toInt()
-        : (product['original_price'] as num?)?.toInt() ??
-              (product['originalPrice'] as num?)?.toInt();
-    final evidence =
-        (pricing?['evidence'] as List?)
-            ?.whereType<Map>()
-            .map((e) => e.cast<String, dynamic>())
-            .toList() ??
-        const <Map<String, dynamic>>[];
-    return ParsedProductInfo(
-      name: (product['title'] as String?)?.trim().isNotEmpty == true
-          ? product['title'] as String
-          : (product['name'] as String? ?? '공유된 상품'),
-      price: purchasePrice ?? 0,
-      platform: (product['platform_label'] as String?)?.isNotEmpty == true
-          ? product['platform_label'] as String
-          : (product['source_platform'] as String? ??
-                product['platform'] as String? ??
-                '쇼핑몰'),
-      image:
-          product['image_url'] as String? ?? product['image'] as String? ?? '',
-      productUrl:
-          product['original_url'] as String? ??
-          product['productUrl'] as String? ??
-          product['url'] as String? ??
-          '',
-      originalPrice: regularPrice,
-      discount:
-          (product['discount_rate'] as num?)?.toInt() ??
-          (product['discount'] as num?)?.toInt(),
-      missingFields: missingFields.isNotEmpty
-          ? missingFields
-          : ((product['missing_fields'] as List?)
-                    ?.map((e) => e.toString())
-                    .toList() ??
-                const []),
-      resolvedTier: resolvedTier ?? product['resolved_tier'] as int?,
-      engineUsed: true,
-      purchasePriceStatus:
-          pricing?['purchase_price_status'] as String? ??
-          product['purchase_price_status'] as String? ??
-          (purchasePrice == null ? 'unknown' : 'provisional'),
-      priceConfidence:
-          pricing?['confidence'] as String? ??
-          product['price_confidence'] as String? ??
-          'unknown',
-      availability: product['availability'] as String? ?? 'unknown',
-      optionDependent: pricing?['option_dependent'] as bool?,
-      optionPriceMin: (pricing?['option_price_min'] as num?)?.toInt(),
-      optionPriceMax: (pricing?['option_price_max'] as num?)?.toInt(),
-      priceEvidence: evidence,
-    );
-  }
-
-  factory ParsedProductInfo.fromJson(Map<String, dynamic> json) {
-    // Backward-compatible flat shape.
-    if (json.containsKey('product')) {
-      return ParsedProductInfo.fromEngineResponse(json);
-    }
-    if (json.containsKey('pricing') || json.containsKey('original_price')) {
-      return ParsedProductInfo.fromEngineProduct(json);
-    }
-    return ParsedProductInfo(
-      name: json['name'] as String? ?? '상품',
-      price: (json['price'] as num?)?.toInt() ?? 0,
-      platform: json['platform'] as String? ?? 'unknown',
-      image: json['image'] as String? ?? '',
-      productUrl: json['productUrl'] as String? ?? json['url'] as String? ?? '',
-      originalPrice: (json['originalPrice'] as num?)?.toInt(),
-      discount: (json['discount'] as num?)?.toInt(),
+      extractFailureReason: extractFailureReason,
     );
   }
 }

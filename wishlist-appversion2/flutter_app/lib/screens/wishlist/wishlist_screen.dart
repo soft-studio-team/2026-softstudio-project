@@ -54,7 +54,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
             Text(
               'wishkit',
               style: DiaryTheme.display(34, weight: FontWeight.w700),
@@ -73,19 +73,11 @@ class _WishlistScreenState extends State<WishlistScreen> {
                 store: store,
                 onDoubleTapTab: (t) => _openListEditSheet(context, store, t),
                 onAdd: () => _showAddListDialog(context, store),
-                onMoveProduct: (p, t) => _handleMoveProduct(context, store, p, t),
+                onMoveProduct: (p, t) =>
+                    _handleMoveProduct(context, store, p, t),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '스와이프: 스크롤 · 더블탭: 편집 · 꾹 눌러 드래그: 탭 순서 변경 · 아이템 이동',
-                  style: DiaryTheme.ui(11, color: DiaryColors.inkMuted),
-                ),
-              ),
-            ),
+            const SizedBox(height: 10),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -211,9 +203,9 @@ class _WishlistScreenState extends State<WishlistScreen> {
       await store.moveProduct(product.id, tab.id);
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('이동에 실패했어요: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('이동에 실패했어요: $e')));
     }
   }
 
@@ -358,7 +350,8 @@ class _WishlistScreenState extends State<WishlistScreen> {
   Future<void> _showAddListDialog(BuildContext context, AppStore store) async {
     final controller = TextEditingController();
     var isPublic = false;
-    final ok = await showDialog<bool>(
+    var submitting = false;
+    await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
@@ -388,13 +381,29 @@ class _WishlistScreenState extends State<WishlistScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
+              onPressed: submitting ? null : () => Navigator.pop(ctx, false),
               child: Text('취소', style: DiaryTheme.ui(14)),
             ),
             TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
+              onPressed: submitting
+                  ? null
+                  : () async {
+                      final name = controller.text.trim();
+                      if (name.isEmpty) return;
+                      setLocal(() => submitting = true);
+                      final created = await store.addTab(
+                        name,
+                        isPublic: isPublic,
+                      );
+                      if (!ctx.mounted) return;
+                      if (created) {
+                        Navigator.pop(ctx, true);
+                        return;
+                      }
+                      setLocal(() => submitting = false);
+                    },
               child: Text(
-                '추가',
+                submitting ? '추가하는 중...' : '추가',
                 style: DiaryTheme.ui(
                   14,
                   weight: FontWeight.w700,
@@ -406,9 +415,6 @@ class _WishlistScreenState extends State<WishlistScreen> {
         ),
       ),
     );
-    if (ok == true && controller.text.trim().isNotEmpty) {
-      await store.addTab(controller.text.trim(), isPublic: isPublic);
-    }
   }
 }
 
@@ -479,12 +485,16 @@ class _TabsRowState extends State<_TabsRow> {
     }
     double pxPerTick = 0;
     if (local.dx < _autoScrollEdgeZone) {
-      final depth = (_autoScrollEdgeZone - local.dx)
-          .clamp(0.0, _autoScrollEdgeZone);
+      final depth = (_autoScrollEdgeZone - local.dx).clamp(
+        0.0,
+        _autoScrollEdgeZone,
+      );
       pxPerTick = -_speedForDepth(depth);
     } else if (local.dx > size.width - _autoScrollEdgeZone) {
-      final depth = (_autoScrollEdgeZone - (size.width - local.dx))
-          .clamp(0.0, _autoScrollEdgeZone);
+      final depth = (_autoScrollEdgeZone - (size.width - local.dx)).clamp(
+        0.0,
+        _autoScrollEdgeZone,
+      );
       pxPerTick = _speedForDepth(depth);
     }
     if (pxPerTick == 0) {
@@ -492,7 +502,10 @@ class _TabsRowState extends State<_TabsRow> {
       return;
     }
     _autoScrollPxPerTick = pxPerTick;
-    _autoScrollTimer ??= Timer.periodic(_autoScrollTick, (_) => _autoScrollStep());
+    _autoScrollTimer ??= Timer.periodic(
+      _autoScrollTick,
+      (_) => _autoScrollStep(),
+    );
   }
 
   double _speedForDepth(double depth) {
@@ -504,8 +517,10 @@ class _TabsRowState extends State<_TabsRow> {
   void _autoScrollStep() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
-    final next = (position.pixels + _autoScrollPxPerTick)
-        .clamp(position.minScrollExtent, position.maxScrollExtent);
+    final next = (position.pixels + _autoScrollPxPerTick).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
     if (next == position.pixels) return;
     _scrollController.jumpTo(next);
   }
@@ -679,7 +694,9 @@ class _FolderTab extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: highlighted ? DiaryColors.accent.withValues(alpha: 0.35) : bg,
+            color: highlighted
+                ? DiaryColors.accent.withValues(alpha: 0.35)
+                : bg,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
             border: Border.all(
               color: highlighted
@@ -781,10 +798,14 @@ class _PrivacyBanner extends StatelessWidget {
                 children: [
                   Text(
                     isPublic ? '공개 리스트' : '비공개 리스트',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: DiaryTheme.ui(13, weight: FontWeight.w700),
                   ),
                   Text(
                     isPublic ? '친구들이 이 리스트를 볼 수 있어요' : '나만 볼 수 있어요',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: DiaryTheme.ui(11, color: DiaryColors.inkMuted),
                   ),
                 ],
@@ -792,8 +813,14 @@ class _PrivacyBanner extends StatelessWidget {
             ),
             TextButton(
               onPressed: onToggle,
-              child: Text(
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                visualDensity: VisualDensity.compact,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: OneLineText(
                 isPublic ? '비공개로 변경' : '공개로 변경',
+                textAlign: TextAlign.end,
                 style: DiaryTheme.ui(
                   12,
                   weight: FontWeight.w700,

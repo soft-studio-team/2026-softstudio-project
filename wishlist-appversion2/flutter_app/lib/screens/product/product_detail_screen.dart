@@ -5,13 +5,43 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../data/app_store.dart';
+import '../../models/models.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 
+/// Detail route for a product that may belong to someone else.
+/// IDs collide across owners, so friend/basket/friend scopes must travel
+/// with the id.
+String catalogProductLocation(
+  int productId, {
+  String? wishlistId,
+  String? basketId,
+  String? friendId,
+}) {
+  final query = <String, String>{
+    if (wishlistId != null && wishlistId.isNotEmpty) 'wishlist': wishlistId,
+    if (basketId != null && basketId.isNotEmpty) 'basket': basketId,
+    if (friendId != null && friendId.isNotEmpty) 'friend': friendId,
+  };
+  return Uri(
+    path: '/catalog-product/$productId',
+    queryParameters: query.isEmpty ? null : query,
+  ).toString();
+}
+
 class ProductDetailScreen extends StatefulWidget {
-  const ProductDetailScreen({super.key, required this.productId});
+  const ProductDetailScreen({
+    super.key,
+    required this.productId,
+    this.friendWishlistId,
+    this.sharedBasketId,
+    this.friendId,
+  });
 
   final int productId;
+  final String? friendWishlistId;
+  final String? sharedBasketId;
+  final String? friendId;
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -20,11 +50,25 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   late final TextEditingController memoCtrl;
 
+  Product? _lookup(AppStore store) {
+    return store.findCatalogProduct(
+      widget.productId,
+      friendWishlistId: widget.friendWishlistId,
+      sharedBasketId: widget.sharedBasketId,
+      friendId: widget.friendId,
+    );
+  }
+
+  bool get _openedFromSomeoneElse =>
+      (widget.friendWishlistId != null &&
+          widget.friendWishlistId!.isNotEmpty) ||
+      (widget.sharedBasketId != null && widget.sharedBasketId!.isNotEmpty) ||
+      (widget.friendId != null && widget.friendId!.isNotEmpty);
+
   @override
   void initState() {
     super.initState();
-    final product =
-        context.read<AppStore>().findCatalogProduct(widget.productId);
+    final product = _lookup(context.read<AppStore>());
     memoCtrl = TextEditingController(text: product?.memo ?? '');
   }
 
@@ -37,8 +81,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final store = context.watch<AppStore>();
-    final product = store.findCatalogProduct(widget.productId) ??
-        store.products.firstOrNull;
+    final product = _lookup(store);
     if (product == null) {
       return Scaffold(
         appBar: AppBar(
@@ -50,7 +93,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         body: const Center(child: Text('상품을 찾을 수 없어요')),
       );
     }
-    final isOwn = store.productById(product.id) != null;
+    final isOwn =
+        !_openedFromSomeoneElse && store.productById(product.id) != null;
     final tab = store.tabs.firstWhere(
       (t) => t.id == product.listId,
       orElse: () => store.tabs.first,
@@ -107,26 +151,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              Text(product.platform,
-                                  style: DiaryTheme.product(12,
-                                      color: DiaryColors.inkMuted)),
-                                  Text(product.name,
-                                  style: DiaryTheme.product(18,
-                                      weight: FontWeight.w700)),
+                              Text(
+                                product.platform,
+                                style: DiaryTheme.product(
+                                  12,
+                                  color: DiaryColors.inkMuted,
+                                ),
+                              ),
+                              Text(
+                                product.name,
+                                style: DiaryTheme.product(
+                                  18,
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  Text(formatWon(product.price),
-                                      style: DiaryTheme.product(20,
-                                          weight: FontWeight.w800)),
+                                  Text(
+                                    formatWon(product.price),
+                                    style: DiaryTheme.product(
+                                      20,
+                                      weight: FontWeight.w800,
+                                    ),
+                                  ),
                                   if (product.originalPrice != null) ...[
                                     const SizedBox(width: 8),
                                     Text(
                                       formatWon(product.originalPrice!),
-                                      style: DiaryTheme.product(13,
-                                              color: DiaryColors.inkSoft)
-                                          .copyWith(
-                                        decoration: TextDecoration.lineThrough,
+                                      style:
+                                          DiaryTheme.product(
+                                            13,
+                                            color: DiaryColors.inkSoft,
+                                          ).copyWith(
+                                            decoration:
+                                                TextDecoration.lineThrough,
                                       ),
                                     ),
                                   ],
@@ -136,14 +195,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 const SizedBox(height: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: DiaryColors.folderPeach,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Text('↘ ${product.discount}% 할인 중',
-                                      style: DiaryTheme.body(12,
-                                          weight: FontWeight.w600)),
+                                  child: Text(
+                                    '↘ ${product.discount}% 할인 중',
+                                    style: DiaryTheme.body(
+                                      12,
+                                      weight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ],
@@ -163,17 +228,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('메모',
-                                  style: DiaryTheme.body(14,
-                                      weight: FontWeight.w700)),
+                              Text(
+                                '고민하는 이유',
+                                style: DiaryTheme.body(
+                                  14,
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
                               if (isOwn)
                                 TextField(
                                   controller: memoCtrl,
                                   maxLines: 4,
                                   decoration: InputDecoration(
-                                    hintText: '이 상품에 대한 메모를 남겨보세요',
-                                    hintStyle: DiaryTheme.body(13,
-                                        color: DiaryColors.inkSoft),
+                                    hintText: '이 상품을 고민하는 이유를 남겨보세요',
+                                    hintStyle: DiaryTheme.body(
+                                      13,
+                                      color: DiaryColors.inkSoft,
+                                    ),
                                     border: InputBorder.none,
                                   ),
                                   onChanged: (v) =>
@@ -200,14 +271,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           Padding(
                             padding: const EdgeInsets.only(bottom: 10),
                             child: DiaryButton(
-                              label: store.myReviewForProduct(product.id) ==
-                                      null
+                              label:
+                                  store.myReviewForProduct(product.id) == null
                                   ? '이 상품 리뷰 쓰기'
                                   : '내 리뷰 보기',
                               icon: Icons.edit_outlined,
                               onPressed: () {
-                                final existing =
-                                    store.myReviewForProduct(product.id);
+                                final existing = store.myReviewForProduct(
+                                  product.id,
+                                );
                                 if (existing != null) {
                                   context.push('/reviews/${existing.id}');
                                 } else {
@@ -229,7 +301,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   if (context.mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                          content: Text('살까말까 바구니에 담았어요')),
+                                        content: Text('살까말까 바구니에 담았어요'),
+                                      ),
                                     );
                                   }
                                 },
@@ -243,10 +316,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 color: DiaryColors.folderMint,
                                 icon: Icons.open_in_new,
                                 onPressed: () async {
-                                  final url = product.productUrl ??
+                                  final url =
+                                      product.productUrl ??
                                       'https://www.musinsa.com';
-                                  await launchUrl(Uri.parse(url),
-                                      mode: LaunchMode.externalApplication);
+                                  await launchUrl(
+                                    Uri.parse(url),
+                                    mode: LaunchMode.externalApplication,
+                                  );
                                 },
                               ),
                             ),

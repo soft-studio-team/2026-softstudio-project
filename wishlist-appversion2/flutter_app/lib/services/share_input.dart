@@ -1,7 +1,8 @@
 /// Helpers for turning Android/iOS share payloads into a product share input.
 ///
-/// Keep the complete text (not only the URL) so the parsing engine can reuse
-/// the product title that shopping apps commonly put before a shortened URL.
+/// Keep the complete text (not only the URL) so the product title that
+/// shopping apps commonly put before a shortened URL can fill in when
+/// WebView extraction does not return a name.
 class ShareInput {
   ShareInput._();
 
@@ -32,10 +33,24 @@ class ShareInput {
     return null;
   }
 
+  /// Uses the share text around [url] as a product-name hint.
+  static String? titleHint(String input, String? url) {
+    var leftover = input;
+    if (url != null && url.isNotEmpty) {
+      leftover = leftover.replaceAll(url, ' ');
+    }
+    leftover = leftover.replaceAll(_httpUrl, ' ');
+    leftover = leftover.replaceAll(RegExp(r'\s+'), ' ').trim();
+    leftover = leftover.replaceAll(RegExp(r'^[\-–—:|]+|[\-–—:|]+$'), '').trim();
+    if (leftover.length < 2 || leftover.length > 80) return null;
+    return leftover;
+  }
+
   /// Picks the first shared text containing a URL.
   ///
-  /// The original text is returned so `상품명 + URL` reaches `/api/scrap` and
-  /// can be used as a title hint. File paths and image-only shares are ignored.
+  /// The original text is returned so `상품명 + URL` can be used as a title
+  /// hint when WebView extraction does not return a name. File paths and
+  /// image-only shares are ignored.
   static String? fromCandidates(Iterable<String?> candidates) {
     for (final candidate in candidates) {
       final trimmed = candidate?.trim();

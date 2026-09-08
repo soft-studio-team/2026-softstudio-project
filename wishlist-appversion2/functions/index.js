@@ -1,7 +1,9 @@
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
+const { getStorage } = require("firebase-admin/storage");
 const { getMessaging } = require("firebase-admin/messaging");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 
 initializeApp();
 
@@ -10,6 +12,7 @@ const titles = {
   basket: "살까말까",
   review: "친구 리뷰",
   list: "리스트 공개",
+  comment: "살까말까 댓글",
 };
 
 exports.pushOnInbox = onDocumentCreated(
@@ -64,5 +67,45 @@ exports.pushOnInbox = onDocumentCreated(
         fcmTokens: FieldValue.arrayRemove(...stale),
       });
     }
+  },
+);
+
+/// Deletes hosted 살까말까 HTML pages whose 28-day expiry has passed.
+exports.cleanupExpiredSharePages = onSchedule(
+  {
+    schedule: "every day 03:00",
+    timeZone: "Asia/Seoul",
+  },
+  async () => {
+    const db = getFirestore();
+    const bucket = getStorage().bucket();
+    const now = Timestamp.now();
+    let deleted = 0;
+
+    while (deleted < 2000) {
+      const snap = await db
+        .collection("sharePages")
+        .where("expiresAt", "<=", now)
+        .limit(100)
+        .get();
+      if (snap.empty) break;
+
+      for (const doc of snap.docs) {
+        const path = doc.get("storagePath");
+        if (typeof path === "string" && path.startsWith("share-pages/")) {
+          try {
+            await bucket.file(path).delete();
+          } catch (err) {
+            if (err && err.code !== 404) {
+              console.error("share page delete failed", path, err);
+            }
+          }
+        }
+        await doc.ref.delete();
+        deleted += 1;
+      }
+    }
+
+    console.log(`cleanupExpiredSharePages removed ${deleted} pages`);
   },
 );

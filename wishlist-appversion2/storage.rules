@@ -25,5 +25,15 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
       allow delete: if isOwner(userId);
     }
+
+    // Public 살까말까 HTML snapshots. Anyone with the URL can open the page;
+    // Cloud Functions delete files whose Firestore expiry has passed.
+    match /share-pages/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId)
+        && request.resource.size < 1 * 1024 * 1024
+        && request.resource.contentType.matches('text/html.*');
+      allow delete: if isOwner(userId);
+    }
   }
 }

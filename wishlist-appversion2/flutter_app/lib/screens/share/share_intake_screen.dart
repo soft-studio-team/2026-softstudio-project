@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../data/app_store.dart';
 import '../../models/models.dart';
 import '../../services/parsing_bridge.dart';
+import '../../services/webview_scraper.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
 
@@ -40,7 +41,9 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
   final urlCtrl = TextEditingController();
   final titleCtrl = TextEditingController();
   final priceCtrl = TextEditingController();
+  final memoCtrl = TextEditingController();
   bool loading = false;
+  bool saving = false;
   String? error;
   ParsedProductInfo? parsed;
   String? selectedListId;
@@ -64,6 +67,7 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
     urlCtrl.dispose();
     titleCtrl.dispose();
     priceCtrl.dispose();
+    memoCtrl.dispose();
     super.dispose();
   }
 
@@ -78,7 +82,7 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
       final info = input.contains('http') && !input.trim().contains(' ')
           ? await bridge.parseProductUrl(input)
           : await bridge.scrapShareInput(input);
-      titleCtrl.text = info.name;
+      titleCtrl.text = info.name == '공유된 상품' ? '' : info.name;
       priceCtrl.text = info.price > 0 ? '${info.price}' : '';
       setState(() => parsed = info);
     } catch (e) {
@@ -89,10 +93,21 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
   }
 
   Future<void> _save() async {
-    if (parsed == null || selectedListId == null) return;
-    final name = titleCtrl.text.trim().isEmpty ? parsed!.name : titleCtrl.text.trim();
-    final price = int.tryParse(priceCtrl.text.replaceAll(RegExp(r'[^0-9]'), '')) ??
-        parsed!.price;
+    if (parsed == null || selectedListId == null || saving) return;
+    final name = titleCtrl.text.trim().isEmpty
+        ? parsed!.name
+        : titleCtrl.text.trim();
+    final price =
+        int.tryParse(priceCtrl.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+
+    if (name.isEmpty || name == '공유된 상품') {
+      setState(() => error = '상품명을 입력해 주세요');
+      return;
+    }
+    if (price <= 0) {
+      setState(() => error = '가격을 입력해 주세요');
+      return;
+    }
 
     final info = ParsedProductInfo(
       name: name,
@@ -104,23 +119,51 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
           : parsed!.productUrl,
       originalPrice: parsed!.originalPrice,
       discount: parsed!.discount,
-      missingFields: parsed!.missingFields,
-      resolvedTier: parsed!.resolvedTier,
-      engineUsed: parsed!.engineUsed,
+      missingFields: [if (parsed!.image.isEmpty) 'image_url'],
+      resolvedTier: parsed!.price > 0 ? parsed!.resolvedTier : 3,
+      engineUsed: false,
       onDeviceExtracted: parsed!.onDeviceExtracted,
+      extractFailureReason: parsed!.extractFailureReason,
     );
 
+    setState(() {
+      saving = true;
+      error = null;
+    });
+    try {
     final store = context.read<AppStore>();
     final product = await store.addParsedProduct(
       info,
       listId: selectedListId!,
+        memo: memoCtrl.text,
     );
+      if (product == null) return;
     store.setPendingShareUrl(null);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product.name} 을(를) 저장했어요')),
-      );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${product.name} 을(를) 저장했어요')));
       context.go('/');
+    }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  String _statusText(ParsedProductInfo info) {
+    switch (info.extractFailureReason) {
+      case ExtractFailureReason.accessBlocked:
+        return '이 쇼핑몰은 자동으로 열리지 않아요. 이름과 가격을 직접 입력해 주세요.';
+      case ExtractFailureReason.loadingTimeout:
+      case ExtractFailureReason.scriptTimeout:
+      case ExtractFailureReason.networkError:
+        return '페이지를 다 읽지 못했어요. 이름과 가격을 직접 입력해 주세요.';
+      case ExtractFailureReason.unsupportedCurrency:
+        return '이 쇼핑몰 통화는 아직 저장하지 않아요. 원 가격을 직접 입력해 주세요.';
+      default:
+        if (info.price > 0 && info.onDeviceExtracted) return '휴대폰에서 읽음';
+        if (info.needsManualPrice) return '가격을 직접 입력해 주세요';
+        return '휴대폰에서 읽음';
     }
   }
 
@@ -167,15 +210,17 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                 ),
                 const SizedBox(height: 10),
                 DiaryButton(
-                  label: loading ? '파싱 중...' : '정보 가져오기',
+                  label: loading ? '상품 페이지를 읽는 중...' : '상품 읽기',
                   filled: true,
                   color: DiaryColors.folderBlue,
                   onPressed: loading ? () {} : _parse,
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 10),
-                  Text(error!,
-                      style: DiaryTheme.body(12, color: DiaryColors.pin)),
+                  Text(
+                    error!,
+                    style: DiaryTheme.body(12, color: DiaryColors.pin),
+                  ),
                 ],
                 if (parsed != null) ...[
                   const SizedBox(height: 16),
@@ -213,22 +258,20 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(parsed!.platform,
-                                  style: DiaryTheme.body(12,
-                                      color: DiaryColors.inkMuted)),
-                              // 티어/추출 방식은 내부 구현 정보라 사용자에게 그대로
-                              // 보여줄 필요가 없다. 자동으로 아예 못 찾은 경우
-                              // (엔진 미사용 · 이전엔 'Tier 3 · 오프라인 추정'으로
-                              // 노출되던 경우)에만 알기 쉬운 말로 안내한다.
-                              if (!parsed!.engineUsed)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Text(
-                                    '자동으로 정보를 찾지 못했어요 · 아래에서 직접 입력해주세요',
-                                    style: DiaryTheme.body(11,
-                                        color: DiaryColors.pin),
-                                  ),
+                              Text(
+                                parsed!.platform,
+                                style: DiaryTheme.body(
+                                  12,
+                                  color: DiaryColors.inkMuted,
                                 ),
+                              ),
+                              Text(
+                                _statusText(parsed!),
+                                style: DiaryTheme.body(
+                                  11,
+                                  color: DiaryColors.accent,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -248,8 +291,10 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                   TextField(
                     controller: priceCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: '기본 판매가 (쿠폰·옵션 제외, 원)',
+                    decoration: InputDecoration(
+                      labelText: parsed!.needsManualPrice
+                          ? '판매가 (직접 입력, 원)'
+                          : '기본 판매가 (쿠폰·옵션 제외, 원)',
                       filled: true,
                       fillColor: DiaryColors.white,
                     ),
@@ -270,15 +315,18 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                   if (parsed!.missingFields.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      '보완 필요: '
-                      '${parsed!.missingFields.map(_missingFieldLabel).join(', ')}',
-                      style:
-                          DiaryTheme.body(12, color: DiaryColors.pin),
+                      parsed!.needsManualPrice
+                          ? '가격을 직접 입력하면 저장할 수 있어요'
+                          : '보완 필요: '
+                              '${parsed!.missingFields.map(_missingFieldLabel).join(', ')}',
+                      style: DiaryTheme.body(12, color: DiaryColors.pin),
                     ),
                   ],
                   const SizedBox(height: 14),
-                  Text('어느 리스트로 보낼까요?',
-                      style: DiaryTheme.body(14, weight: FontWeight.w700)),
+                  Text(
+                    '어느 리스트로 보낼까요?',
+                    style: DiaryTheme.body(14, weight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -294,12 +342,28 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                         ),
                     ],
                   ),
+                  const SizedBox(height: 14),
+                  Text(
+                    '고민하는 이유',
+                    style: DiaryTheme.body(14, weight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: memoCtrl,
+                    maxLines: 3,
+                    maxLength: 500,
+                    decoration: const InputDecoration(
+                      hintText: '이 상품을 고민하는 이유를 남겨보세요',
+                      filled: true,
+                      fillColor: DiaryColors.white,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   DiaryButton(
-                    label: '이 리스트에 저장',
+                    label: saving ? '저장하는 중...' : '이 리스트에 저장',
                     filled: true,
                     color: DiaryColors.folderMint,
-                    onPressed: _save,
+                    onPressed: saving ? null : _save,
                   ),
                 ],
               ],

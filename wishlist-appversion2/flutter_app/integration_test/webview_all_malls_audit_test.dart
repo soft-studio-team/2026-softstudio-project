@@ -1,9 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'package:figmadesign/services/webview_extract_host.dart';
 import 'package:figmadesign/services/webview_scraper.dart';
 
 class _MallCase {
@@ -14,6 +16,8 @@ class _MallCase {
   final bool expectedAbstain;
 }
 
+// 실기기에서는 반드시 --no-uninstall 을 붙인다. 기본 flutter test 는
+// 종료 시 com.softstudio.wishlist 를 지운다.
 // 서버나 앱 병합 계층을 거치지 않고 Android WebView 추출기만 검증한다.
 // 기존 가격 의미 감사에서 확인한 대표 상품을 우선 사용하며, guard-only 몰은
 // 양수 가격이 아니라 안전한 abstain 여부를 확인한다.
@@ -41,7 +45,7 @@ const _cases = <_MallCase>[
   _MallCase('무인양품', 'https://mujikorea.co.kr/products/view/1005531'),
   _MallCase(
     '현대Hmall',
-    'https://www.hmall.com/md/pda/itemPtc?slitmCd=2028730260',
+    'https://www.hmall.com/md/pda/itemPtc?slitmCd=2060464676',
   ),
   _MallCase('롯데온', 'https://www.lotteon.com/p/product/LO2724337622'),
   _MallCase('미쏘', 'https://mixxo.com/product/detail.html?product_no=12455'),
@@ -157,7 +161,7 @@ const _cases = <_MallCase>[
   ),
   _MallCase(
     '나이키',
-    'https://www.nike.com/kr/t/dunk-low-shoes-KJFYnLZQ/DD1391-100',
+    'https://www.nike.com/kr/t/나이키-에어-포스-1-07-남성-신발-qdjlTENZ/IH1698-100',
   ),
   _MallCase(
     '올리브영',
@@ -184,7 +188,7 @@ const _cases = <_MallCase>[
   ),
   _MallCase(
     '이랜드몰',
-    'https://www.elandmall.co.kr/i/item?chnl_no=GSW&itemNo=2410548876',
+    'https://www.elandmall.co.kr/i/item?itemNo=2607498077&lowerVendNo=LV25019098',
   ),
 ];
 
@@ -198,7 +202,35 @@ void main() {
   const onlyRaw = String.fromEnvironment('WEBVIEW_AUDIT_ONLY');
 
   testWidgets('64개 등록 쇼핑몰 Android WebView 대표 상품 감사', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: WebViewExtractHost(child: SizedBox.shrink())),
+    );
+    var readyWait = 0;
+    while (WebViewExtractHost.maybeInstance?.isReady != true &&
+        readyWait < 50) {
+      await tester.pump(const Duration(milliseconds: 200));
+      readyWait += 1;
+    }
+    expect(WebViewExtractHost.maybeInstance, isNotNull);
+    expect(
+      WebViewExtractHost.maybeInstance!.isReady,
+      isTrue,
+      reason: 'InAppWebView 컨트롤러가 생성되어야 감사를 시작한다',
+    );
     expect(WebViewScraper.isSupported, isTrue);
+    Object? jsProbe;
+    try {
+      jsProbe = await WebViewExtractHost.maybeInstance!.probeJavascript();
+    } catch (error) {
+      jsProbe = 'error:$error';
+    }
+    // ignore: avoid_print
+    print('WEBVIEW_JS_PROBE $jsProbe');
+    expect(
+      jsProbe,
+      anyOf(equals(2), equals(2.0), equals('2')),
+      reason: 'evaluateJavascript가 동작해야 몰 감사를 시작한다 (got $jsProbe)',
+    );
     final results = <Map<String, dynamic>>[];
     final onlyIndices = onlyRaw.isEmpty
         ? const <int>{}
@@ -212,9 +244,12 @@ void main() {
     for (var index = startIndex; index < boundedEnd; index++) {
       if (onlyIndices.isNotEmpty && !onlyIndices.contains(index + 1)) continue;
       final item = _cases[index];
+      // ignore: avoid_print
+      print('WEBVIEW_AUDIT_BEGIN ${index + 1} ${item.mall}');
       final stopwatch = Stopwatch()..start();
       var timedOut = false;
-      final extracted = await WebViewScraper()
+      var extractDone = false;
+      final extractFuture = WebViewScraper()
           .extract(item.url, maxWait: const Duration(seconds: 12))
           .timeout(
             const Duration(seconds: 45),
@@ -222,7 +257,12 @@ void main() {
               timedOut = true;
               return null;
             },
-          );
+          )
+          .whenComplete(() => extractDone = true);
+      while (!extractDone) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      final extracted = await extractFuture;
       stopwatch.stop();
 
       final hasPrice = extracted?.price != null && extracted!.price! > 0;
@@ -264,6 +304,7 @@ void main() {
         'optionPriceMin': extracted?.optionPriceMin,
         'optionPriceMax': extracted?.optionPriceMax,
         'blocked': extracted?.blocked,
+        'failureReason': extracted?.failureReason,
         'looksLikeProductPage': extracted?.looksLikeProductPage,
         'hasJsonLd': extracted?.hasJsonLd,
         'finalUrl': extracted?.finalUrl,

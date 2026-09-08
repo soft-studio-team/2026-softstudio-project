@@ -85,6 +85,7 @@ class DiaryTheme {
   }
 
   /// Rounded UI font for labels, tabs, buttons, banners (not product data).
+  /// [size] is a design-pixel value at 390pt width; [DiaryScale] scales the tree.
   static TextStyle ui(
     double size, {
     Color? color,

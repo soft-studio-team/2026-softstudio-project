@@ -7,6 +7,7 @@ import '../../data/app_store.dart';
 import '../../models/models.dart';
 import '../../theme/diary_theme.dart';
 import '../../widgets/diary_widgets.dart';
+import '../product/product_detail_screen.dart';
 import '../reviews/review_widgets.dart';
 
 class FriendsScreen extends StatefulWidget {
@@ -52,26 +53,22 @@ class _FriendsScreenState extends State<FriendsScreen> {
     final q = searchCtrl.text.trim().toLowerCase();
 
     final followingFriends = store.friends
-        .where((f) =>
-            f.isFollowing && _matchesQuery(f.name, f.username, q))
+        .where((f) => f.isFollowing && _matchesQuery(f.name, f.username, q))
         .toList();
     // Search hits, or everyone not yet followed so 팔로우 is always available.
     final discoverFriends = store.friends
-        .where((f) =>
-            !f.isFollowing && _matchesQuery(f.name, f.username, q))
+        .where((f) => !f.isFollowing && _matchesQuery(f.name, f.username, q))
         .take(40)
         .toList();
     final followers = store.followerUsers
         .where((u) => _matchesQuery(u.name, u.handle, q))
         .toList();
-    final wishlistCards = store.friendWishlists
-        .where((w) {
+    final wishlistCards = store.friendWishlists.where((w) {
           final friend = store.friendById(w.friendId);
           if (friend == null || !friend.isFollowing) return false;
           return _matchesQuery(w.friendName, friend.username, q) ||
               w.listName.toLowerCase().contains(q);
-        })
-        .toList();
+    }).toList();
     final salkamalkaFeed = store.salkamalkaFeed.where((e) {
       if (q.isEmpty) return true;
       final b = e.basket;
@@ -206,6 +203,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             Expanded(
               child: SpiralNotebook(
                 folderColor: DiaryColors.canvas,
+                border: Border.all(color: DiaryColors.fileCream, width: 3),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: switch (tab) {
@@ -252,7 +250,7 @@ class _FollowingList extends StatelessWidget {
   final List<Friend> following;
   final List<Friend> discover;
   final bool searching;
-  final Future<void> Function(Friend friend) onToggleFollow;
+  final Future<bool> Function(Friend friend) onToggleFollow;
 
   @override
   Widget build(BuildContext context) {
@@ -313,32 +311,27 @@ class _FollowingList extends StatelessWidget {
   Future<void> _toggle(BuildContext context, Friend f) async {
     final willFollow = !f.isFollowing;
     try {
-      await onToggleFollow(f);
-      if (!context.mounted) return;
+      final changed = await onToggleFollow(f);
+      if (!changed || !context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            willFollow
-                ? '${f.name} 님을 팔로우했어요'
-                : '${f.name} 님 팔로우를 취소했어요',
+            willFollow ? '${f.name} 님을 팔로우했어요' : '${f.name} 님 팔로우를 취소했어요',
           ),
           duration: const Duration(seconds: 1),
         ),
       );
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('팔로우 실패: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('팔로우 실패: $e')));
     }
   }
 }
 
 class _FollowersList extends StatelessWidget {
-  const _FollowersList({
-    required this.followers,
-    required this.onRemove,
-  });
+  const _FollowersList({required this.followers, required this.onRemove});
 
   final List<AppUser> followers;
   final Future<void> Function(AppUser user) onRemove;
@@ -411,24 +404,21 @@ class _FollowersList extends StatelessWidget {
     try {
       await onRemove(user);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${user.name} 님을 팔로워에서 삭제했어요')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${user.name} 님을 팔로워에서 삭제했어요')));
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('삭제 실패: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('삭제 실패: $e')));
     }
   }
 }
 
 /// Instagram-style: following = outlined "팔로잉", not following = filled "팔로우".
 class _FollowButton extends StatelessWidget {
-  const _FollowButton({
-    required this.isFollowing,
-    required this.onPressed,
-  });
+  const _FollowButton({required this.isFollowing, required this.onPressed});
 
   final bool isFollowing;
   final VoidCallback onPressed;
@@ -517,8 +507,12 @@ class _FriendWishlistsPane extends StatelessWidget {
                           (p) => Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: GestureDetector(
-                              onTap: () =>
-                                  context.push('/catalog-product/${p.id}'),
+                              onTap: () => context.push(
+                                catalogProductLocation(
+                                  p.id,
+                                  wishlistId: w.id,
+                                ),
+                              ),
                               child: Column(
                                 children: [
                                   ClipRRect(
@@ -600,8 +594,7 @@ class _SalkamalkaFeedPane extends StatelessWidget {
         final e = entries[i];
         final b = e.basket;
         return WhiteProductCard(
-          backgroundColor:
-              e.isMine ? DiaryColors.mineCard : DiaryColors.white,
+          backgroundColor: e.isMine ? DiaryColors.mineCard : DiaryColors.white,
           onTap: () => context.push('/shared/${b.id}'),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -631,7 +624,9 @@ class _SalkamalkaFeedPane extends StatelessWidget {
                           children: [
                             Flexible(
                               child: Text(
-                                e.isMine ? '내가 보낸 살까말까' : '${b.ownerName}의 살까말까',
+                                e.isMine
+                                    ? '내가 보낸 살까말까'
+                                    : '${b.ownerName}의 살까말까',
                                 style: DiaryTheme.body(
                                   14,
                                   weight: FontWeight.w700,
@@ -654,8 +649,27 @@ class _SalkamalkaFeedPane extends StatelessWidget {
                       ],
                     ),
                   ),
+                  IconButton(
+                    onPressed: () => _confirmHide(context, e),
+                    tooltip: '목록에서 숨기기',
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      Icons.close,
+                      size: 18,
+                      color: DiaryColors.inkMuted,
+                    ),
+                  ),
                 ],
               ),
+              if (b.memo.trim().isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  b.memo.trim(),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: DiaryTheme.body(13),
+                ),
+              ],
               if (b.items.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 SizedBox(
@@ -702,6 +716,50 @@ class _SalkamalkaFeedPane extends StatelessWidget {
     );
   }
 
+  /// Hides the entry from this feed only — never deletes the basket.
+  Future<void> _confirmHide(BuildContext context, SalkamalkaFeedEntry e) async {
+    final store = context.read<AppStore>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: DiaryColors.paper,
+        title: Text(
+          '목록에서 숨기기',
+          style: DiaryTheme.ui(17, weight: FontWeight.w700),
+        ),
+        content: Text(
+          e.isMine
+              ? '이 목록에서 숨길까요? 내가 보낸 살까말까에는 남아 있어요'
+              : '이 목록에서 숨길까요? 숨기면 다시 볼 수 없어요',
+          style: DiaryTheme.body(13, color: DiaryColors.inkMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(
+              '숨기기',
+              style: DiaryTheme.ui(
+                14,
+                weight: FontWeight.w700,
+                color: DiaryColors.pin,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await store.hideFromSalkamalkaFeed(e.basket.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('목록에서 숨겼어요')));
+  }
+
   String _salkamalkaSubtitle(SalkamalkaFeedEntry e) {
     final b = e.basket;
     if (e.isMine) {
@@ -712,17 +770,14 @@ class _SalkamalkaFeedPane extends StatelessWidget {
             : '';
         return '$names$extra에게 보냄  ·  상품 ${b.items.length}개';
       }
-      return '링크 공유  ·  상품 ${b.items.length}개';
+      return '친구에게 보냄  ·  상품 ${b.items.length}개';
     }
     return '${b.ownerName}에게 받음  ·  상품 ${b.items.length}개';
   }
 }
 
 class _FriendReviewsPane extends StatelessWidget {
-  const _FriendReviewsPane({
-    required this.reviews,
-    required this.myUid,
-  });
+  const _FriendReviewsPane({required this.reviews, required this.myUid});
 
   final List<ProductReview> reviews;
   final String myUid;
