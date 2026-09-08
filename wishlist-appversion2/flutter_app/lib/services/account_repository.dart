@@ -654,11 +654,14 @@ class AccountRepository {
   }
 
   Future<List<AppUser>> loadUsers(List<String> uids) async {
+    // uids 개수만큼 순차로 Firestore를 왕복하던 부분 — 서로 독립적인 조회라
+    // 병렬로 날린다.
+    final docs = await Future.wait(uids.map((id) => _userDoc(id).get()));
     final out = <AppUser>[];
-    for (final id in uids) {
-      final doc = await _userDoc(id).get();
+    for (var i = 0; i < docs.length; i++) {
+      final doc = docs[i];
       if (doc.exists && doc.data() != null) {
-        out.add(AppUser.fromJson(doc.data()!..['uid'] = id));
+        out.add(AppUser.fromJson(doc.data()!..['uid'] = uids[i]));
       }
     }
     out.sort((a, b) => a.name.compareTo(b.name));
@@ -670,19 +673,25 @@ class AccountRepository {
     required Set<String> following,
   }) async {
     final snap = await _db.collection('users').limit(80).get();
+    final docs = snap.docs.where((d) => d.id != myUid).toList();
+    // 최대 80명 각각에 대해 순차로 2번씩(_wishlistCounts 안에서 tabs+products)
+    // Firestore를 왕복하던 부분 — "친구 찾아보기" 목록 하나 만드는 데 가장 크게
+    // 기여했던 구간이다. _wishlistCounts는 내부에서 이미 자체적으로 에러를
+    // 삼키므로(실패 시 (0,0) 반환) 그냥 병렬로 날려도 안전하다.
+    final counts = await Future.wait(docs.map((d) => _wishlistCounts(d.id)));
     final out = <Friend>[];
-    for (final doc in snap.docs) {
-      if (doc.id == myUid) continue;
+    for (var i = 0; i < docs.length; i++) {
+      final doc = docs[i];
       final user = AppUser.fromJson(doc.data()..['uid'] = doc.id);
-      final counts = await _wishlistCounts(doc.id);
+      final count = counts[i];
       out.add(Friend(
         id: doc.id,
         name: user.name,
         username: user.handle,
         avatar: user.avatarUrl,
         isFollowing: following.contains(doc.id),
-        wishlistCount: counts.$1,
-        itemCount: counts.$2,
+        wishlistCount: count.$1,
+        itemCount: count.$2,
       ));
     }
     out.sort((a, b) => a.name.compareTo(b.name));
@@ -769,8 +778,12 @@ class AccountRepository {
   Future<List<FriendWishlist>> loadFriendWishlists(
     List<Friend> followingFriends,
   ) async {
-    final result = <FriendWishlist>[];
-    for (final friend in followingFriends.where((f) => f.isFollowing)) {
+    final friends = followingFriends.where((f) => f.isFollowing).toList();
+    // 팔로우한 친구 수만큼 순차로 2번씩(tabs+products) Firestore를 왕복하던
+    // 부분 — 서로 독립적인 친구별 조회라 병렬로 날린다. 친구 한 명 조회가
+    // 실패해도(원래 동작 그대로) 그 친구만 건너뛰고 나머지는 반환한다.
+    final perFriend = await Future.wait(friends.map((friend) async {
+      final out = <FriendWishlist>[];
       try {
         final tabsSnap =
             await _tabs(friend.id).where('isPublic', isEqualTo: true).get();
@@ -787,7 +800,7 @@ class AccountRepository {
           final tab = WishlistTab.fromJson(tabDoc.data());
           if (tab.id == 'all') continue;
           final items = products.where((p) => p.listId == tab.id).toList();
-          result.add(FriendWishlist(
+          out.add(FriendWishlist(
             id: '${friend.id}_${tab.id}',
             friendId: friend.id,
             friendName: friend.name,
@@ -797,10 +810,11 @@ class AccountRepository {
           ));
         }
       } catch (_) {
-        continue;
+        // 이 친구만 건너뛴다 — 원래 for 루프의 try/catch(continue)와 동일.
       }
-    }
-    return result;
+      return out;
+    }));
+    return perFriend.expand((list) => list).toList();
   }
 
   Future<List<AppNotification>> loadNotifications(String uid) async {
@@ -888,12 +902,18 @@ class AccountRepository {
   Future<List<ProductReview>> loadFriendReviews(
     List<Friend> followingFriends,
   ) async {
-    final out = <ProductReview>[];
-    for (final friend in followingFriends.where((f) => f.isFollowing)) {
+    final friends = followingFriends.where((f) => f.isFollowing).toList();
+    // 팔로우한 친구 수만큼 순차로 리뷰를 불러오던 부분 — 서로 독립적인
+    // 조회라 병렬로 날린다. 친구 한 명이 실패해도(원래 동작 그대로) 그
+    // 친구만 빈 목록으로 처리한다.
+    final perFriend = await Future.wait(friends.map((friend) async {
       try {
-        out.addAll(await loadReviews(friend.id));
-      } catch (_) {}
-    }
+        return await loadReviews(friend.id);
+      } catch (_) {
+        return <ProductReview>[];
+      }
+    }));
+    final out = perFriend.expand((list) => list).toList();
     out.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return out;
   }

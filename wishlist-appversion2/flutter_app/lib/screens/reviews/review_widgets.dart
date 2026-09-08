@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../models/models.dart';
@@ -38,7 +39,11 @@ class ReviewPostCard extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundImage: NetworkImage(review.authorAvatar),
+                  backgroundImage: CachedNetworkImageProvider(
+                    review.authorAvatar,
+                    maxWidth: 96,
+                    maxHeight: 96,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -133,12 +138,12 @@ class MoodFace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipOval(
-      child: Image.network(
-        mood.url,
+      child: CachedNetworkImage(
+        imageUrl: mood.url,
         width: size,
         height: size,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => SizedBox(
+        errorWidget: (_, __, ___) => SizedBox(
           width: size,
           height: size,
           child: Icon(Icons.sentiment_satisfied_alt, size: size * 0.7),
@@ -172,10 +177,10 @@ class ReviewPhoto extends StatelessWidget {
         ),
       );
     }
-    return Image.network(
-      src,
+    return CachedNetworkImage(
+      imageUrl: src,
       fit: fit,
-      errorBuilder: (_, __, ___) => Container(
+      errorWidget: (_, __, ___) => Container(
         color: DiaryColors.paper,
         child: const Icon(Icons.image_outlined),
       ),

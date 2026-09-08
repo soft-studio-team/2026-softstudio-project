@@ -69,6 +69,18 @@ class AppStore extends ChangeNotifier {
     avatarUrl: 'https://api.dicebear.com/7.x/thumbs/png?seed=guest',
   );
 
+  // salkamalkaFeed/reviewFeed 같은 계산된 getter를 캐싱하기 위한 버전 카운터.
+  // notifyListeners()를 부를 때마다(=상태가 실제로 바뀌었을 때마다) 증가시켜서,
+  // 이 값이 그대로면 이전에 계산해둔 결과를 재사용해도 안전하다는 걸 보장한다.
+  // 개별 필드마다 캐시 무효화 지점을 일일이 찾아다닐 필요가 없다.
+  int _version = 0;
+
+  @override
+  void notifyListeners() {
+    _version++;
+    super.notifyListeners();
+  }
+
   Future<void> init() async {
     firebaseReady = _firebaseConfigured;
     if (!firebaseReady) {
@@ -142,18 +154,36 @@ class AppStore extends ChangeNotifier {
       handle: _pendingHandle,
     );
     await _clearPendingProfileDraft();
-    final profile = await _repo.loadProfile(fresh.uid);
-    if (profile != null) {
-      currentUser = profile;
-    }
-    tabs = await _repo.loadTabs(fresh.uid);
-    products = await _repo.loadProducts(fresh.uid);
+
+    // 서로 관계없는 Firestore 읽기를 병렬로 날린다 — 전부 순차 호출(약 10개)이라
+    // 로그인 직후 체감 대기시간이 길었던 부분. 진짜 의존관계가 있는 체인만
+    // (팔로잉→친구목록→친구위시리스트→친구 리뷰, 팔로워→팔로워목록) 그 안에서
+    // 순서를 지키고, 나머지는 동시에 진행해서 실제 대기시간을 줄인다. 아래에서
+    // await 없이 만들어두는 것만으로 이미 백그라운드에서 시작된다.
+    final profileFuture = _repo.loadProfile(fresh.uid);
+    final tabsFuture = _repo.loadTabs(fresh.uid);
+    final productsFuture = _repo.loadProducts(fresh.uid);
+    final followerUsersFuture = _repo
+        .followerIds(fresh.uid)
+        .then((ids) => _repo.loadUsers(ids));
+    final inboxFuture = _loadInboxSafely(fresh.uid);
+    final myReviewsFuture = _loadMyReviewsSafely(fresh.uid);
+
     final following = (await _repo.followingIds(fresh.uid)).toSet();
     friends = await _repo.loadDirectory(myUid: fresh.uid, following: following);
     friendWishlists = await _repo.loadFriendWishlists(friends);
-    followerUsers = await _repo.loadUsers(await _repo.followerIds(fresh.uid));
-    await _loadInboxSafely(fresh.uid);
-    await _loadReviewsSafely(fresh.uid);
+    await _loadFriendReviewsSafely();
+
+    followerUsers = await followerUsersFuture;
+    final profile = await profileFuture;
+    if (profile != null) {
+      currentUser = profile;
+    }
+    tabs = await tabsFuture;
+    products = await productsFuture;
+    await inboxFuture;
+    await myReviewsFuture;
+
     _syncFriendCounts();
     currentUser = currentUser.copyWith(
       following: following.length,
@@ -207,6 +237,13 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> _loadReviewsSafely(String userId) async {
+    await _loadMyReviewsSafely(userId);
+    await _loadFriendReviewsSafely();
+  }
+
+  /// friends 목록과 무관한 부분만 — _hydrateSession에서 다른 독립적인
+  /// Firestore 읽기들과 병렬로 돌리기 위해 분리했다.
+  Future<void> _loadMyReviewsSafely(String userId) async {
     try {
       myReviews = await _repo.loadReviews(userId);
     } catch (_) {
@@ -215,6 +252,10 @@ class AppStore extends ChangeNotifier {
     if (myReviews.isEmpty) {
       await _restoreLocalReviews();
     }
+  }
+
+  /// friends가 채워진 뒤에만 부를 수 있다(친구 리뷰는 친구 목록 기준으로 읽음).
+  Future<void> _loadFriendReviewsSafely() async {
     try {
       friendReviews = await _repo.loadFriendReviews(friends);
     } catch (_) {
@@ -722,7 +763,14 @@ class AppStore extends ChangeNotifier {
   FriendSalkamalka? friendSalkamalkaByFriendId(String friendId) =>
       friendSalkamalkaGroups.where((g) => g.friendId == friendId).firstOrNull;
 
+  List<SalkamalkaFeedEntry>? _salkamalkaFeedCache;
+  int _salkamalkaFeedCacheVersion = -1;
+
   List<SalkamalkaFeedEntry> get salkamalkaFeed {
+    if (_salkamalkaFeedCache != null &&
+        _salkamalkaFeedCacheVersion == _version) {
+      return _salkamalkaFeedCache!;
+    }
     final mineIds = sentBaskets.map((b) => b.id).toSet();
     final out = <SalkamalkaFeedEntry>[
       for (final b in receivedBaskets)
@@ -735,8 +783,11 @@ class AppStore extends ChangeNotifier {
       if (mineIds.contains(e.basket.id) && !e.isMine) continue;
       byId[e.basket.id] = e;
     }
-    return byId.values.toList()
+    final result = byId.values.toList()
       ..sort((a, b) => b.basket.createdAt.compareTo(a.basket.createdAt));
+    _salkamalkaFeedCache = result;
+    _salkamalkaFeedCacheVersion = _version;
+    return result;
   }
 
   Future<List<AppUser>> loadFollowers() async {
@@ -1113,13 +1164,21 @@ class AppStore extends ChangeNotifier {
     return null;
   }
 
+  List<ProductReview>? _reviewFeedCache;
+  int _reviewFeedCacheVersion = -1;
+
   List<ProductReview> get reviewFeed {
+    if (_reviewFeedCache != null && _reviewFeedCacheVersion == _version) {
+      return _reviewFeedCache!;
+    }
     final byId = <String, ProductReview>{};
     for (final r in [...friendReviews, ...myReviews]) {
       byId[r.id] = r;
     }
     final list = byId.values.toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    _reviewFeedCache = list;
+    _reviewFeedCacheVersion = _version;
     return list;
   }
 

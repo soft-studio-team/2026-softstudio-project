@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -263,10 +264,17 @@ class _FollowingList extends StatelessWidget {
         ),
       );
     }
-    return ListView(
-      children: [
-        for (final f in following)
-          PersonRow(
+    // 팔로잉 목록 + (검색 중이 아니면) 추천 섹션 헤더 + 추천 목록을 하나의
+    // 인덱스 공간으로 펼쳐서 ListView.builder로 지연 렌더링한다. 화면에 보이는
+    // 행만 만들어지므로 팔로워/추천 수가 많아져도 무겁지 않다.
+    final hasDiscover = discover.isNotEmpty;
+    final itemCount = following.length + (hasDiscover ? 1 + discover.length : 0);
+    return ListView.builder(
+      itemCount: itemCount,
+      itemBuilder: (context, index) {
+        if (index < following.length) {
+          final f = following[index];
+          return PersonRow(
             name: f.name,
             handle: f.username,
             avatarUrl: f.avatar,
@@ -275,28 +283,30 @@ class _FollowingList extends StatelessWidget {
               isFollowing: true,
               onPressed: () => _toggle(context, f),
             ),
-          ),
-        if (discover.isNotEmpty) ...[
-          Padding(
+          );
+        }
+        final discoverIndex = index - following.length;
+        if (discoverIndex == 0) {
+          return Padding(
             padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
             child: Text(
               searching ? '검색 결과' : '친구 찾아보기',
               style: DiaryTheme.body(13, weight: FontWeight.w700),
             ),
+          );
+        }
+        final f = discover[discoverIndex - 1];
+        return PersonRow(
+          name: f.name,
+          handle: f.username,
+          avatarUrl: f.avatar,
+          subtitle: '위시리스트 ${f.wishlistCount}  ·  아이템 ${f.itemCount}',
+          trailing: _FollowButton(
+            isFollowing: false,
+            onPressed: () => _toggle(context, f),
           ),
-          for (final f in discover)
-            PersonRow(
-              name: f.name,
-              handle: f.username,
-              avatarUrl: f.avatar,
-              subtitle: '위시리스트 ${f.wishlistCount}  ·  아이템 ${f.itemCount}',
-              trailing: _FollowButton(
-                isFollowing: false,
-                onPressed: () => _toggle(context, f),
-              ),
-            ),
-        ],
-      ],
+        );
+      },
     );
   }
 
@@ -476,10 +486,11 @@ class _FriendWishlistsPane extends StatelessWidget {
         ),
       );
     }
-    return ListView(
-      children: [
-        for (final w in wishlists)
-          WhiteProductCard(
+    return ListView.builder(
+      itemCount: wishlists.length,
+      itemBuilder: (context, index) {
+        final w = wishlists[index];
+        return WhiteProductCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -496,7 +507,12 @@ class _FriendWishlistsPane extends StatelessWidget {
                   height: 110,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
+                    // 같은 파일의 다른 가로 미리보기 캐러셀(b.items.take(8))과
+                    // 맞춰서 제한 없이 통짜로 렌더되던 걸 8개로 제한한다 —
+                    // 위시리스트 아이템이 많을수록 이 카드 하나 그리는 비용이
+                    // 무한정 늘어나던 문제.
                     children: w.items
+                        .take(8)
                         .map(
                           (p) => Padding(
                             padding: const EdgeInsets.only(right: 8),
@@ -507,12 +523,22 @@ class _FriendWishlistsPane extends StatelessWidget {
                                 children: [
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
-                                    child: Image.network(
-                                      p.image,
+                                    child: CachedNetworkImage(
+                                      imageUrl: p.image,
                                       width: 72,
                                       height: 72,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
+                                      // 스크롤 중 프레임 드랍의 흔한 원인 — 지정 안 하면 원본 해상도 그대로
+                                      // 디코딩한 뒤 화면에서만 축소해서 그리므로, 실제 표시 크기 기준으로
+                                      // 디코딩 자체를 줄인다(72px 표시 기준 고해상도 화면 대비 3배).
+                                      memCacheWidth: 216,
+                                      memCacheHeight: 216,
+                                      placeholder: (_, __) => Container(
+                                        width: 72,
+                                        height: 72,
+                                        color: DiaryColors.paper,
+                                      ),
+                                      errorWidget: (_, __, ___) => Container(
                                         width: 72,
                                         height: 72,
                                         color: DiaryColors.paper,
@@ -546,8 +572,8 @@ class _FriendWishlistsPane extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-      ],
+          );
+      },
     );
   }
 }
@@ -584,7 +610,7 @@ class _SalkamalkaFeedPane extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundImage: NetworkImage(
+                    backgroundImage: CachedNetworkImageProvider(
                       e.isMine
                           ? (b.fromAvatar.isNotEmpty
                               ? b.fromAvatar
@@ -592,6 +618,8 @@ class _SalkamalkaFeedPane extends StatelessWidget {
                           : (b.fromAvatar.isNotEmpty
                               ? b.fromAvatar
                               : 'https://api.dicebear.com/7.x/thumbs/png?seed=${Uri.encodeComponent(b.ownerName)}'),
+                      maxWidth: 108,
+                      maxHeight: 108,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -640,12 +668,22 @@ class _SalkamalkaFeedPane extends StatelessWidget {
                           padding: const EdgeInsets.only(right: 6),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              p.image,
+                            child: CachedNetworkImage(
+                              imageUrl: p.image,
                               width: 56,
                               height: 56,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              // 스크롤 중 프레임 드랍의 흔한 원인 — 지정 안 하면 원본 해상도 그대로
+                              // 디코딩한 뒤 화면에서만 축소해서 그리므로, 실제 표시 크기 기준으로
+                              // 디코딩 자체를 줄인다(56px 표시 기준 고해상도 화면 대비 3배).
+                              memCacheWidth: 168,
+                              memCacheHeight: 168,
+                              placeholder: (_, __) => Container(
+                                width: 56,
+                                height: 56,
+                                color: DiaryColors.paper,
+                              ),
+                              errorWidget: (_, __, ___) => Container(
                                 width: 56,
                                 height: 56,
                                 color: DiaryColors.paper,
@@ -703,15 +741,16 @@ class _FriendReviewsPane extends StatelessWidget {
         ),
       );
     }
-    return ListView(
+    return ListView.builder(
       padding: const EdgeInsets.only(bottom: 88),
-      children: [
-        for (final r in reviews)
-          ReviewPostCard(
-            review: r,
-            isMine: r.authorUid == myUid && myUid.isNotEmpty,
-          ),
-      ],
+      itemCount: reviews.length,
+      itemBuilder: (context, index) {
+        final r = reviews[index];
+        return ReviewPostCard(
+          review: r,
+          isMine: r.authorUid == myUid && myUid.isNotEmpty,
+        );
+      },
     );
   }
 }

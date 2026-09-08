@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -67,7 +68,11 @@ class ReviewDetailScreen extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundImage: NetworkImage(review.authorAvatar),
+                backgroundImage: CachedNetworkImageProvider(
+                  review.authorAvatar,
+                  maxWidth: 120,
+                  maxHeight: 120,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -102,12 +107,22 @@ class ReviewDetailScreen extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    review.productImage,
+                  child: CachedNetworkImage(
+                    imageUrl: review.productImage,
                     width: 72,
                     height: 72,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    // 스크롤 중 프레임 드랍의 흔한 원인 — 지정 안 하면 원본 해상도 그대로
+                    // 디코딩한 뒤 화면에서만 축소해서 그리므로, 실제 표시 크기 기준으로
+                    // 디코딩 자체를 줄인다(72px 표시 기준 고해상도 화면 대비 3배).
+                    memCacheWidth: 216,
+                    memCacheHeight: 216,
+                    placeholder: (_, __) => Container(
+                      width: 72,
+                      height: 72,
+                      color: DiaryColors.paper,
+                    ),
+                    errorWidget: (_, __, ___) => Container(
                       width: 72,
                       height: 72,
                       color: DiaryColors.paper,

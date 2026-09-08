@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -22,9 +23,30 @@ class _WishlistScreenState extends State<WishlistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final store = context.watch<AppStore>();
-    final tab = store.selectedTab;
-    final products = store.displayedProducts;
+    // context.watch<AppStore>()로 store 전체를 구독하면 친구/리뷰/알림 등
+    // 위시리스트와 무관한 변경에도 이 화면 전체가 다시 빌드된다(스크롤 중
+    // 프레임 드랍의 원인). 실제로 위시리스트 화면에 영향을 주는 필드
+    // (products/tabs/selectedTabId)만 개별 select해서, 그 값들이 실제로
+    // 바뀔 때만(같은 리스트 인스턴스면 무시) 다시 빌드되도록 좁힌다.
+    // products/tabs는 변경 시 항상 새 List 인스턴스로 재할당되므로(부분
+    // mutate 없음, app_store.dart 확인됨) 참조 동등성 비교가 안전하다.
+    final store = context.read<AppStore>();
+    final allProducts = context.select<AppStore, List<Product>>(
+      (s) => s.products,
+    );
+    final allTabs = context.select<AppStore, List<WishlistTab>>(
+      (s) => s.tabs,
+    );
+    final selectedTabId = context.select<AppStore, String>(
+      (s) => s.selectedTabId,
+    );
+    final tab = allTabs.firstWhere(
+      (t) => t.id == selectedTabId,
+      orElse: () => allTabs.first,
+    );
+    final products = selectedTabId == 'all'
+        ? allProducts
+        : allProducts.where((p) => p.listId == selectedTabId).toList();
     final border = store.tabColor(tab);
 
     return Scaffold(
@@ -798,12 +820,22 @@ class WishlistProductCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: Image.network(
-                  product.image,
+                child: CachedNetworkImage(
+                  imageUrl: product.image,
                   width: 72,
                   height: 72,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  // 스크롤 중 프레임 드랍의 흔한 원인 — 지정 안 하면 원본 해상도 그대로
+                  // 디코딩한 뒤 화면에서만 축소해서 그리므로, 실제 표시 크기 기준으로
+                  // 디코딩 자체를 줄인다(72px 표시 기준 고해상도 화면 대비 3배).
+                  memCacheWidth: 216,
+                  memCacheHeight: 216,
+                  placeholder: (_, __) => Container(
+                    width: 72,
+                    height: 72,
+                    color: DiaryColors.paper,
+                  ),
+                  errorWidget: (_, __, ___) => Container(
                     width: 72,
                     height: 72,
                     color: DiaryColors.paper,

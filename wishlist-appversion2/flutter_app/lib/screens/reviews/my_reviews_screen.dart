@@ -52,12 +52,15 @@ class MyReviewsScreen extends StatelessWidget {
                 ),
               ),
             )
-          : ListView(
+          : ListView.builder(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
-              children: [
-                for (final r in reviews)
-                  ReviewPostCard(review: r, showAuthor: false),
-              ],
+              itemCount: reviews.length,
+              itemBuilder: (context, index) {
+                return ReviewPostCard(
+                  review: reviews[index],
+                  showAuthor: false,
+                );
+              },
             ),
     );
   }

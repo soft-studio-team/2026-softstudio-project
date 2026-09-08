@@ -26,20 +26,30 @@ import 'screens/reviews/review_detail_screen.dart';
 import 'screens/salkamalka/salkamalka_screen.dart';
 import 'screens/share/share_intake_screen.dart';
 import 'screens/shared/shared_wishlist_screen.dart';
+import 'screens/splash/loading_screen.dart';
 import 'screens/wishlist/wishlist_screen.dart';
 import 'services/share_input.dart';
 import 'theme/diary_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final store = AppStore();
   if (isFirebaseConfigured) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
     await PushNotificationService.instance.init();
+    // 콜드스타트 최적화: 로그인 상태 확인(Firebase Auth reload + Firestore 세션
+    // 하이드레이션, AppStore._hydrateSession)은 네트워크 왕복이 필요해 느릴 수
+    // 있다. 이걸 기다리느라 첫 프레임을 막지 않고, 먼저 화면을 그린 뒤
+    // 백그라운드에서 끝나면 라우터가 알아서 갱신하도록 한다(store.ready →
+    // GoRouter redirect, WishlistApp._buildRouter 참고).
+    unawaited(store.init());
+  } else {
+    // Firebase 미설정 상태에서는 init()이 네트워크 호출 없이 곧바로
+    // ready = true 로 끝나므로(안내 문구만 세팅), 그대로 기다려도 무해하다.
+    await store.init();
   }
-  final store = AppStore();
-  await store.init();
   runApp(WishlistApp(store: store));
 }
 
@@ -151,11 +161,25 @@ class _WishlistAppState extends State<WishlistApp> {
 
 GoRouter _buildRouter(AppStore store) {
   return GoRouter(
-    initialLocation: store.isLoggedIn
+    initialLocation: !store.ready
+        ? '/loading'
+        : store.isLoggedIn
         ? (store.showSignupWelcome ? '/welcome' : '/')
         : (store.awaitingEmailVerification ? '/verify-email' : '/login'),
     refreshListenable: store,
     redirect: (context, state) {
+      final loc0 = state.matchedLocation;
+      // store.init()이 아직 끝나지 않았으면(콜드스타트 하이드레이션 진행 중)
+      // 어디로 가려던 참이었든 로딩 화면에 붙잡아 둔다. store.ready가 바뀌면
+      // refreshListenable이 redirect를 다시 불러서 여기를 빠져나간다.
+      if (!store.ready) {
+        return loc0 == '/loading' ? null : '/loading';
+      }
+      if (loc0 == '/loading') {
+        if (store.awaitingEmailVerification) return '/verify-email';
+        if (store.isLoggedIn && store.showSignupWelcome) return '/welcome';
+        return store.isLoggedIn ? '/' : '/login';
+      }
       final loggedIn = store.isLoggedIn;
       final awaiting = store.awaitingEmailVerification;
       final welcoming = store.showSignupWelcome;
@@ -192,6 +216,10 @@ GoRouter _buildRouter(AppStore store) {
       GoRoute(
         path: '/welcome',
         builder: (_, __) => const SignupWelcomeScreen(),
+      ),
+      GoRoute(
+        path: '/loading',
+        builder: (_, __) => const LoadingScreen(),
       ),
       GoRoute(
         path: '/share',
