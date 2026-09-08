@@ -151,7 +151,12 @@ void main() {
     expect(loop.scriptTimedOut, isTrue);
   });
 
-  test('명시적 접근 차단은 즉시 종료하고 reload 하지 않는다', () async {
+  // 2026-09-08: 이 테스트는 원래 "차단이면 재시도 없이 즉시 종료"를 검증했지만,
+  // 같은 날 추가된 홈 웜업 재시도 기능(WebViewExtractLoop.run 참고 — 유니클로
+  // 실기기 재검증으로 확인된 그 수정) 때문에 기대값이 낡았었다(loads/reloadCount를
+  // 0으로 기대 — 실제로는 홈 방문 1회가 의도된 동작). 홈 웜업 후에도 여전히
+  // blocked면 재시도를 한 번만 쓰고 accessBlocked로 종료하는지로 갱신.
+  test('명시적 접근 차단은 홈 웜업 재시도 1회 후에도 계속 차단이면 accessBlocked로 종료한다', () async {
     final clock = _FakeClock();
     final loop = WebViewExtractLoop(clock: clock);
     var loads = 0;
@@ -165,14 +170,20 @@ void main() {
         looksLikeProductPage: false,
         finalUrl: 'https://shop.example/blocked',
       ),
-      loadUrl: (_) async => loads += 1,
+      loadUrl: (url) async {
+        loads += 1;
+        loop.onLoadStart(url);
+        loop.onLoadStop(url);
+      },
     );
 
     expect(result?.blocked, isTrue);
     expect(result?.failureReason, ExtractFailureReason.accessBlocked);
-    expect(loads, 0);
-    expect(loop.reloadCount, 0);
-    expect(loop.evaluateCount, 1);
+    // 홈 워밍업 방문 1회 + 원래 URL 재요청 1회 = loadUrl 총 2번.
+    expect(loads, 2);
+    expect(loop.reloadCount, 2);
+    // 원본 페이지 평가(웜업 유발) → 홈 페이지 평가(버려짐) → 재요청한 원본 평가(확정).
+    expect(loop.evaluateCount, 3);
   });
 
   test('빈 결과에만 제한적으로 1회 reload 한다', () async {
@@ -481,5 +492,83 @@ void main() {
     expect(WebViewExtractHost.maybeInstance, isNotNull);
     await tester.pumpWidget(const SizedBox.shrink());
     expect(WebViewExtractHost.maybeInstance, isNull);
+  });
+
+  // 2026-09-07 몰별 정확도 점검: 무신사·지그재그 이미지 미추출 후보 원인으로
+  // 모바일 UA 목록에 추가. 실기기/에뮬레이터로 검증되지 않은 변경이므로,
+  // 베타 전 실기기에서 두 몰의 이미지가 실제로 잡히는지 반드시 확인할 것.
+  test('에이블리·무신사·지그재그는 모바일 UA를 쓰고 그 외 몰은 데스크톱 UA를 쓴다', () {
+    expect(WebViewScraper.needsMobileUa('a-bly.com'), isTrue);
+    expect(WebViewScraper.needsMobileUa('mobile.a-bly.com'), isTrue);
+    expect(WebViewScraper.needsMobileUa('musinsa.com'), isTrue);
+    expect(WebViewScraper.needsMobileUa('www.musinsa.com'), isTrue);
+    expect(WebViewScraper.needsMobileUa('zigzag.kr'), isTrue);
+    expect(WebViewScraper.needsMobileUa('m.zigzag.kr'), isTrue);
+    expect(WebViewScraper.needsMobileUa('29cm.co.kr'), isFalse);
+    expect(WebViewScraper.needsMobileUa('kream.co.kr'), isFalse);
+    expect(WebViewScraper.needsMobileUa('musinsa.onelink.me'), isTrue);
+  });
+
+  // 2026-09-07 실기기(Tab S7) 재현: 무신사 앱에서 공유한
+  // https://musinsa.onelink.me/... 링크가 www.musinsa.com/products/...로
+  // 리다이렉트되는데, 두 호스트가 서로 다른 등록 도메인이라 same-site 필터에
+  // 걸려 추출 결과 전체가 버려졌었다.
+  test('앱 공유 딥링크 리다이렉터(onelink.me)는 다른 도메인으로 넘어가도 foreign 취급하지 않는다', () {
+    expect(isKnownDeepLinkRedirectorHost('onelink.me'), isTrue);
+    expect(isKnownDeepLinkRedirectorHost('musinsa.onelink.me'), isTrue);
+    expect(isKnownDeepLinkRedirectorHost('musinsa.com'), isFalse);
+
+    expect(
+      isForeignExtractResult(
+        'https://musinsa.onelink.me/ANAQ/jaiyf8v5',
+        'https://www.musinsa.com/products/1234567',
+      ),
+      isFalse,
+    );
+    // 무관한 일반 사이트가 전혀 다른 도메인으로 튀는 건 여전히 foreign이어야 한다.
+    expect(
+      isForeignExtractResult(
+        'https://x.example/p',
+        'https://y.example/p',
+      ),
+      isTrue,
+    );
+  });
+
+  // 2026-09-08 실기기(Tab S7) 로그: 무신사·에이블리·지그재그 공유 링크가
+  // intent:// 스킴으로 앱을 직접 열려 하고, WebView가 그 스킴을 못 열어
+  // onReceivedError→network_error로 즉시 실패하는 게 확인됨.
+  test('http/https가 아닌 스킴(intent:// 등)을 판정한다', () {
+    expect(
+      isNonHttpScheme(
+        'intent://products/1234#Intent;scheme=https;package=com.musinsa.store;end',
+      ),
+      isTrue,
+    );
+    expect(isNonHttpScheme('musinsa://products/1234'), isTrue);
+    expect(isNonHttpScheme('https://www.musinsa.com/products/1234'), isFalse);
+    expect(isNonHttpScheme('http://a-bly.com/goods/1'), isFalse);
+    expect(isNonHttpScheme(null), isFalse);
+    expect(isNonHttpScheme(''), isFalse);
+  });
+
+  test('intent:// URI에서 browser_fallback_url을 뽑아낸다', () {
+    final intentUrl =
+        'intent://www.musinsa.com/products/1234#Intent;scheme=https;'
+        'package=com.musinsa.store;'
+        'S.browser_fallback_url=https%3A%2F%2Fwww.musinsa.com%2Fproducts%2F1234;'
+        'end';
+    expect(
+      extractIntentFallbackUrl(intentUrl),
+      'https://www.musinsa.com/products/1234',
+    );
+    expect(
+      extractIntentFallbackUrl('intent://no-fallback#Intent;scheme=https;end'),
+      isNull,
+    );
+    expect(
+      extractIntentFallbackUrl('https://www.musinsa.com/products/1234'),
+      isNull,
+    );
   });
 }

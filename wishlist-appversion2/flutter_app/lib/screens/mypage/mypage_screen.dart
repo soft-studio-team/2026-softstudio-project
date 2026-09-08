@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -45,7 +46,11 @@ class MyPageScreen extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 28,
-                        backgroundImage: NetworkImage(user.avatarUrl),
+                        backgroundImage: CachedNetworkImageProvider(
+                          user.avatarUrl,
+                          maxWidth: 168,
+                          maxHeight: 168,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -152,16 +157,16 @@ class MyPageScreen extends StatelessWidget {
                             context: context,
                             builder: (dialogCtx) => StatefulBuilder(
                               builder: (dialogCtx, setLocal) => AlertDialog(
-                                title: const Text('폴더 추가'),
-                                content: TextField(controller: ctrl),
-                                actions: [
-                                  TextButton(
+                              title: const Text('폴더 추가'),
+                              content: TextField(controller: ctrl),
+                              actions: [
+                                TextButton(
                                     onPressed: submitting
                                         ? null
                                         : () => Navigator.pop(dialogCtx),
                                     child: const Text('취소'),
                                   ),
-                                  TextButton(
+                                TextButton(
                                     onPressed: submitting
                                         ? null
                                         : () async {
@@ -182,8 +187,8 @@ class MyPageScreen extends StatelessWidget {
                                       submitting ? '추가하는 중...' : '추가',
                                     ),
                                   ),
-                                ],
-                              ),
+                              ],
+                            ),
                             ),
                           );
                         },
@@ -500,7 +505,11 @@ class MyPageScreen extends StatelessWidget {
             if (pendingUpload != null) {
               preview = FileImage(pendingUpload!);
             } else {
-              preview = NetworkImage(selectedAvatarUrl);
+              preview = CachedNetworkImageProvider(
+                selectedAvatarUrl,
+                maxWidth: 240,
+                maxHeight: 240,
+              );
             }
 
             return AlertDialog(
@@ -559,7 +568,11 @@ class MyPageScreen extends StatelessWidget {
                               ),
                               child: CircleAvatar(
                                 radius: 20,
-                                backgroundImage: NetworkImage(url),
+                                backgroundImage: CachedNetworkImageProvider(
+                                  url,
+                                  maxWidth: 120,
+                                  maxHeight: 120,
+                                ),
                               ),
                             ),
                           ),

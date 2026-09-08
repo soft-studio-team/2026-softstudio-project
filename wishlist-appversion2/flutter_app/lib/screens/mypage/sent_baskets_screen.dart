@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -80,12 +81,22 @@ class SentBasketsScreen extends StatelessWidget {
                                 padding: const EdgeInsets.only(right: 6),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    p.image,
+                                  child: CachedNetworkImage(
+                                    imageUrl: p.image,
                                     width: 56,
                                     height: 56,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
+                                    // 스크롤 중 프레임 드랍의 흔한 원인 — 지정 안 하면 원본 해상도 그대로
+                                    // 디코딩한 뒤 화면에서만 축소해서 그리므로, 실제 표시 크기 기준으로
+                                    // 디코딩 자체를 줄인다(56px 표시 기준 고해상도 화면 대비 3배).
+                                    memCacheWidth: 168,
+                                    memCacheHeight: 168,
+                                    placeholder: (_, __) => Container(
+                                      width: 56,
+                                      height: 56,
+                                      color: DiaryColors.paper,
+                                    ),
+                                    errorWidget: (_, __, ___) => Container(
                                       width: 56,
                                       height: 56,
                                       color: DiaryColors.paper,
@@ -136,8 +147,8 @@ Future<void> showSentBasketShareSheet(
     title: '다시 보낼 친구',
     confirmLabel: '다시 보내기',
     initialMemo: basket.memo,
-  );
-  if (picked == null || picked.friendIds.isEmpty || !context.mounted) return;
+                  );
+if (picked == null || picked.friendIds.isEmpty || !context.mounted) return;
   try {
     final sent = await store.resendBasketToFriends(
       items: basket.items,

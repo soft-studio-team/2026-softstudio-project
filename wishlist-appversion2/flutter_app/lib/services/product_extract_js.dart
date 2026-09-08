@@ -388,7 +388,25 @@ const String productExtractJs = r'''
         var inputCode=(x.name||'').replace(/^GA4ItemObj_/,'');
         if(sale&&(!regular||regular>=sale)&&(state.Currency==null||state.Currency==='KRW')&&(!state.ItemCd||!inputCode||String(state.ItemCd)===inputCode)) rows.push([sale,regular]);
       });
-      rows=uniqueRows(rows); return rows.length===1&&hs.length===1&&hs[0]===rows[0][0]&&(!rows[0][1]||(hr.length===1&&hr[0]===rows[0][1]))?result('wconcept',rows[0][0],rows[0][1],'GA4ItemObj.SalePrice','GA4ItemObj.CustomerPrice'):null;
+      rows=uniqueRows(rows);
+      if(rows.length!==1||hs.length!==1||hs[0]!==rows[0][0]||(rows[0][1]&&(hr.length!==1||hr[0]!==rows[0][1])))return null;
+      // 2026-09-08: GA4ItemObj_.SalePrice(및 이와 항상 일치하는 hidden input[name="saleprice"])는
+      // 둘 다 Google Ads 리마케팅 트래킹 전용 값이라, 쿠폰 등 조건부 할인까지 반영된 가격이
+      // 화면에 전혀 노출되지 않은 채로 두 히든 필드에 똑같이 들어있는 경우가 실측 확인됨(상품
+      // 308629259: 화면엔 "정상가 102,000원"/"쿠폰적용가 69,360원"만 있는데 hs·GA4 SalePrice는
+      // 그 중 어느 것도 아닌 86,700 — 두 히든 필드가 서로 일치해도 화면 값과는 무관했음).
+      // 지그재그와 동일한 원칙으로, 화면 텍스트에 등장하는지 반드시 교차검증한다(통화 단위
+      // "원" 앞 공백 유무가 필드마다 달라 숫자만 비교 — "102,000 원"처럼 공백이 있는 경우가
+      // 실측 확인됨).
+      var wt=pageText();
+      if(wt.indexOf(Number(rows[0][0]).toLocaleString('en-US'))>=0){
+        return result('wconcept',rows[0][0],rows[0][1],'GA4ItemObj.SalePrice','GA4ItemObj.CustomerPrice');
+      }
+      // 무조건 판매가(SalePrice)가 화면에 없으면 조건부 값으로 간주해 채택하지 않는다. 정가
+      // (CustomerPrice)가 화면에 그대로 보이면(=쿠폰 등 조건 없이 정가로 판매 중이라는 뜻)
+      // 정가 자체를 무조건가로 채택하고, 그마저 안 보이면 null(price_ambiguous)로 기권한다
+      // (틀린 값보다 빈 값이 안전 — 팀 정책).
+      return rows[0][1]&&wt.indexOf(Number(rows[0][1]).toLocaleString('en-US'))>=0?result('wconcept',rows[0][1],null,'GA4ItemObj.CustomerPrice(정상가, 조건부 SalePrice 배제)',null,{priceConfidence:'medium'}):null;
     }
 
     if(hostIs('29cm.co.kr')){
@@ -558,13 +576,68 @@ const String productExtractJs = r'''
     }
 
     if(hostIs('a-bly.com')){
-      var aid=metaOne('product:retailer_item_id'),ac=metaOne('product:price:currency'),aa=metaOne('product:availability');sale=toPrice(metaOne('product:price:amount'));var at=pageText();
-      return /^\d+$/.test(aid||'')&&ac==='KRW'&&String(aa||'').toLowerCase()==='in stock'&&sale&&at.indexOf('구매하기')>=0&&at.indexOf(won(sale))>=0&&at.indexOf('나의 예상 구매가')>=0&&at.indexOf('즉시 할인')>=0?result('ably',sale,null,'meta[product:price:amount] / 즉시 할인',null,{priceConfidence:'medium'}):null;
+      var aid=metaOne('product:retailer_item_id'),ac=metaOne('product:price:currency'),aa=metaOne('product:availability');
+      var metaPrice=toPrice(metaOne('product:price:amount'));var at=pageText();
+      var baseOk=/^\d+$/.test(aid||'')&&ac==='KRW'&&String(aa||'').toLowerCase()==='in stock'&&at.indexOf('구매하기')>=0&&at.indexOf('나의 예상 구매가')>=0&&at.indexOf('즉시 할인')>=0;
+      if(!baseOk)return null;
+      // meta[product:price:amount]는 [data-testid="쿠폰적용가"] 배지가 있는 상품에서는
+      // "즉시할인+첫구매쿠폰"이 겹겹이 적용된 조건부 최종가였다(실측 확인, 2026-09-08 —
+      // 카탈로그 3건 전부 정가(취소선)-즉시할인액으로 재계산한 값이 8월 수동 인증 당시의
+      // 무조건가와 정확히 일치했고, meta 값은 그보다 낮은 조건부 쿠폰가였다). 정책상 조건
+      // 없는 판매가만 채택해야 하므로, 이 배지가 있으면 meta 값을 그대로 쓰지 않고 정가와
+      // "즉시 할인 N%" 라벨 옆 할인액을 직접 읽어 무조건가(즉시할인가)를 재계산한다.
+      var couponEl=document.querySelector('[data-testid="쿠폰적용가"]');
+      if(!couponEl){
+        return metaPrice&&at.indexOf(won(metaPrice))>=0?result('ably',metaPrice,null,'meta[product:price:amount](쿠폰 배지 없음)',null,{priceConfidence:'medium'}):null;
+      }
+      var strikeEl=couponEl.parentElement&&couponEl.parentElement.nextElementSibling;
+      var regularPrice=(strikeEl&&strikeEl.style&&strikeEl.style.textDecorationLine==='line-through')?toPrice(strikeEl.textContent):null;
+      var instantEl=Array.from(document.querySelectorAll('[data-testid]')).find(function(e){return /^즉시 할인 \d+%$/.test(e.getAttribute('data-testid')||'');});
+      var pctMatch=instantEl?/즉시 할인 (\d+)%/.exec(instantEl.getAttribute('data-testid')):null;
+      var pct=pctMatch?Number(pctMatch[1]):null;
+      var amountEl=instantEl&&instantEl.parentElement&&instantEl.parentElement.parentElement&&instantEl.parentElement.parentElement.nextElementSibling;
+      var discountAmount=amountEl?toPrice(amountEl.textContent):null;
+      if(!regularPrice||!discountAmount||!pct)return null;
+      sale=regularPrice-discountAmount;
+      // 내부 정합성 확인: 재계산한 할인액이 표시된 할인율과 대략 일치해야 함(반올림 오차 허용).
+      var pctOk=Math.abs((discountAmount/regularPrice*100)-pct)<=1.5;
+      return sale>0&&sale<regularPrice&&pctOk?result('ably',sale,regularPrice,'정가(취소선) - "즉시 할인 N%" 할인액(재계산, 쿠폰가 배제)','정가(취소선)',{priceConfidence:'medium'}):null;
     }
 
     if(hostIs('zigzag.kr')){
       var zn=document.querySelector('script#__NEXT_DATA__');if(!zn)return null;try{state=JSON.parse(zn.textContent);var qs=state.props.pageProps.dehydratedState.queries;}catch(e){return null;}var zt=pageText();
       asArray(qs).forEach(function(q){try{var p=q.state.data.product,pr=p.product_price;if(!/^\d+$/.test(String(p.id||''))||p.is_purchasable!==true||p.sales_status!=='ON_SALE'||p.display_status!=='VISIBLE')return;sale=toPrice(pr.display_final_price.final_price.price);regular=toPrice(pr.max_price_info.price);var n=firstStr(p.name);if(sale&&(!regular||regular>=sale)&&n&&zt.indexOf(n)>=0&&zt.indexOf('구매하기')>=0&&zt.indexOf(Number(sale).toLocaleString('en-US'))>=0)rows.push([sale,regular===sale?null:regular]);}catch(e){}});rows=uniqueRows(rows);return rows.length===1?result('zigzag',rows[0][0],rows[0][1],'product.product_price.display_final_price.final_price.price','product.product_price.max_price_info.price',{priceConfidence:'medium'}):null;
+    }
+
+    if(hostIs('posty.kr')){
+      // 포스티는 지그재그와 같은 CDN(cf.product-image.s.zigzag.kr)을 쓰지만 __NEXT_DATA__
+      // 스키마는 훨씬 단순하다(dehydratedState.queries도, product_price도 없음).
+      // 더구나 __NEXT_DATA__/JSON-LD/og:price가 공통으로 담는 값은
+      // pageProps.product.final_price_info.final_price 하나뿐인데, 실측 결과 이 값이
+      // 상품마다 "쿠폰할인가"(조건부)이거나 "판매가"(무조건)이거나 뒤섞여 있어
+      // 이 필드만으로는 정책(무조건 판매가만 채택) 준수 여부를 알 수 없다.
+      // 대신 화면에 노출되는 data-testid를 신뢰한다:
+      //   [data-testid="판매가"]      = 쿠폰 없이 확정된 현재 판매가(있으면 이 값)
+      //   [data-testid="최초판매가"]  = 정가(할인 전 가격, 비교용)
+      //   [data-testid="쿠폰할인가"]  = 쿠폰 적용 조건부가 — 정책상 사용 금지, 아예 안 읽는다.
+      // "판매가"가 없으면(즉시할인 없이 쿠폰만 있는 상품) 최초판매가 자체가 무조건가다.
+      var pn=document.querySelector('script#__NEXT_DATA__');if(!pn)return null;var pp;try{state=JSON.parse(pn.textContent);pp=state.props.pageProps.product;}catch(e){return null;}
+      if(!pp||!/^\d+$/.test(String(pp.id||''))||pp.sales_status!=='ON_SALE'||pp.display_status!=='VISIBLE')return null;
+      var pnm=firstStr(pp.name);if(!pnm)return null;
+      var psEl=document.querySelector('[data-testid="판매가"]'),plEl=document.querySelector('[data-testid="최초판매가"]');
+      sale=toPrice(psEl?psEl.textContent:(plEl?plEl.textContent:null));
+      var plPrice=toPrice(plEl?plEl.textContent:null);
+      regular=(plPrice&&plPrice>sale)?plPrice:null;
+      var pt=pageText();
+      // 2026-09-08: 실기기 배치 테스트에서 케이스A 상품(169042232)만 매번 timeout까지
+      // 다 채우고 price_ambiguous로 실패하는 걸 재현·진단함(타이밍/하이드레이션 레이스가
+      // 아니라 확정적 버그였음) — __NEXT_DATA__의 pageProps.product.name에 연속 공백
+      // 두 칸(charCode 32,32)이 들어있는데("바겐슈타이거  플래티넘", 관리자 페이지에서
+      // 상품명 조합 시 생긴 것으로 추정), pageText()는 CSS 렌더링과 동일하게 연속
+      // 공백을 하나로 접어버려 pt.indexOf(pnm)이 항상 -1이었다. 이름을 pageText()와
+      // 동일한 방식(연속 공백 → 단일 공백)으로 정규화한 뒤 비교하도록 수정.
+      var pnmNorm=pnm.replace(/\s+/g,' ');
+      return sale&&pt.indexOf(pnmNorm)>=0&&pt.indexOf('구매하기')>=0&&pt.indexOf(Number(sale).toLocaleString('en-US'))>=0?result('posty',sale,regular,'[data-testid="판매가"](없으면 [data-testid="최초판매가"])','[data-testid="최초판매가"]',{priceConfidence:'medium'}):null;
     }
 
     if(hostIs('kream.co.kr')){
@@ -756,7 +829,7 @@ const String productExtractJs = r'''
     if(hostIs('nugu.jp')||hostIs('shein.com'))return null;
     return null;
   }
-  var managedDomains=['musinsa.com','wconcept.co.kr','29cm.co.kr','fila.co.kr','hago.kr','lookpin.co.kr','topten10.goodwearmall.com','mujikorea.co.kr','hmall.com','lotteon.com','mixxo.com','dailyjou.com','leekorea.co.kr','filluminate.com','urbanstoff.com','not4u.kr','insilence.co.kr','fabregat.kr','hotping.co.kr','uniqlo.com','ssg.com','hi.thehyundai.com','a-bly.com','zigzag.kr','kream.co.kr','guesskorea.com','levi.co.kr','vans.co.kr','covernat.co.kr','code-graphy.com','whoau.com','hm.com','gap.com','aritzia.com','noirer.com','liphop.com','marithe-official.com','mahagrid.com','vivastudio.co.kr','amomento.co','anderssonbell.com','yaleapparel.co.kr','ohora.kr','withyoon.com','66girls.co.kr','partimento.com','fashionplus.co.kr','frombeginning.co.kr','lfmall.co.kr','thereformation.com','nike.com','oliveyoung.co.kr','queenit.kr','brandi.co.kr','nugu.jp','cjonstyle.com','4910.kr','ssfshop.com','zara.com','shein.com','elandmall.co.kr'];
+  var managedDomains=['musinsa.com','wconcept.co.kr','29cm.co.kr','fila.co.kr','hago.kr','lookpin.co.kr','topten10.goodwearmall.com','mujikorea.co.kr','hmall.com','lotteon.com','mixxo.com','dailyjou.com','leekorea.co.kr','filluminate.com','urbanstoff.com','not4u.kr','insilence.co.kr','fabregat.kr','hotping.co.kr','uniqlo.com','ssg.com','hi.thehyundai.com','a-bly.com','zigzag.kr','posty.kr','kream.co.kr','guesskorea.com','levi.co.kr','vans.co.kr','covernat.co.kr','code-graphy.com','whoau.com','hm.com','gap.com','aritzia.com','noirer.com','liphop.com','marithe-official.com','mahagrid.com','vivastudio.co.kr','amomento.co','anderssonbell.com','yaleapparel.co.kr','ohora.kr','withyoon.com','66girls.co.kr','partimento.com','fashionplus.co.kr','frombeginning.co.kr','lfmall.co.kr','thereformation.com','nike.com','oliveyoung.co.kr','queenit.kr','brandi.co.kr','nugu.jp','cjonstyle.com','4910.kr','ssfshop.com','zara.com','shein.com','elandmall.co.kr'];
   var managedSite=managedDomains.some(hostIs);
   var sitePricing=extractVerifiedSitePricing();
   // 올리브영: API/RSC 대기 중 name·image만 반환하면 scraper가 non-retryable로

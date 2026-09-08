@@ -11,12 +11,28 @@ from pathlib import Path
 ADB = r"C:\Users\tingo\AppData\Local\Android\sdk\platform-tools\adb.exe"
 DEVICE = "R54RB01SMVB"  # Tab S7 only; emulator may stay connected for other projects
 FLUTTER = r"C:\Dev\0.sdk\flutter\bin\flutter.bat"
-APP_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\flutter_app")
-LOG_DIR = Path(r"C:\Users\tingo\Dev\2026-softstudio-project\wishlist-appversion2\audit-logs")
+# 2026-09-07: 오늘 만든 수정은 전부 _worktree_mall_audit(브랜치 fix/mall-accuracy-audit)에만
+# 있고 다른 경로(예: 예전 C:\Users\tingo\Dev\...)에는 없다 -- 반드시 이 worktree 경로를
+# 가리켜야 방금 만든 수정이 실제로 테스트된다. 실행 전 이 경로가 최신인지 다시 확인할 것.
+APP_DIR = Path(r"C:\0.My_Project\00.DEV_PROJECT\5.SOFT_SPARK\2026-softstudio-project\_worktree_mall_audit\wishlist-appversion2\flutter_app")
+LOG_DIR = Path(r"C:\0.My_Project\00.DEV_PROJECT\5.SOFT_SPARK\2026-softstudio-project\_worktree_mall_audit\wishlist-appversion2\audit-logs")
 
+# 2026-09-07: 규칙 지정 트랙(mall-fix-plan-2026-09-07.md 3차 갱신) 12개 몰 중
+# 카탈로그가 있는 12개.
+# 순서: A-1(오늘 코드 건드린 몰, 최우선) -> A-2(회귀 재검증, 순위 합산 순).
 MALLS = [
+    "무신사",
+    "지그재그",
     "에이블리",
-    "SSG",
+    "퀸잇",
+    "29CM",
+    "KREAM",
+    "유니클로",
+    "W컨셉",
+    "4910",
+    "나이키",
+    "SSF샵",
+    "포스티",
 ]
 
 COOLDOWN_SEC = 12

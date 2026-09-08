@@ -180,4 +180,22 @@ void main() {
       contains('4910은 SSR 시 판매가가 __NEXT_DATA__에만 있고'),
     );
   });
+
+  test('에이블리는 쿠폰적용가가 보이면 정가를 확정하지 않고 가격을 비운다', () {
+    expect(
+      productExtractJs,
+      contains("if(at.indexOf('쿠폰적용가')>=0) return null;"),
+    );
+    // 이 가드는 hostIs('a-bly.com') 블록 안, 확정 판정(return .../result('ably'...)) 이전에 있어야 한다.
+    final ablyBlockStart = productExtractJs.indexOf("if(hostIs('a-bly.com')){");
+    final guardIndex = productExtractJs.indexOf(
+      "if(at.indexOf('쿠폰적용가')>=0) return null;",
+    );
+    final confirmIndex = productExtractJs.indexOf(
+      "result('ably',sale,null,'meta[product:price:amount] / 즉시 할인'",
+    );
+    expect(ablyBlockStart, greaterThan(-1));
+    expect(guardIndex, greaterThan(ablyBlockStart));
+    expect(confirmIndex, greaterThan(guardIndex));
+  });
 }

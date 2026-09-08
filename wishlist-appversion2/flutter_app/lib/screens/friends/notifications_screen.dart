@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -64,7 +65,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     children: [
                       CircleAvatar(
                         radius: 22,
-                        backgroundImage: NetworkImage(n.fromAvatar),
+                        backgroundImage: CachedNetworkImageProvider(
+                          n.fromAvatar,
+                          maxWidth: 132,
+                          maxHeight: 132,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(

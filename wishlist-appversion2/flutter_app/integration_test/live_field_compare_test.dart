@@ -11,12 +11,12 @@ import 'package:figmadesign/services/webview_scraper.dart';
 
 import 'live_field_compare_catalog.dart';
 
-/// 자동 채움 50몰의 WebView 추출 값과 실제 페이지 확인 값을 비교한다.
+/// A트랙(규칙 지정/기계적 추출) 12몰의 WebView 추출 값과 실제 페이지 확인 값을 비교한다.
 /// AppStore/Firebase 저장 없음. --no-uninstall 필수.
 ///
 ///   flutter test integration_test/live_field_compare_test.dart
 ///     -d R3CY10LF2HE --no-uninstall
-///     --dart-define=LIVE_COMPARE_MALLS=무신사,반스,나이키
+///     --dart-define=LIVE_COMPARE_MALLS=무신사,포스티,나이키
 Future<OnDeviceExtract?> _extract(WidgetTester tester, String url) async {
   final host = Uri.tryParse(url)?.host.toLowerCase() ?? '';
   final isAbly = host == 'a-bly.com' || host.endsWith('.a-bly.com');

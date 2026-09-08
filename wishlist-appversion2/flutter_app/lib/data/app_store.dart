@@ -93,6 +93,18 @@ class AppStore extends ChangeNotifier {
     avatarUrl: 'https://api.dicebear.com/7.x/thumbs/png?seed=guest',
   );
 
+  // salkamalkaFeed/reviewFeed 같은 계산된 getter를 캐싱하기 위한 버전 카운터.
+  // notifyListeners()를 부를 때마다(=상태가 실제로 바뀌었을 때마다) 증가시켜서,
+  // 이 값이 그대로면 이전에 계산해둔 결과를 재사용해도 안전하다는 걸 보장한다.
+  // 개별 필드마다 캐시 무효화 지점을 일일이 찾아다닐 필요가 없다.
+  int _version = 0;
+
+  @override
+  void notifyListeners() {
+    _version++;
+    super.notifyListeners();
+  }
+
   Future<void> init() async {
     firebaseReady = _firebaseConfigured;
     if (!firebaseReady) {
@@ -166,18 +178,36 @@ class AppStore extends ChangeNotifier {
       handle: _pendingHandle,
     );
     await _clearPendingProfileDraft();
-    final profile = await _repo.loadProfile(fresh.uid);
-    if (profile != null) {
-      currentUser = profile;
-    }
-    tabs = await _repo.loadTabs(fresh.uid);
-    products = await _repo.loadProducts(fresh.uid);
+
+    // 서로 관계없는 Firestore 읽기를 병렬로 날린다 — 전부 순차 호출(약 10개)이라
+    // 로그인 직후 체감 대기시간이 길었던 부분. 진짜 의존관계가 있는 체인만
+    // (팔로잉→친구목록→친구위시리스트→친구 리뷰, 팔로워→팔로워목록) 그 안에서
+    // 순서를 지키고, 나머지는 동시에 진행해서 실제 대기시간을 줄인다. 아래에서
+    // await 없이 만들어두는 것만으로 이미 백그라운드에서 시작된다.
+    final profileFuture = _repo.loadProfile(fresh.uid);
+    final tabsFuture = _repo.loadTabs(fresh.uid);
+    final productsFuture = _repo.loadProducts(fresh.uid);
+    final followerUsersFuture = _repo
+        .followerIds(fresh.uid)
+        .then((ids) => _repo.loadUsers(ids));
+    final inboxFuture = _loadInboxSafely(fresh.uid);
+    final myReviewsFuture = _loadMyReviewsSafely(fresh.uid);
+
     final following = (await _repo.followingIds(fresh.uid)).toSet();
     friends = await _repo.loadDirectory(myUid: fresh.uid, following: following);
     friendWishlists = await _repo.loadFriendWishlists(friends);
-    followerUsers = await _repo.loadUsers(await _repo.followerIds(fresh.uid));
-    await _loadInboxSafely(fresh.uid);
-    await _loadReviewsSafely(fresh.uid);
+    await _loadFriendReviewsSafely();
+
+    followerUsers = await followerUsersFuture;
+    final profile = await profileFuture;
+    if (profile != null) {
+      currentUser = profile;
+    }
+    tabs = await tabsFuture;
+    products = await productsFuture;
+    await inboxFuture;
+    await myReviewsFuture;
+
     _syncFriendCounts();
     currentUser = currentUser.copyWith(
       following: following.length,
@@ -266,6 +296,13 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> _loadReviewsSafely(String userId) async {
+    await _loadMyReviewsSafely(userId);
+    await _loadFriendReviewsSafely();
+  }
+
+  /// friends 목록과 무관한 부분만 — _hydrateSession에서 다른 독립적인
+  /// Firestore 읽기들과 병렬로 돌리기 위해 분리했다.
+  Future<void> _loadMyReviewsSafely(String userId) async {
     try {
       myReviews = await _repo.loadReviews(userId);
     } catch (_) {
@@ -274,6 +311,10 @@ class AppStore extends ChangeNotifier {
     if (myReviews.isEmpty) {
       await _restoreLocalReviews();
     }
+  }
+
+  /// friends가 채워진 뒤에만 부를 수 있다(친구 리뷰는 친구 목록 기준으로 읽음).
+  Future<void> _loadFriendReviewsSafely() async {
     try {
       friendReviews = await _repo.loadFriendReviews(friends);
     } catch (_) {
@@ -523,17 +564,28 @@ class AppStore extends ChangeNotifier {
     return pool[Random().nextInt(pool.length)];
   }
 
+  /// 탭 순서 변경 — 드래그로 놓는 즉시 화면에 반영하고(낙관적 업데이트),
+  /// Firestore 저장은 뒤에서 진행한다. 원래는 저장이 끝날 때까지 기다린
+  /// 뒤에야 notifyListeners()가 호출돼서, 네트워크 왕복 동안 드래그한
+  /// 탭이 원래 자리로 보이는 것처럼 느껴졌다(체감 지연의 원인).
   Future<void> reorderTabs(int oldIndex, int newIndex) async {
     final allTab = tabs.firstWhere((t) => t.id == 'all');
     final rest = tabs.where((t) => t.id != 'all').toList();
     if (oldIndex < 0 || oldIndex >= rest.length) return;
     final target = newIndex;
     if (target < 0 || target >= rest.length) return;
+    final previous = tabs;
     final item = rest.removeAt(oldIndex);
     rest.insert(target, item);
     tabs = [allTab, ...rest];
-    await _persistTabs();
     notifyListeners();
+    try {
+      await _persistTabs();
+    } catch (_) {
+      tabs = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   int countFor(WishlistTab tab) {
@@ -570,34 +622,61 @@ class AppStore extends ChangeNotifier {
         isPublic: isPublic,
         colorHex: hex,
       );
+      final previousTabs = tabs;
+      final previousSelected = selectedTabId;
       tabs = [...tabs, tab];
       selectedTabId = tab.id;
-      await _persistTabs();
       notifyListeners();
+      try {
+        await _persistTabs();
+      } catch (_) {
+        tabs = previousTabs;
+        selectedTabId = previousSelected;
+        notifyListeners();
+        rethrow;
+      }
       return true;
     });
     return created ?? false;
   }
 
   Future<void> renameTab(String id, String name) async {
+    final previous = tabs;
     tabs = tabs.map((t) => t.id == id ? t.copyWith(name: name) : t).toList();
-    await _persistTabs();
     notifyListeners();
+    try {
+      await _persistTabs();
+    } catch (_) {
+      tabs = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> deleteTab(String id) async {
     if (id == 'all') return;
+    final previousTabs = tabs;
+    final previousSelected = selectedTabId;
     tabs = tabs.where((t) => t.id != id).toList();
     if (selectedTabId == id) selectedTabId = 'all';
+    notifyListeners();
     final userId = uid;
     if (userId != null) {
-      await _repo.deleteTabDoc(userId, id);
-      await _persistTabs();
+      try {
+        await _repo.deleteTabDoc(userId, id);
+        await _persistTabs();
+      } catch (_) {
+        tabs = previousTabs;
+        selectedTabId = previousSelected;
+        notifyListeners();
+        rethrow;
+      }
     }
-    notifyListeners();
   }
 
   Future<void> toggleTabPublic(String id) async {
+    final previousTabs = tabs;
+    final previousProducts = products;
     tabs = tabs
         .map((t) => t.id == id ? t.copyWith(isPublic: !t.isPublic) : t)
         .toList();
@@ -607,8 +686,15 @@ class AppStore extends ChangeNotifier {
       for (final p in products)
         p.listId == id ? p.copyWith(isPublic: isPublic) : p,
     ];
-    await _persistTabs();
     notifyListeners();
+    try {
+      await _persistTabs();
+    } catch (_) {
+      tabs = previousTabs;
+      products = previousProducts;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> removeProduct(int id) async {
@@ -705,27 +791,27 @@ class AppStore extends ChangeNotifier {
         'addParsedProduct:${info.productUrl.isEmpty ? info.name : info.productUrl}';
     return _withLock(lockKey, () async {
       final trimmedMemo = memo.trim();
-      final id = (products.map((e) => e.id).fold<int>(0, max)) + 1;
-      final product = Product(
-        id: id == 0 ? DateTime.now().millisecondsSinceEpoch : id,
-        listId: listId,
-        name: info.name,
-        price: info.price,
+    final id = (products.map((e) => e.id).fold<int>(0, max)) + 1;
+    final product = Product(
+      id: id == 0 ? DateTime.now().millisecondsSinceEpoch : id,
+      listId: listId,
+      name: info.name,
+      price: info.price,
         image: info.image,
-        platform: info.platform,
-        originalPrice: info.originalPrice,
-        discount: info.discount,
-        productUrl: info.productUrl,
+      platform: info.platform,
+      originalPrice: info.originalPrice,
+      discount: info.discount,
+      productUrl: info.productUrl,
         memo: trimmedMemo.isEmpty ? null : trimmedMemo,
-        isPublic: _isListPublic(listId),
-      );
-      products = [...products, product];
-      final userId = uid;
-      if (userId != null) {
-        await _repo.upsertProduct(userId, product);
-      }
-      notifyListeners();
-      return product;
+      isPublic: _isListPublic(listId),
+    );
+    products = [...products, product];
+    final userId = uid;
+    if (userId != null) {
+      await _repo.upsertProduct(userId, product);
+    }
+    notifyListeners();
+    return product;
     });
   }
 
@@ -798,14 +884,21 @@ class AppStore extends ChangeNotifier {
   FriendSalkamalka? friendSalkamalkaByFriendId(String friendId) =>
       friendSalkamalkaGroups.where((g) => g.friendId == friendId).firstOrNull;
 
+  List<SalkamalkaFeedEntry>? _salkamalkaFeedCache;
+  int _salkamalkaFeedCacheVersion = -1;
+
   /// Feed behind 내 친구 탭 > 살까말까. Display-level filtering only — nothing is
   /// dropped from [sentBaskets], which stays the full archive for 마이페이지.
   List<SalkamalkaFeedEntry> get salkamalkaFeed {
+    if (_salkamalkaFeedCache != null &&
+        _salkamalkaFeedCacheVersion == _version) {
+      return _salkamalkaFeedCache!;
+    }
     final myUid = uid ?? '';
     final out = <SalkamalkaFeedEntry>[
       for (final b in receivedBaskets)
         if (!_isSentByMe(b, myUid))
-          SalkamalkaFeedEntry(basket: b, isMine: false),
+        SalkamalkaFeedEntry(basket: b, isMine: false),
       // Link / KakaoTalk shares never went to an app friend, so they do not
       // belong in the friends feed.
       for (final b in sentBaskets)
@@ -819,8 +912,11 @@ class AppStore extends ChangeNotifier {
       if (_hiddenFeedIds.contains(e.basket.commentThreadId)) continue;
       byId[e.basket.id] = e;
     }
-    return byId.values.toList()
+    final result = byId.values.toList()
       ..sort((a, b) => b.basket.sharedAt.compareTo(a.basket.sharedAt));
+    _salkamalkaFeedCache = result;
+    _salkamalkaFeedCacheVersion = _version;
+    return result;
   }
 
   bool _isSentByMe(SharedBasket basket, String myUid) {
@@ -975,27 +1071,27 @@ class AppStore extends ChangeNotifier {
     if (idx < 0) return false;
     if (!_actionCooldown.begin('follow:$friendId')) return false;
     try {
-      final wasFollowing = friends[idx].isFollowing;
-      final next = !wasFollowing;
-      await _repo.setFollowing(
-        myUid: userId,
-        targetUid: friendId,
-        follow: next,
-        actor: next ? currentUser.copyWith(uid: userId) : null,
-      );
-      friends = [
-        for (var i = 0; i < friends.length; i++)
-          if (i == idx) friends[i].copyWith(isFollowing: next) else friends[i],
-      ];
-      currentUser = currentUser.copyWith(
-        following: friends.where((f) => f.isFollowing).length,
-      );
-      friendWishlists = await _repo.loadFriendWishlists(friends);
-      try {
-        friendReviews = await _repo.loadFriendReviews(friends);
-      } catch (_) {}
-      _syncFriendCounts();
-      notifyListeners();
+    final wasFollowing = friends[idx].isFollowing;
+    final next = !wasFollowing;
+    await _repo.setFollowing(
+      myUid: userId,
+      targetUid: friendId,
+      follow: next,
+      actor: next ? currentUser.copyWith(uid: userId) : null,
+    );
+    friends = [
+      for (var i = 0; i < friends.length; i++)
+        if (i == idx) friends[i].copyWith(isFollowing: next) else friends[i],
+    ];
+    currentUser = currentUser.copyWith(
+      following: friends.where((f) => f.isFollowing).length,
+    );
+    friendWishlists = await _repo.loadFriendWishlists(friends);
+    try {
+      friendReviews = await _repo.loadFriendReviews(friends);
+    } catch (_) {}
+    _syncFriendCounts();
+    notifyListeners();
       return true;
     } finally {
       _actionCooldown.end('follow:$friendId');
@@ -1213,37 +1309,37 @@ class AppStore extends ChangeNotifier {
       throw Exception('보낼 친구를 선택해 주세요.');
     }
     final sent = await _withLock('sendBasket:${existingId ?? 'new'}', () async {
-      _ensureFirebase();
-      final userId = uid;
-      if (userId == null) {
-        throw Exception('로그인된 계정이 없어요.');
-      }
+    _ensureFirebase();
+    final userId = uid;
+    if (userId == null) {
+      throw Exception('로그인된 계정이 없어요.');
+    }
       final existingBasket = existingId == null
           ? null
           : sharedBaskets[existingId];
       final threadId = existingBasket?.commentThreadId.isNotEmpty == true
           ? existingBasket!.commentThreadId
           : (existingId ?? 'sb-${DateTime.now().millisecondsSinceEpoch}');
-      await _repo.sendBasketToFriends(
-        from: currentUser.copyWith(uid: userId),
-        recipientUids: friendIds,
-        items: items,
+    await _repo.sendBasketToFriends(
+      from: currentUser.copyWith(uid: userId),
+      recipientUids: friendIds,
+      items: items,
         threadId: threadId,
         memo: memo,
-      );
-      final names = [
-        for (final id in friendIds) friendById(id)?.name ?? '',
-      ].where((n) => n.isNotEmpty).toList();
+    );
+    final names = [
+      for (final id in friendIds) friendById(id)?.name ?? '',
+    ].where((n) => n.isNotEmpty).toList();
       final shared = await rememberSentBasket(
-        items: items,
-        title: '${currentUser.name}의 살까말까',
-        recipientUids: friendIds,
-        recipientNames: names,
+      items: items,
+      title: '${currentUser.name}의 살까말까',
+      recipientUids: friendIds,
+      recipientNames: names,
         channels: const [SharedChannel.friends],
         existingId: threadId,
         touchSharedAt: true,
         memo: memo,
-      );
+    );
       // Re-sending a basket that was X-ed out of the friends feed brings it back.
       // Covers both re-used ids (마이페이지 > 다시 보내기) and freshly minted ones.
       await unhideFromSalkamalkaFeed(shared.id);
@@ -1438,20 +1534,20 @@ class AppStore extends ChangeNotifier {
     notificationsEnabled = _readNotificationsEnabled(prefs, uid ?? 'guest');
     if (sharedBaskets.isEmpty) {
       final sharedRaw = prefs.getString('${_sharedKey}_${uid ?? 'guest'}');
-      if (sharedRaw != null) {
-        final list = jsonDecode(sharedRaw) as List;
-        for (final e in list) {
-          final map = Map<String, dynamic>.from(e as Map);
-          final basket = SharedBasket.fromJson(map);
+    if (sharedRaw != null) {
+      final list = jsonDecode(sharedRaw) as List;
+      for (final e in list) {
+        final map = Map<String, dynamic>.from(e as Map);
+        final basket = SharedBasket.fromJson(map);
           if (uid != null &&
               basket.fromUid.isNotEmpty &&
               basket.fromUid != uid) {
             continue;
           }
-          sharedBaskets[basket.id] = basket;
-        }
+        sharedBaskets[basket.id] = basket;
       }
     }
+  }
     await _restoreHiddenFeedLocal();
   }
 
@@ -1508,13 +1604,21 @@ class AppStore extends ChangeNotifier {
     return null;
   }
 
+  List<ProductReview>? _reviewFeedCache;
+  int _reviewFeedCacheVersion = -1;
+
   List<ProductReview> get reviewFeed {
+    if (_reviewFeedCache != null && _reviewFeedCacheVersion == _version) {
+      return _reviewFeedCache!;
+    }
     final byId = <String, ProductReview>{};
     for (final r in [...friendReviews, ...myReviews]) {
       byId[r.id] = r;
     }
     final list = byId.values.toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    _reviewFeedCache = list;
+    _reviewFeedCacheVersion = _version;
     return list;
   }
 
@@ -1575,63 +1679,63 @@ class AppStore extends ChangeNotifier {
     }
 
     return _withLock('publishReview:${existingId ?? product.id}', () async {
-      final now = DateTime.now();
-      final existing = existingId != null
-          ? myReviews.where((r) => r.id == existingId).firstOrNull
-          : myReviewForProduct(product.id);
-      final reviewId = existing?.id ?? 'rv-${now.millisecondsSinceEpoch}';
-      final uploaded = [...imageUrls];
-      for (var i = 0; i < newPhotos.length; i++) {
-        uploaded.add(
-          await _storeReviewPhoto(
-            userId: userId,
-            reviewId: reviewId,
-            file: newPhotos[i],
-            index: uploaded.length,
-          ),
-        );
-      }
+    final now = DateTime.now();
+    final existing = existingId != null
+        ? myReviews.where((r) => r.id == existingId).firstOrNull
+        : myReviewForProduct(product.id);
+    final reviewId = existing?.id ?? 'rv-${now.millisecondsSinceEpoch}';
+    final uploaded = [...imageUrls];
+    for (var i = 0; i < newPhotos.length; i++) {
+      uploaded.add(
+        await _storeReviewPhoto(
+          userId: userId,
+          reviewId: reviewId,
+          file: newPhotos[i],
+          index: uploaded.length,
+        ),
+      );
+    }
 
-      final review = existing == null
-          ? ProductReview(
-              id: reviewId,
-              authorUid: userId,
-              authorName: currentUser.name,
-              authorHandle: currentUser.handle,
-              authorAvatar: currentUser.avatarUrl,
-              productId: product.id,
-              productName: product.name,
-              productImage: product.image,
-              productPlatform: product.platform,
-              productPrice: product.price,
-              productUrl: product.productUrl,
-              title: trimmedTitle,
-              body: trimmedBody,
-              createdAt: now,
-              updatedAt: now,
-              mood: mood,
-              imageUrls: uploaded,
-            )
-          : existing.copyWith(
-              title: trimmedTitle,
-              body: trimmedBody,
-              updatedAt: now,
-              authorName: currentUser.name,
-              authorHandle: currentUser.handle,
-              authorAvatar: currentUser.avatarUrl,
-              mood: mood,
-              imageUrls: uploaded,
-            );
+    final review = existing == null
+        ? ProductReview(
+            id: reviewId,
+            authorUid: userId,
+            authorName: currentUser.name,
+            authorHandle: currentUser.handle,
+            authorAvatar: currentUser.avatarUrl,
+            productId: product.id,
+            productName: product.name,
+            productImage: product.image,
+            productPlatform: product.platform,
+            productPrice: product.price,
+            productUrl: product.productUrl,
+            title: trimmedTitle,
+            body: trimmedBody,
+            createdAt: now,
+            updatedAt: now,
+            mood: mood,
+            imageUrls: uploaded,
+          )
+        : existing.copyWith(
+            title: trimmedTitle,
+            body: trimmedBody,
+            updatedAt: now,
+            authorName: currentUser.name,
+            authorHandle: currentUser.handle,
+            authorAvatar: currentUser.avatarUrl,
+            mood: mood,
+            imageUrls: uploaded,
+          );
 
-      myReviews = [review, ...myReviews.where((r) => r.id != review.id)];
-      await _persistLocalReviews();
-      try {
-        await _repo.upsertReview(userId, review);
-      } catch (_) {
-        // Local review still works if Firestore rules are not deployed yet.
-      }
-      notifyListeners();
-      return review;
+    myReviews = [review, ...myReviews.where((r) => r.id != review.id)];
+    await _persistLocalReviews();
+    try {
+      await _repo.upsertReview(userId, review);
+    } catch (_) {
+      // Local review still works if Firestore rules are not deployed yet.
+    }
+    notifyListeners();
+    return review;
     });
   }
 

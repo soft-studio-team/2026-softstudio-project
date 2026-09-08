@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -20,6 +21,22 @@ class ShareIntakeScreen extends StatefulWidget {
 }
 
 class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
+  // 서버/엔진이 내려주는 필드 키(title/price/image_url 등)를 사용자가 보는
+  // 화면에 그대로 노출하지 않기 위한 한글 라벨 변환. 모르는 키는 원문 그대로
+  // 보여줘서(하위 호환) 조용히 정보가 사라지지는 않게 한다.
+  static String _missingFieldLabel(String field) {
+    switch (field) {
+      case 'title':
+        return '상품명';
+      case 'price':
+        return '가격';
+      case 'image_url':
+        return '이미지';
+      default:
+        return field;
+    }
+  }
+
   final bridge = ParsingBridge();
   final urlCtrl = TextEditingController();
   final titleCtrl = TextEditingController();
@@ -114,20 +131,20 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
       error = null;
     });
     try {
-      final store = context.read<AppStore>();
-      final product = await store.addParsedProduct(
-        info,
-        listId: selectedListId!,
+    final store = context.read<AppStore>();
+    final product = await store.addParsedProduct(
+      info,
+      listId: selectedListId!,
         memo: memoCtrl.text,
-      );
+    );
       if (product == null) return;
-      store.setPendingShareUrl(null);
-      if (mounted) {
+    store.setPendingShareUrl(null);
+    if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('${product.name} 을(를) 저장했어요')));
-        context.go('/');
-      }
+      context.go('/');
+    }
     } finally {
       if (mounted) setState(() => saving = false);
     }
@@ -214,12 +231,22 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                         if (parsed!.image.isNotEmpty)
                           ClipRRect(
                             borderRadius: BorderRadius.circular(10),
-                            child: Image.network(
-                              parsed!.image,
+                            child: CachedNetworkImage(
+                              imageUrl: parsed!.image,
                               width: 72,
                               height: 72,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              // 스크롤 중 프레임 드랍의 흔한 원인 — 지정 안 하면 원본 해상도 그대로
+                              // 디코딩한 뒤 화면에서만 축소해서 그리므로, 실제 표시 크기 기준으로
+                              // 디코딩 자체를 줄인다(72px 표시 기준 고해상도 화면 대비 3배).
+                              memCacheWidth: 216,
+                              memCacheHeight: 216,
+                              placeholder: (_, __) => Container(
+                                width: 72,
+                                height: 72,
+                                color: DiaryColors.grid,
+                              ),
+                              errorWidget: (_, __, ___) => Container(
                                 width: 72,
                                 height: 72,
                                 color: DiaryColors.grid,
@@ -290,7 +317,8 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
                     Text(
                       parsed!.needsManualPrice
                           ? '가격을 직접 입력하면 저장할 수 있어요'
-                          : '보완 필요: ${parsed!.missingFields.join(', ')}',
+                          : '보완 필요: '
+                              '${parsed!.missingFields.map(_missingFieldLabel).join(', ')}',
                       style: DiaryTheme.body(12, color: DiaryColors.pin),
                     ),
                   ],

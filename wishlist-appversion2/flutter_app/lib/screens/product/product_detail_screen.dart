@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -137,11 +138,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 borderRadius: BorderRadius.circular(12),
                                 child: AspectRatio(
                                   aspectRatio: 1,
-                                  child: Image.network(
-                                    product.image,
+                                  child: CachedNetworkImage(
+                                    imageUrl: product.image,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) =>
-                                        Container(color: DiaryColors.grid),
+                                    placeholder: (_, __) => Container(
+                                      color: DiaryColors.grid,
+                                    ),
+                                    errorWidget: (_, __, ___) => Container(
+                                      color: DiaryColors.grid,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -181,7 +186,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                           ).copyWith(
                                             decoration:
                                                 TextDecoration.lineThrough,
-                                          ),
+                                      ),
                                     ),
                                   ],
                                 ],

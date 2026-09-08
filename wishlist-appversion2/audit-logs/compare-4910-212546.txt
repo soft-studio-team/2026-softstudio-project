@@ -1,0 +1,93 @@
+Resolving dependencies...
+Downloading packages...
+  _flutterfire_internals 1.3.76 (1.3.77 available)
+  clock 1.1.2 (1.1.3 available)
+  cloud_firestore 6.8.0 (6.9.0 available)
+  cloud_firestore_platform_interface 8.0.6 (8.0.7 available)
+  cloud_firestore_web 5.7.2 (5.7.3 available)
+  code_assets 1.2.1 (2.0.0 available)
+  cross_file 0.3.5+4 (0.3.5+5 available)
+  dbus 0.7.14 (0.7.15 available)
+  file_selector_linux 0.9.4 (0.9.4+1 available)
+  file_selector_macos 0.9.5 (0.9.5+1 available)
+  file_selector_windows 0.9.3+5 (0.9.3+6 available)
+  firebase_auth 6.5.7 (6.6.1 available)
+  firebase_auth_platform_interface 9.0.6 (9.0.7 available)
+  firebase_auth_web 6.2.6 (6.2.7 available)
+  firebase_core 4.13.0 (4.14.0 available)
+  firebase_core_platform_interface 8.1.0 (8.1.1 available)
+  firebase_core_web 3.10.0 (3.11.0 available)
+  firebase_messaging 16.5.0 (16.6.0 available)
+  firebase_messaging_platform_interface 4.9.3 (4.10.0 available)
+  firebase_messaging_web 4.2.4 (4.2.5 available)
+  firebase_storage 13.4.6 (13.5.0 available)
+  firebase_storage_platform_interface 6.0.6 (6.0.7 available)
+  firebase_storage_web 3.11.12 (3.11.13 available)
+  flutter_lints 5.0.0 (6.0.0 available)
+  flutter_local_notifications 19.5.0 (22.3.0 available)
+  flutter_local_notifications_linux 6.0.0 (8.0.1 available)
+  flutter_local_notifications_platform_interface 9.1.0 (12.2.0 available)
+  flutter_local_notifications_windows 1.0.3 (3.1.1 available)
+  go_router 17.3.0 (18.0.1 available)
+  google_fonts 6.3.3 (8.2.1 available)
+  hooks 2.0.2 (2.2.0 available)
+  image_picker_android 0.8.13+19 (0.8.13+22 available)
+  image_picker_ios 0.8.13+6 (0.8.13+7 available)
+  jni_flutter 1.0.2 (1.0.3 available)
+  lints 5.1.1 (6.1.0 available)
+  matcher 0.12.19 (0.12.20 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.0 (1.19.0 available)
+  mime 2.0.0 (2.1.0 available)
+  objective_c 9.5.0 (9.6.0 available)
+  process 5.0.5 (5.0.6 available)
+  pub_semver 2.2.0 (2.2.1 available)
+  receive_sharing_intent 1.8.1 (1.9.0 available)
+  record_use 0.6.0 (1.1.1 available)
+  shared_preferences_android 2.4.27 (2.4.28 available)
+  shared_preferences_foundation 2.5.6 (2.5.7 available)
+  stack_trace 1.12.1 (1.12.2 available)
+  test_api 0.7.11 (0.7.14 available)
+  timezone 0.10.1 (0.11.1 available)
+  url_launcher_android 6.3.32 (6.3.33 available)
+  url_launcher_ios 6.4.1 (6.4.2 available)
+  url_launcher_linux 3.2.2 (3.2.3 available)
+  url_launcher_macos 3.2.5 (3.2.6 available)
+  url_launcher_windows 3.1.5 (3.1.6 available)
+  vector_math 2.2.0 (2.4.2 available)
+  vm_service 15.2.0 (15.3.0 available)
+  xml 6.6.1 (7.0.1 available)
+  yaml 3.1.3 (3.1.4 available)
+Got dependencies!
+58 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading C:/0.My_Project/00.DEV_PROJECT/5.SOFT_SPARK/2026-softstudio-project/_worktree_mall_audit/wishlist-appversion2/flutter_app/integration_test/live_field_compare_test.dart
+Running Gradle task 'assembleDebug'...                          
+WARNING: Your Android app project: app located at: C:\0.My_Project\00.DEV_PROJECT\5.SOFT_SPARK\2026-softstudio-project\_worktree_mall_audit\wishlist-appversion2\flutter_app\android\app\build.gradle.kts
+applies the Kotlin Gradle Plugin, which will cause build failures in future versions of Flutter. 
+Please migrate your app to Built-in Kotlin using this guide: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-developers
+
+WARNING: Your app uses the following plugins that apply Kotlin Gradle Plugin (KGP): firebase_storage, receive_sharing_intent
+Future versions of Flutter will fail to build if your app uses plugins that apply KGP.
+
+Please check the changelogs of these plugins and upgrade to a version that supports Built-in Kotlin.
+If no such version exists, report the issue to the plugin. If necessary, here is a guide on filing 
+an issue against a plugin: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-developers#report-incompatible-kotlin-gradle-plugin-usage-to-plugin-authors
+
+If you are a plugin author, please migrate your plugin to Built-in Kotlin using this guide: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors
+Running Gradle task 'assembleDebug'...                             23.8s
+√ Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...           6.8s
+00:00 +0: PASS 몰 WebView vs 실제 페이지 이름·가격·사진
+LIVE_COMPARE_JS_PROBE 2
+LIVE_COMPARE_BEGIN 4910 1 https://4910.kr/goods/44678113
+[mall-audit] host=4910.kr ua=desktop blocked=false looksLikeProductPage=true hasJsonLd=false name=그루브스텝 [2PACK] 1+1 랩스타미니 라운드 반팔 티셔츠 S0217 - 4910 | 사고 싶은 스타일의 발견 price=34800 image=https://d3ha2047wt6x28.cloudfront.net/FA45r5mdpZY/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjYwNTIyXzE3Nzk0NTI1Mjg0MTgwOTdtLnBuZw imageSource=og finalUrl=https://4910.kr/desktop/goods/44678113 failureReason=null
+LIVE_COMPARE_RESULT {"mall":"4910","index":1,"url":"https://4910.kr/goods/44678113","elapsedMs":2365,"classification":"MATCH","engineName":"그루브스텝 [2PACK] 1+1 랩스타미니 라운드 반팔 티셔츠 S0217 - 4910 | 사고 싶은 스타일의 발견","engineBrand":null,"enginePrice":34800,"engineImage":"https://d3ha2047wt6x28.cloudfront.net/FA45r5mdpZY/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjYwNTIyXzE3Nzk0NTI1Mjg0MTgwOTdtLnBuZw","liveName":"그루브스텝 [2PACK] 1+1 랩스타미니 라운드 반팔 티셔츠 S0217 - 4910 | 사고 싶은 스타일의 발견","livePrice":34800,"liveImage":"https://d3ha2047wt6x28.cloudfront.net/FA45r5mdpZY/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjYwNTIyXzE3Nzk0NTI1Mjg0MTgwOTdtLnBuZw","nameMatch":true,"priceMatch":true,"imageMatch":true,"failureReason":null,"finalUrl":"https://4910.kr/desktop/goods/44678113"}
+LIVE_COMPARE_BEGIN 4910 2 https://4910.kr/goods/71195041
+[mall-audit] host=4910.kr ua=desktop blocked=false looksLikeProductPage=true hasJsonLd=false name=모즈모즈 [단독1+1] 무지 배색 롤업 반팔티셔츠 - 4910 | 사고 싶은 스타일의 발견 price=47200 image=https://d3ha2047wt6x28.cloudfront.net/YL2tLW-EPb0/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjYwNjE4XzE3ODE3NjU3OTQ1MzAyMDJtLmpwZw imageSource=og finalUrl=https://4910.kr/desktop/goods/71195041 failureReason=null
+LIVE_COMPARE_RESULT {"mall":"4910","index":2,"url":"https://4910.kr/goods/71195041","elapsedMs":1946,"classification":"MATCH","engineName":"모즈모즈 [단독1+1] 무지 배색 롤업 반팔티셔츠 - 4910 | 사고 싶은 스타일의 발견","engineBrand":null,"enginePrice":47200,"engineImage":"https://d3ha2047wt6x28.cloudfront.net/YL2tLW-EPb0/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjYwNjE4XzE3ODE3NjU3OTQ1MzAyMDJtLmpwZw","liveName":"모즈모즈 [단독1+1] 무지 배색 롤업 반팔티셔츠 - 4910 | 사고 싶은 스타일의 발견","livePrice":47200,"liveImage":"https://d3ha2047wt6x28.cloudfront.net/YL2tLW-EPb0/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjYwNjE4XzE3ODE3NjU3OTQ1MzAyMDJtLmpwZw","nameMatch":true,"priceMatch":true,"imageMatch":true,"failureReason":null,"finalUrl":"https://4910.kr/desktop/goods/71195041"}
+LIVE_COMPARE_BEGIN 4910 3 https://4910.kr/goods/3954236
+[mall-audit] host=4910.kr ua=desktop blocked=false looksLikeProductPage=true hasJsonLd=false name=플루크 캠퍼밴 투어 피그먼트 반팔티셔츠 FST710 / 4color W - 4910 | 사고 싶은 스타일의 발견 price=24800 image=https://d3ha2047wt6x28.cloudfront.net/z6T_-U60HFk/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjMwODA5XzE2OTE1NjQwMDAwMzI1MTZtLmpwZw imageSource=og finalUrl=https://4910.kr/desktop/goods/3954236 failureReason=null
+LIVE_COMPARE_RESULT {"mall":"4910","index":3,"url":"https://4910.kr/goods/3954236","elapsedMs":1946,"classification":"PRICE","engineName":"플루크 캠퍼밴 투어 피그먼트 반팔티셔츠 FST710 / 4color W - 4910 | 사고 싶은 스타일의 발견","engineBrand":null,"enginePrice":24800,"engineImage":"https://d3ha2047wt6x28.cloudfront.net/z6T_-U60HFk/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjMwODA5XzE2OTE1NjQwMDAwMzI1MTZtLmpwZw","liveName":"플루크 캠퍼밴 투어 피그먼트 반팔티셔츠 FST710 / 4color W - 4910 | 사고 싶은 스타일의 발견","livePrice":20800,"liveImage":"https://d3ha2047wt6x28.cloudfront.net/z6T_-U60HFk/pr:GOODS_DETAIL/czM6Ly9hYmx5LWltYWdlLWxlZ2FjeS9kYXRhL2dvb2RzLzIwMjMwODA5XzE2OTE1NjQwMDAwMzI1MTZtLmpwZw","nameMatch":true,"priceMatch":false,"imageMatch":true,"failureReason":null,"finalUrl":"https://4910.kr/desktop/goods/3954236"}
+00:07 +1: (tearDownAll)
+00:07 +1: All tests passed!

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 
 import '../../data/app_store.dart';
@@ -19,25 +20,25 @@ class SalkamalkaScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: DiaryColors.canvas,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                   SizedBox(
                     height: kMinInteractiveDimension,
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text('살까말까', style: DiaryTheme.display(34)),
-                    ),
+                      ),
                   ),
                   const SizedBox(height: 10),
-                ],
-              ),
-            ),
+                    ],
+                  ),
+                ),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -50,10 +51,10 @@ class SalkamalkaScreen extends StatelessWidget {
                         '📌 선택된 아이템 총 $selected개',
                         style: DiaryTheme.body(13, weight: FontWeight.w600),
                       ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: store.basket.isEmpty
-                            ? Center(
+                const SizedBox(height: 8),
+                Expanded(
+                  child: store.basket.isEmpty
+                      ? Center(
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
@@ -67,49 +68,63 @@ class SalkamalkaScreen extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                              )
-                            : ListView.builder(
-                                itemCount: store.basket.length,
-                                itemBuilder: (context, i) {
-                                  final item = store.basket[i];
-                                  final pinColors = [
-                                    DiaryColors.pin,
-                                    DiaryColors.folderYellow,
-                                    DiaryColors.accent,
-                                  ];
-                                  return Stack(
+                        )
+                      : ListView.builder(
+                          itemCount: store.basket.length,
+                          itemBuilder: (context, i) {
+                            final item = store.basket[i];
+                            final pinColors = [
+                              DiaryColors.pin,
+                              DiaryColors.folderYellow,
+                              DiaryColors.accent,
+                            ];
+                            return Stack(
+                              children: [
+                                WhiteProductCard(
+                                  child: Row(
                                     children: [
-                                      WhiteProductCard(
-                                        child: Row(
-                                          children: [
-                                            Checkbox(
-                                              value: item.isSelected,
+                                      Checkbox(
+                                        value: item.isSelected,
                                               onChanged: (_) =>
                                                   store.toggleBasketSelected(
                                                     item.product.id,
                                                   ),
-                                            ),
-                                            ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              child: Image.network(
-                                                item.product.image,
-                                                width: 58,
-                                                height: 58,
-                                                fit: BoxFit.cover,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
+                                      ),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: CachedNetworkImage(
+                                          imageUrl: item.product.image,
+                                          width: 58,
+                                          height: 58,
+                                          fit: BoxFit.cover,
+                                          // 스크롤 중 프레임 드랍의 흔한 원인 — 지정 안 하면 원본 해상도 그대로
+                                          // 디코딩한 뒤 화면에서만 축소해서 그리므로, 실제 표시 크기 기준으로
+                                          // 디코딩 자체를 줄인다(58px 표시 기준 고해상도 화면 대비 3배).
+                                          memCacheWidth: 174,
+                                          memCacheHeight: 174,
+                                          placeholder: (_, __) => Container(
+                                            width: 58,
+                                            height: 58,
+                                            color: DiaryColors.paper,
+                                          ),
+                                          errorWidget: (_, __, ___) => Container(
+                                            width: 58,
+                                            height: 58,
+                                            color: DiaryColors.paper,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
                                                   Text(
                                                     item.product.platform,
                                                     style: DiaryTheme.body(
                                                       11,
-                                                      color:
+                                                    color:
                                                           DiaryColors.inkMuted,
                                                     ),
                                                   ),
@@ -132,10 +147,10 @@ class SalkamalkaScreen extends StatelessWidget {
                                                       weight: FontWeight.w600,
                                                     ),
                                                   ),
-                                                ],
-                                              ),
-                                            ),
-                                            IconButton(
+                                          ],
+                                        ),
+                                      ),
+                                      IconButton(
                                               onPressed: () =>
                                                   store.removeFromBasket(
                                                     item.product.id,
@@ -144,49 +159,49 @@ class SalkamalkaScreen extends StatelessWidget {
                                                 Icons.close,
                                                 size: 18,
                                               ),
-                                            ),
-                                          ],
-                                        ),
                                       ),
-                                      Positioned(
-                                        left: 8,
-                                        top: 2,
+                                    ],
+                                  ),
+                                ),
+                                Positioned(
+                                  left: 8,
+                                  top: 2,
                                         child: Icon(
                                           Icons.push_pin,
-                                          size: 18,
+                                      size: 18,
                                           color:
                                               pinColors[i % pinColors.length],
                                         ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DiaryButton(
+                        label: '상품 추가하기',
+                        icon: Icons.add,
+                        onPressed: () =>
+                            _openPickFromWishlistSheet(context, store),
                       ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: DiaryButton(
-                              label: '상품 추가하기',
-                              icon: Icons.add,
-                              onPressed: () =>
-                                  _openPickFromWishlistSheet(context, store),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
                             child: _ShareBasketButton(
                               store: store,
                               selected: selected,
-                            ),
-                          ),
-                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ),
+              ],
             ),
+          ),
+        ),
+      ),
           ],
         ),
       ),

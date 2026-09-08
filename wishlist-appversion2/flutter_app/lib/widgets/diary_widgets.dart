@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../theme/diary_theme.dart';
 
@@ -72,15 +73,15 @@ class SpiralNotebook extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: folderColor,
-      child: Container(
+            child: Container(
         margin: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        child: DiaryGridPaper(
-          borderRadius: 12,
-          padding: EdgeInsets.zero,
+              child: DiaryGridPaper(
+                borderRadius: 12,
+                padding: EdgeInsets.zero,
           border: border,
-          child: child,
-        ),
-      ),
+                child: child,
+              ),
+            ),
     );
   }
 }
@@ -182,7 +183,17 @@ class PersonRow extends StatelessWidget {
       onTap: onTap,
       child: Row(
         children: [
-          CircleAvatar(radius: 24, backgroundImage: NetworkImage(avatarUrl)),
+          CircleAvatar(
+            radius: 24,
+            // 친구/팔로워/팔로잉 리스트에서 아이템마다 그려지는 아바타 —
+            // NetworkImage는 캐싱도 안 되고 원본 해상도로 디코딩되어 스크롤
+            // 프레임 드랍의 원인이 된다. 표시 크기(48px) 기준 3배로 제한.
+            backgroundImage: CachedNetworkImageProvider(
+              avatarUrl,
+              maxWidth: 144,
+              maxHeight: 144,
+            ),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

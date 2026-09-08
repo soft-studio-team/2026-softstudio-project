@@ -1,0 +1,130 @@
+Resolving dependencies...
+Downloading packages...
+  _flutterfire_internals 1.3.76 (1.3.77 available)
+  clock 1.1.2 (1.1.3 available)
+  cloud_firestore 6.8.0 (6.9.0 available)
+  cloud_firestore_platform_interface 8.0.6 (8.0.7 available)
+  cloud_firestore_web 5.7.2 (5.7.3 available)
+  code_assets 1.2.1 (2.0.0 available)
+  cross_file 0.3.5+4 (0.3.5+5 available)
+  dbus 0.7.14 (0.7.15 available)
+  file_selector_linux 0.9.4 (0.9.4+1 available)
+  file_selector_macos 0.9.5 (0.9.5+1 available)
+  file_selector_windows 0.9.3+5 (0.9.3+6 available)
+  firebase_auth 6.5.7 (6.6.1 available)
+  firebase_auth_platform_interface 9.0.6 (9.0.7 available)
+  firebase_auth_web 6.2.6 (6.2.7 available)
+  firebase_core 4.13.0 (4.14.0 available)
+  firebase_core_platform_interface 8.1.0 (8.1.1 available)
+  firebase_core_web 3.10.0 (3.11.0 available)
+  firebase_messaging 16.5.0 (16.6.0 available)
+  firebase_messaging_platform_interface 4.9.3 (4.10.0 available)
+  firebase_messaging_web 4.2.4 (4.2.5 available)
+  firebase_storage 13.4.6 (13.5.0 available)
+  firebase_storage_platform_interface 6.0.6 (6.0.7 available)
+  firebase_storage_web 3.11.12 (3.11.13 available)
+  flutter_lints 5.0.0 (6.0.0 available)
+  flutter_local_notifications 19.5.0 (22.3.0 available)
+  flutter_local_notifications_linux 6.0.0 (8.0.1 available)
+  flutter_local_notifications_platform_interface 9.1.0 (12.2.0 available)
+  flutter_local_notifications_windows 1.0.3 (3.1.1 available)
+  go_router 17.3.0 (18.0.1 available)
+  google_fonts 6.3.3 (8.2.1 available)
+  hooks 2.0.2 (2.2.0 available)
+  image_picker_android 0.8.13+19 (0.8.13+22 available)
+  image_picker_ios 0.8.13+6 (0.8.13+7 available)
+  jni_flutter 1.0.2 (1.0.3 available)
+  lints 5.1.1 (6.1.0 available)
+  matcher 0.12.19 (0.12.20 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  meta 1.18.0 (1.19.0 available)
+  mime 2.0.0 (2.1.0 available)
+  objective_c 9.5.0 (9.6.0 available)
+  process 5.0.5 (5.0.6 available)
+  pub_semver 2.2.0 (2.2.1 available)
+  receive_sharing_intent 1.8.1 (1.9.0 available)
+  record_use 0.6.0 (1.1.1 available)
+  shared_preferences_android 2.4.27 (2.4.28 available)
+  shared_preferences_foundation 2.5.6 (2.5.7 available)
+  stack_trace 1.12.1 (1.12.2 available)
+  test_api 0.7.11 (0.7.14 available)
+  timezone 0.10.1 (0.11.1 available)
+  url_launcher_android 6.3.32 (6.3.33 available)
+  url_launcher_ios 6.4.1 (6.4.2 available)
+  url_launcher_linux 3.2.2 (3.2.3 available)
+  url_launcher_macos 3.2.5 (3.2.6 available)
+  url_launcher_windows 3.1.5 (3.1.6 available)
+  vector_math 2.2.0 (2.4.2 available)
+  vm_service 15.2.0 (15.3.0 available)
+  xml 6.6.1 (7.0.1 available)
+  yaml 3.1.3 (3.1.4 available)
+Got dependencies!
+58 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading C:/0.My_Project/00.DEV_PROJECT/5.SOFT_SPARK/2026-softstudio-project/_worktree_mall_audit/wishlist-appversion2/flutter_app/integration_test/live_field_compare_test.dart
+Running Gradle task 'assembleDebug'...                          
+flutter : WARNING: Your Android app project: app located at: C:\0.My_Project\00.DEV_PROJECT\5.SOFT_SPARK\2026-softstudi
+o-project\_worktree_mall_audit\wishlist-appversion2\flutter_app\android\app\build.gradle.kts
+위치 줄:1 문자:1
++ flutter test integration_test/live_field_compare_test.dart -d R54RB01 ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (WARNING: Your A...uild.gradle.kts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+applies the Kotlin Gradle Plugin, which will cause build failures in future versions of Flutter. 
+Please migrate your app to Built-in Kotlin using this guide: https://docs.flutter.dev/release/breaking-changes/migrate-
+to-built-in-kotlin/for-app-developers
+
+WARNING: Your app uses the following plugins that apply Kotlin Gradle Plugin (KGP): firebase_storage, receive_sharing_i
+ntent
+Future versions of Flutter will fail to build if your app uses plugins that apply KGP.
+
+Please check the changelogs of these plugins and upgrade to a version that supports Built-in Kotlin.
+If no such version exists, report the issue to the plugin. If necessary, here is a guide on filing 
+an issue against a plugin: https://docs.flutter.dev/release/breaking-changes/migrate-to-built-in-kotlin/for-app-develop
+ers#report-incompatible-kotlin-gradle-plugin-usage-to-plugin-authors
+
+If you are a plugin author, please migrate your plugin to Built-in Kotlin using this guide: https://docs.flutter.dev/re
+lease/breaking-changes/migrate-to-built-in-kotlin/for-plugin-authors
+Running Gradle task 'assembleDebug'...                             27.3s
+??Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...           7.1s
+00:00 +0: PASS 紐?WebView vs ?ㅼ젣 ?섏씠吏 ?대쫫쨌媛寃㈑룹궗吏?LIVE_COMPARE_JS_PROBE 2
+LIVE_COMPARE_BEGIN W而⑥뀎 1 https://www.wconcept.co.kr/Product/308678703
+[mall-audit] host=www.wconcept.co.kr ua=desktop blocked=false looksLikeProductPage=true hasJsonLd=false name=硫???좎쫰 ?щ━釉뚮━????釉뚮씪??OU2006 price=39000 image=https://product-image.wconcept.co.kr/productimg/image/img2/03/308678703_UI25679.jpg imageSource=og finalUrl=https://www.wconcept.co.kr/Product/308678703 failureReason=null
+LIVE_COMPARE_RESULT {"mall":"W而⑥뀎","index":1,"url":"https://www.wconcept.co.kr/Product/308678703","elapsedMs":4989,"classification":"MATCH","engineName":"硫???좎쫰 ?щ━釉뚮━????釉뚮씪??OU2006","engineBrand":null,"enginePrice":39000,"engineImage":"https://product-image.wconcept.co.kr/productimg/image/img2/03/308678703_UI25679.jpg","liveName":"硫???좎쫰 ?щ━釉뚮━????釉뚮씪??OU2006","livePrice":39000,"liveImage":"https://product-image.wconcept.co.kr/productimg/image/img9/03/308678703_UI25679.jpg","nameMatch":true,"priceMatch":true,"imageMatch":true,"failureReason":null,"finalUrl":"https://www.wconcept.co.kr/Product/308678703"}
+LIVE_COMPARE_BEGIN W而⑥뀎 2 https://www.wconcept.co.kr/Product/308589275
+[mall-audit] host=www.wconcept.co.kr ua=desktop blocked=false looksLikeProductPage=true hasJsonLd=false name=Soft Drape T-shirt_3Color price=88000 image=https://product-image.wconcept.co.kr/productimg/image/img2/75/308589275_EP72624.jpg imageSource=og finalUrl=https://www.wconcept.co.kr/Product/308589275 failureReason=null
+LIVE_COMPARE_RESULT {"mall":"W而⑥뀎","index":2,"url":"https://www.wconcept.co.kr/Product/308589275","elapsedMs":3481,"classification":"MATCH","engineName":"Soft Drape T-shirt_3Color","engineBrand":null,"enginePrice":88000,"engineImage":"https://product-image.wconcept.co.kr/productimg/image/img2/75/308589275_EP72624.jpg","liveName":"Soft Drape T-shirt_3Color","livePrice":88000,"liveImage":"https://product-image.wconcept.co.kr/productimg/image/img9/75/308589275_EP72624.jpg","nameMatch":true,"priceMatch":true,"imageMatch":true,"failureReason":null,"finalUrl":"https://www.wconcept.co.kr/Product/308589275"}
+LIVE_COMPARE_BEGIN W而⑥뀎 3 https://www.wconcept.co.kr/Product/308629259
+[mall-audit] host=www.wconcept.co.kr ua=desktop blocked=false looksLikeProductPage=true hasJsonLd=false name=[?⑤룆][SET] Wrap Detail T-Shirt & V-Neck Sleeveless Top price=102000 image=https://product-image.wconcept.co.kr/productimg/image/img2/59/308629259_VW44687.jpg imageSource=og finalUrl=https://www.wconcept.co.kr/Product/308629259 failureReason=null
+LIVE_COMPARE_RESULT {"mall":"W而⑥뀎","index":3,"url":"https://www.wconcept.co.kr/Product/308629259","elapsedMs":3462,"classification":"MATCH","engineName":"[?⑤룆][SET] Wrap Detail T-Shirt & V-Neck Sleeveless Top","engineBrand":null,"enginePrice":102000,"engineImage":"https://product-image.wconcept.co.kr/productimg/image/img2/59/308629259_VW44687.jpg","liveName":"[?⑤룆][SET] Wrap Detail T-Shirt & V-Neck Sleeveless Top","livePrice":102000,"liveImage":"https://product-image.wconcept.co.kr/productimg/image/img9/59/308629259_VW44687.jpg","nameMatch":true,"priceMatch":true,"imageMatch":true,"failureReason":null,"finalUrl":"https://www.wconcept.co.kr/Product/308629259"}
+LIVE_COMPARE_BEGIN ?좊땲?대줈 1 https://www.uniqlo.com/kr/ko/products/E488796-000/00?colorDisplayCode=00&sizeDisplayCode=005
+[mall-audit] host=www.uniqlo.com ua=desktop blocked=true looksLikeProductPage=true hasJsonLd=false name=Access Denied price=null image=null imageSource=og finalUrl=https://www.uniqlo.com/kr/ko/products/E488796-000/00?colorDisplayCode=00&sizeDisplayCode=005 failureReason=access_blocked
+LIVE_COMPARE_RESULT {"mall":"?좊땲?대줈","index":1,"url":"https://www.uniqlo.com/kr/ko/products/E488796-000/00?colorDisplayCode=00&sizeDisplayCode=005","elapsedMs":1293,"classification":"NAME_PRICE_IMAGE","engineName":"Access Denied","engineBrand":null,"enginePrice":null,"engineImage":null,"liveName":"?좊뜑由ъ뒪 ?μ뒪?щ뱶?ㅻ쾭?ъ씠利덉뀛痢?,"livePrice":49900,"liveImage":"https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/488796/sub/krgoods_488796_sub14_3x4.jpg","nameMatch":false,"priceMatch":false,"imageMatch":false,"failureReason":"access_blocked","finalUrl":"https://www.uniqlo.com/kr/ko/products/E488796-000/00?colorDisplayCode=00&sizeDisplayCode=005"}
+LIVE_COMPARE_BEGIN ?좊땲?대줈 2 https://www.uniqlo.com/kr/ko/products/E488798-000/00?colorDisplayCode=32&sizeDisplayCode=005
+[mall-audit] host=www.uniqlo.com ua=desktop blocked=true looksLikeProductPage=true hasJsonLd=false name=Access Denied price=null image=null imageSource=og finalUrl=https://www.uniqlo.com/kr/ko/products/E488798-000/00?colorDisplayCode=32&sizeDisplayCode=005 failureReason=access_blocked
+LIVE_COMPARE_RESULT {"mall":"?좊땲?대줈","index":2,"url":"https://www.uniqlo.com/kr/ko/products/E488798-000/00?colorDisplayCode=32&sizeDisplayCode=005","elapsedMs":1298,"classification":"NAME_PRICE_IMAGE","engineName":"Access Denied","engineBrand":null,"enginePrice":null,"engineImage":null,"liveName":"?좊뜑由ъ뒪 ?μ뒪?щ뱶?ㅻ쾭?ъ씠利덉뀛痢??ㅽ듃?쇱씠??B","livePrice":49900,"liveImage":"https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/488798/sub/krgoods_488798_sub3_3x4.jpg","nameMatch":false,"priceMatch":false,"imageMatch":false,"failureReason":"access_blocked","finalUrl":"https://www.uniqlo.com/kr/ko/products/E488798-000/00?colorDisplayCode=32&sizeDisplayCode=005"}
+LIVE_COMPARE_BEGIN ?좊땲?대줈 3 https://www.uniqlo.com/kr/ko/products/E488797-000/00?colorDisplayCode=54&sizeDisplayCode=005
+[mall-audit] host=www.uniqlo.com ua=desktop blocked=true looksLikeProductPage=true hasJsonLd=false name=Access Denied price=null image=null imageSource=og finalUrl=https://www.uniqlo.com/kr/ko/products/E488797-000/00?colorDisplayCode=54&sizeDisplayCode=005 failureReason=access_blocked
+LIVE_COMPARE_RESULT {"mall":"?좊땲?대줈","index":3,"url":"https://www.uniqlo.com/kr/ko/products/E488797-000/00?colorDisplayCode=54&sizeDisplayCode=005","elapsedMs":1297,"classification":"NAME_PRICE_IMAGE","engineName":"Access Denied","engineBrand":null,"enginePrice":null,"engineImage":null,"liveName":"?좊뜑由ъ뒪 ?μ뒪?щ뱶?ㅻ쾭?ъ씠利덉뀛痢??ㅽ듃?쇱씠??A","livePrice":49900,"liveImage":"https://image.uniqlo.com/UQ/ST3/kr/imagesgoods/488797/sub/krgoods_488797_sub3_3x4.jpg","nameMatch":false,"priceMatch":false,"imageMatch":false,"failureReason":"access_blocked","finalUrl":"https://www.uniqlo.com/kr/ko/products/E488797-000/00?colorDisplayCode=54&sizeDisplayCode=005"}
+LIVE_COMPARE_BEGIN ?먯씠釉붾━ 1 https://mobile.a-bly.com/goods/75432976
+[mall-audit] host=mobile.a-bly.com ua=mobile blocked=false looksLikeProductPage=true hasJsonLd=false name=[?섏씠??媛꾩젅湲고븘?섔윂? ?ㅽ뀛 猷⑥쫰 ?ъ꽑 吏???꾨뱶吏묒뾽 - ?먯씠釉붾━ price=25650 image=https://imgb.a-bly.com/data/goods/7b7beef563b76b4fa88149111c73b23f.gif imageSource=og finalUrl=https://mobile.a-bly.com/goods/75432976 failureReason=null
+LIVE_COMPARE_RESULT {"mall":"?먯씠釉붾━","index":1,"url":"https://mobile.a-bly.com/goods/75432976","elapsedMs":2618,"classification":"MATCH","engineName":"[?섏씠??媛꾩젅湲고븘?섔윂? ?ㅽ뀛 猷⑥쫰 ?ъ꽑 吏???꾨뱶吏묒뾽 - ?먯씠釉붾━","engineBrand":null,"enginePrice":25650,"engineImage":"https://imgb.a-bly.com/data/goods/7b7beef563b76b4fa88149111c73b23f.gif","liveName":"[?섏씠??媛꾩젅湲고븘?섔윂? ?ㅽ뀛 猷⑥쫰 ?ъ꽑 吏???꾨뱶吏묒뾽","livePrice":25650,"liveImage":"https://imgb.a-bly.com/data/goods/7b7beef563b76b4fa88149111c73b23f.gif","nameMatch":true,"priceMatch":true,"imageMatch":true,"failureReason":null,"finalUrl":"https://mobile.a-bly.com/goods/75432976"}
+LIVE_COMPARE_BEGIN ?먯씠釉붾━ 2 https://mobile.a-bly.com/goods/75506878
+[mall-audit] host=mobile.a-bly.com ua=mobile blocked=false looksLikeProductPage=true hasJsonLd=false name=[?щ━肄붿뼱?ぁ] made ?뚰뵾 ?щ━ ?移??덊듃 - 4color - ?먯씠釉붾━ price=22780 image=https://imgb.a-bly.com/data/goods/1ae2f183f57bb3474c726cf53f09e5e0.gif imageSource=og finalUrl=https://mobile.a-bly.com/goods/75506878 failureReason=null
+LIVE_COMPARE_RESULT {"mall":"?먯씠釉붾━","index":2,"url":"https://mobile.a-bly.com/goods/75506878","elapsedMs":2380,"classification":"MATCH","engineName":"[?щ━肄붿뼱?ぁ] made ?뚰뵾 ?щ━ ?移??덊듃 - 4color - ?먯씠釉붾━","engineBrand":null,"enginePrice":22780,"engineImage":"https://imgb.a-bly.com/data/goods/1ae2f183f57bb3474c726cf53f09e5e0.gif","liveName":"[?щ━肄붿뼱?ぁ] made ?뚰뵾 ?щ━ ?移??덊듃 - 4color","livePrice":22780,"liveImage":"https://imgb.a-bly.com/data/goods/1ae2f183f57bb3474c726cf53f09e5e0.gif","nameMatch":true,"priceMatch":true,"imageMatch":true,"failureReason":null,"finalUrl":"https://mobile.a-bly.com/goods/75506878"}
+LIVE_COMPARE_BEGIN ?먯씠釉붾━ 3 https://mobile.a-bly.com/goods/28244036
+[mall-audit] host=mobile.a-bly.com ua=mobile blocked=false looksLikeProductPage=true hasJsonLd=false name=?룇1?꾭윆??ㅽ궓 ?덉씠?????뚯슫?곗씠??- ?먯씠釉붾━ price=26600 image=https://imgb.a-bly.com/data/goods/25557256cc908c7eb4887da1cef5cc5e.gif imageSource=og finalUrl=https://mobile.a-bly.com/goods/28244036 failureReason=null
+LIVE_COMPARE_RESULT {"mall":"?먯씠釉붾━","index":3,"url":"https://mobile.a-bly.com/goods/28244036","elapsedMs":1945,"classification":"MATCH","engineName":"?룇1?꾭윆??ㅽ궓 ?덉씠?????뚯슫?곗씠??- ?먯씠釉붾━","engineBrand":null,"enginePrice":26600,"engineImage":"https://imgb.a-bly.com/data/goods/25557256cc908c7eb4887da1cef5cc5e.gif","liveName":"?룇1?꾭윆??ㅽ궓 ?덉씠?????뚯슫?곗씠??,"livePrice":26600,"liveImage":"https://imgb.a-bly.com/data/goods/25557256cc908c7eb4887da1cef5cc5e.gif","nameMatch":true,"priceMatch":true,"imageMatch":true,"failureReason":null,"finalUrl":"https://mobile.a-bly.com/goods/28244036"}
+LIVE_COMPARE_BEGIN ?ъ뒪??1 https://posty.kr/products/169042232
+[mall-audit] host=posty.kr ua=desktop blocked=false looksLikeProductPage=true hasJsonLd=true name=[1+1] 諛붽쾺?덊??닿굅  ?뚮옒?곕꽆 ?ㅻ━肄?硫쒕줈????대뱶 ?ㅼ쭛媛?price=10900 image=https://cf.product-image.s.zigzag.kr/original/d/2026/3/17/58450_202603171149510230_29243.jpeg?width=720&height=720&quality=80&format=jpeg imageSource=json-ld finalUrl=https://posty.kr/products/169042232 failureReason=null
+LIVE_COMPARE_RESULT {"mall":"?ъ뒪??,"index":1,"url":"https://posty.kr/products/169042232","elapsedMs":1946,"classification":"MATCH","engineName":"[1+1] 諛붽쾺?덊??닿굅  ?뚮옒?곕꽆 ?ㅻ━肄?硫쒕줈????대뱶 ?ㅼ쭛媛?,"engineBrand":null,"enginePrice":10900,"engineImage":"https://cf.product-image.s.zigzag.kr/original/d/2026/3/17/58450_202603171149510230_29243.jpeg?width=720&height=720&quality=80&format=jpeg","liveName":"[1+1] 諛붽쾺?덊??닿굅  ?뚮옒?곕꽆 ?ㅻ━肄?硫쒕줈????대뱶 ?ㅼ쭛媛?,"livePrice":10900,"liveImage":"https://cf.product-image.s.zigzag.kr/original/d/2026/3/17/58450_202603171149510230_29243.jpeg?width=720&height=720&quality=80&format=jpeg","nameMatch":true,"priceMatch":true,"imageMatch":true,"failureReason":null,"finalUrl":"https://posty.kr/products/169042232"}
+LIVE_COMPARE_BEGIN ?ъ뒪??2 https://posty.kr/products/171822906
+[mall-audit] host=posty.kr ua=desktop blocked=false looksLikeProductPage=true hasJsonLd=true name=[?ъ쫰?꾨━?? ?꾨え?ㅻ퉰?곗??ㅼ썾?대뱶?먯폆 price=35900 image=https://cf.product-image.s.zigzag.kr/original/d/2026/9/6/62697_202609061801101378_79249.jpeg?width=720&height=720&quality=80&format=jpeg imageSource=json-ld finalUrl=https://posty.kr/products/171822906 failureReason=null
+LIVE_COMPARE_RESULT {"mall":"?ъ뒪??,"index":2,"url":"https://posty.kr/products/171822906","elapsedMs":1512,"classification":"MATCH","engineName":"[?ъ쫰?꾨━?? ?꾨え?ㅻ퉰?곗??ㅼ썾?대뱶?먯폆","engineBrand":null,"enginePrice":35900,"engineImage":"https://cf.product-image.s.zigzag.kr/original/d/2026/9/6/62697_202609061801101378_79249.jpeg?width=720&height=720&quality=80&format=jpeg","liveName":"[?ъ쫰?꾨━?? ?꾨え?ㅻ퉰?곗??ㅼ썾?대뱶?먯폆","livePrice":35900,"liveImage":"https://cf.product-image.s.zigzag.kr/original/d/2026/9/6/62697_202609061801101378_79249.jpeg?width=720&height=720&quality=80&format=jpeg","nameMatch":true,"priceMatch":true,"imageMatch":true,"failureReason":null,"finalUrl":"https://posty.kr/products/171822906"}
+LIVE_COMPARE_BEGIN ?ъ뒪??3 https://posty.kr/products/170139765
+[mall-audit] host=posty.kr ua=desktop blocked=false looksLikeProductPage=true hasJsonLd=true name=[?덉럡] ?붾쭅 二쇰쫫 ?쇳봽 ?뚮ℓ 濡??먰뵾??S6MOP064A) price=31900 image=https://cf.product-image.s.zigzag.kr/original/d/2026/6/22/27674_202606221018040984_36315.jpeg?width=720&height=720&quality=80&format=jpeg imageSource=json-ld finalUrl=https://posty.kr/products/170139765 failureReason=null
+LIVE_COMPARE_RESULT {"mall":"?ъ뒪??,"index":3,"url":"https://posty.kr/products/170139765","elapsedMs":2165,"classification":"MATCH","engineName":"[?덉럡] ?붾쭅 二쇰쫫 ?쇳봽 ?뚮ℓ 濡??먰뵾??S6MOP064A)","engineBrand":null,"enginePrice":31900,"engineImage":"https://cf.product-image.s.zigzag.kr/original/d/2026/6/22/27674_202606221018040984_36315.jpeg?width=720&height=720&quality=80&format=jpeg","liveName":"[?덉럡] ?붾쭅 二쇰쫫 ?쇳봽 ?뚮ℓ 濡??먰뵾??S6MOP064A)","livePrice":31900,"liveImage":"https://cf.product-image.s.zigzag.kr/original/d/2026/6/22/27674_202606221018040984_36315.jpeg?width=720&height=720&quality=80&format=jpeg","nameMatch":true,"priceMatch":true,"imageMatch":true,"failureReason":null,"finalUrl":"https://posty.kr/products/170139765"}
+00:29 +1: (tearDownAll)
+00:30 +1: All tests passed!
