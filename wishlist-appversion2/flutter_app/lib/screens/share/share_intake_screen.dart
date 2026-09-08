@@ -48,6 +48,13 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
   ParsedProductInfo? parsed;
   String? selectedListId;
 
+  // 2026-09-08: 새 공유가 들어올 때마다(같은 화면 인스턴스가 재사용되는 경우
+  // 포함) 딱 한 번만 반영하기 위한 중복 방지 키. store.pendingShareUrl은
+  // 저장 성공 시에만 null로 비워지므로, 이 값 없이는 저장하지 않고 나갔다가
+  // 다시 들어왔을 때(또는 앱이 백그라운드에서 새 공유를 받았을 때) 이전
+  // 링크·추출 결과가 그대로 남아있게 된다.
+  String? _consumedShareUrl;
+
   @override
   void initState() {
     super.initState();
@@ -55,15 +62,41 @@ class _ShareIntakeScreenState extends State<ShareIntakeScreen> {
     selectedListId = store.tabs
         .firstWhere((t) => t.id != 'all', orElse: () => store.tabs.first)
         .id;
-    final initial = widget.sharedUrl ?? store.pendingShareUrl;
-    if (initial != null) {
-      urlCtrl.text = initial;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _parse());
+    store.addListener(_onStoreChanged);
+    _consumeIncomingShare(store, initialUrl: widget.sharedUrl);
+  }
+
+  void _onStoreChanged() {
+    if (!mounted) return;
+    _consumeIncomingShare(context.read<AppStore>());
+  }
+
+  /// 새로 공유된 링크가 들어오면 화면을 완전히 초기 상태로 되돌리고 링크
+  /// 입력칸만 채운다. 상품 정보 추출은 여기서 자동으로 시작하지 않는다 —
+  /// 사용자가 '상품 읽기' 버튼(또는 새로고침 아이콘)을 눌렀을 때만 실행한다.
+  void _consumeIncomingShare(AppStore store, {String? initialUrl}) {
+    final incoming = initialUrl ?? store.pendingShareUrl;
+    if (incoming == null || incoming.isEmpty || incoming == _consumedShareUrl) {
+      return;
     }
+    _consumedShareUrl = incoming;
+    setState(() {
+      urlCtrl.text = incoming;
+      titleCtrl.clear();
+      priceCtrl.clear();
+      memoCtrl.clear();
+      parsed = null;
+      error = null;
+      loading = false;
+    });
+    // 한 번 반영한 공유 링크는 즉시 비워서, 저장 없이 나갔다가 이 화면에
+    // 다시 들어와도(새 공유 없이는) 이전 링크가 남아있지 않게 한다.
+    store.setPendingShareUrl(null);
   }
 
   @override
   void dispose() {
+    context.read<AppStore>().removeListener(_onStoreChanged);
     urlCtrl.dispose();
     titleCtrl.dispose();
     priceCtrl.dispose();
