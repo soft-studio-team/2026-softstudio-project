@@ -483,15 +483,51 @@ bool isNonHttpScheme(String? url) {
 /// 안드로이드 인텐트 URI에서 브라우저 폴백 URL을 뽑아낸다. 앱 미설치·
 /// WebView 등 인텐트를 못 여는 환경을 위해 이 서비스들이 함께 실어 보내는
 /// 값이다. 없으면 null.
+///
+/// 2026-09-09 실기기 로그로 확인: 지그재그(Airbridge 기반 딥링크)는 이 방식을
+/// 안 쓴다 — `S.browser_fallback_url`이 아예 없고, 대신
+/// `intent://details?id=<패키지>&url=<인코딩된 커스텀스킴 딥링크>#Intent;...end`
+/// 형태(플레이스토어 폴백용 인텐트 표준 형식)를 쓴다. 그 "url" 쿼리파라미터를
+/// 한 번 디코드하면 `zigzag://open/product_detail?...&url=<진짜 https 상품
+/// 페이지>` 같은 앱 전용 스킴 링크가 나오고, 그 안에 다시 "url" 파라미터로
+/// 진짜 목적지가 한 번 더 들어있다 — 두 겹을 풀어서 최종 URL을 뽑는다.
 String? extractIntentFallbackUrl(String url) {
   final match = RegExp(r'S\.browser_fallback_url=([^;]+)').firstMatch(url);
   final raw = match?.group(1);
-  if (raw == null || raw.isEmpty) return null;
-  try {
-    return Uri.decodeComponent(raw);
-  } catch (_) {
-    return raw;
+  if (raw != null && raw.isNotEmpty) {
+    try {
+      return Uri.decodeComponent(raw);
+    } catch (_) {
+      return raw;
+    }
   }
+  return _extractNestedIntentUrlParam(url);
+}
+
+/// [extractIntentFallbackUrl]의 보조 경로 — `S.browser_fallback_url`이 없는
+/// Airbridge류 인텐트(`intent://details?id=...&url=<encoded>#Intent;...end`)에서
+/// 중첩된 "url" 쿼리파라미터를 풀어 실제 https 목적지를 찾는다.
+String? _extractNestedIntentUrlParam(String url) {
+  final hashIndex = url.indexOf('#Intent;');
+  final head = hashIndex >= 0 ? url.substring(0, hashIndex) : url;
+  final outerUri = Uri.tryParse(head);
+  final outerUrlParam = outerUri?.queryParameters['url'];
+  if (outerUrlParam == null || outerUrlParam.isEmpty) return null;
+
+  // 바깥 "url" 파라미터 자체가 이미 http(s)면 그대로 쓴다.
+  final asUri = Uri.tryParse(outerUrlParam);
+  if (asUri != null &&
+      (asUri.scheme == 'http' || asUri.scheme == 'https')) {
+    return outerUrlParam;
+  }
+
+  // 커스텀 스킴(zigzag:// 등) 문자열 안에 실제 목적지가 "url=" 쿼리로 한 번 더
+  // 들어있는 경우 — 이 안쪽 값은 이스케이프가 일관되지 않아(내부 https URL의
+  // '&'/'?'가 인코딩 안 된 채 섞여 있음) Uri로 다시 파싱하면 값이 잘릴 수 있어,
+  // 정규식으로 다음 '&' 앞까지만 직접 뽑는다(트래킹용 쿼리 일부가 빠질 순
+  // 있지만, 상품 페이지 경로 자체는 온전해 정상 로드에는 지장 없다).
+  final nested = RegExp(r'[?&]url=(https?://[^&]+)').firstMatch(outerUrlParam);
+  return nested?.group(1);
 }
 
 String? extractHost(String url) {

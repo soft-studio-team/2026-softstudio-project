@@ -140,17 +140,6 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
         loadUrl: (target) =>
             controller.loadUrl(urlRequest: URLRequest(url: WebUri(target))),
       );
-      // TEMP(mall-accuracy-audit 2026-09-07): 무신사·지그재그 이미지 미추출 진단용
-      // 로그. UA 후보 수정이 맞는지 실기기에서 확인하는 동안만 남겨두고, 원인이
-      // 확정되면 지울 것.
-      debugPrint(
-        '[mall-audit] host=$requestHost '
-        'ua=${WebViewScraper.needsMobileUa(requestHost) ? "mobile" : "desktop"} '
-        'blocked=${result?.blocked} looksLikeProductPage=${result?.looksLikeProductPage} '
-        'hasJsonLd=${result?.hasJsonLd} name=${result?.name} price=${result?.price} '
-        'image=${result?.image} imageSource=${result?.source['image']} '
-        'finalUrl=${result?.finalUrl} failureReason=${result?.failureReason}',
-      );
       return result;
     } on TimeoutException {
       return OnDeviceExtract(
@@ -273,14 +262,6 @@ class WebViewExtractHostState extends State<WebViewExtractHost> {
                   // 인텐트 URI의 browser_fallback_url을 대신 로드해 실제 상품
                   // 페이지까지 이어지게 한다.
                   final fallback = extractIntentFallbackUrl(requested!);
-                  // TEMP(mall-accuracy-audit 2026-09-08): 지그재그가 이 경로를
-                  // 실제로 타는지, 탄다면 browser_fallback_url을 못 찾는 건지
-                  // (다른 딥링크 SDK라 파라미터명이 다를 수 있음) 확인하기 위한
-                  // 진단용 로그. 원인이 확정되면 지울 것.
-                  debugPrint(
-                    '[mall-audit intent] activeRequestUrl=$_activeRequestUrl '
-                    'intentUrl=$requested fallback=$fallback',
-                  );
                   if (fallback != null) {
                     await controller.loadUrl(
                       urlRequest: URLRequest(url: WebUri(fallback)),
