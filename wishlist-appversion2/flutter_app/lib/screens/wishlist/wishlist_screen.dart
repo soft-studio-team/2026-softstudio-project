@@ -142,6 +142,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                                             store.removeProduct(p.id),
                                       );
                                       return LayoutBuilder(
+                                        key: ValueKey(p.id),
                                         builder: (context, constraints) {
                                           return LongPressDraggable<Product>(
                                             data: p,
@@ -155,21 +156,32 @@ class _WishlistScreenState extends State<WishlistScreen> {
                                             onDragEnd: (_) => _tabsRowKey
                                                 .currentState
                                                 ?.endAutoScrollDrag(),
-                                            feedback: Material(
-                                              color: Colors.transparent,
-                                              elevation: 6,
-                                              borderRadius:
-                                                  BorderRadius.circular(14),
-                                              child: SizedBox(
-                                                width: constraints.maxWidth,
-                                                child: card,
+                                            // feedback은 손가락이 움직일 때마다(매 프레임)
+                                            // 다시 그려지는데, 카드 안에 이미지·그림자가
+                                            // 있어서 RepaintBoundary 없이는 매번 전체를
+                                            // 다시 래스터화해야 해서 드래그가 버벅였다.
+                                            // RepaintBoundary로 감싸면 한 번 그린 결과를
+                                            // 레이어로 캐싱해두고 위치만 옮기면 되므로
+                                            // 훨씬 가벼워진다. 탭 순서변경 드래그(칩 —
+                                            // 이미지·그림자 없는 가벼운 위젯)가 이미
+                                            // 매끄러웠던 것과 대비되는 부분.
+                                            feedback: RepaintBoundary(
+                                              child: Material(
+                                                color: Colors.transparent,
+                                                elevation: 6,
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                                child: SizedBox(
+                                                  width: constraints.maxWidth,
+                                                  child: card,
+                                                ),
                                               ),
                                             ),
                                             childWhenDragging: Opacity(
                                               opacity: 0.35,
                                               child: card,
                                             ),
-                                            child: card,
+                                            child: RepaintBoundary(child: card),
                                           );
                                         },
                                       );
@@ -518,10 +530,16 @@ class _TabsRowState extends State<_TabsRow> {
     final targetContext = _chipKeys[widget.store.selectedTabId]?.currentContext;
     if (targetContext == null) return;
     if (!_scrollController.hasClients) return;
+    // '전체' 탭은 header라 스트립 맨 앞에 고정돼 있어서 ensureVisible이 스크롤할
+    // 필요가 없어(이미 보이는 상태) 즉시 반응하는 것처럼 느껴진다. 다른 탭은
+    // 실제로 스크롤이 필요해서 이 애니메이션 시간만큼 반응이 늦게 느껴졌던 것
+    // (250ms는 사용자가 측정한 "0.2~0.3초 지연"과 정확히 일치). 탭이 어디로
+    // 이동했는지 보여주는 용도라 애니메이션 자체를 없애기보다는, 눈에 덜
+    // 띄면서도 부드럽게 느껴지는 선에서 짧게 줄인다.
     Scrollable.ensureVisible(
       targetContext,
       alignment: 0.5,
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 120),
       curve: Curves.easeOut,
     );
   }

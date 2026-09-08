@@ -501,17 +501,28 @@ class AppStore extends ChangeNotifier {
     return pool[Random().nextInt(pool.length)];
   }
 
+  /// 탭 순서 변경 — 드래그로 놓는 즉시 화면에 반영하고(낙관적 업데이트),
+  /// Firestore 저장은 뒤에서 진행한다. 원래는 저장이 끝날 때까지 기다린
+  /// 뒤에야 notifyListeners()가 호출돼서, 네트워크 왕복 동안 드래그한
+  /// 탭이 원래 자리로 보이는 것처럼 느껴졌다(체감 지연의 원인).
   Future<void> reorderTabs(int oldIndex, int newIndex) async {
     final allTab = tabs.firstWhere((t) => t.id == 'all');
     final rest = tabs.where((t) => t.id != 'all').toList();
     if (oldIndex < 0 || oldIndex >= rest.length) return;
     final target = newIndex;
     if (target < 0 || target >= rest.length) return;
+    final previous = tabs;
     final item = rest.removeAt(oldIndex);
     rest.insert(target, item);
     tabs = [allTab, ...rest];
-    await _persistTabs();
     notifyListeners();
+    try {
+      await _persistTabs();
+    } catch (_) {
+      tabs = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   int countFor(WishlistTab tab) {
@@ -546,31 +557,58 @@ class AppStore extends ChangeNotifier {
       isPublic: isPublic,
       colorHex: hex,
     );
+    final previousTabs = tabs;
+    final previousSelected = selectedTabId;
     tabs = [...tabs, tab];
     selectedTabId = tab.id;
-    await _persistTabs();
     notifyListeners();
+    try {
+      await _persistTabs();
+    } catch (_) {
+      tabs = previousTabs;
+      selectedTabId = previousSelected;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> renameTab(String id, String name) async {
+    final previous = tabs;
     tabs = tabs.map((t) => t.id == id ? t.copyWith(name: name) : t).toList();
-    await _persistTabs();
     notifyListeners();
+    try {
+      await _persistTabs();
+    } catch (_) {
+      tabs = previous;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> deleteTab(String id) async {
     if (id == 'all') return;
+    final previousTabs = tabs;
+    final previousSelected = selectedTabId;
     tabs = tabs.where((t) => t.id != id).toList();
     if (selectedTabId == id) selectedTabId = 'all';
+    notifyListeners();
     final userId = uid;
     if (userId != null) {
-      await _repo.deleteTabDoc(userId, id);
-      await _persistTabs();
+      try {
+        await _repo.deleteTabDoc(userId, id);
+        await _persistTabs();
+      } catch (_) {
+        tabs = previousTabs;
+        selectedTabId = previousSelected;
+        notifyListeners();
+        rethrow;
+      }
     }
-    notifyListeners();
   }
 
   Future<void> toggleTabPublic(String id) async {
+    final previousTabs = tabs;
+    final previousProducts = products;
     tabs = tabs
         .map((t) => t.id == id ? t.copyWith(isPublic: !t.isPublic) : t)
         .toList();
@@ -580,8 +618,15 @@ class AppStore extends ChangeNotifier {
       for (final p in products)
         p.listId == id ? p.copyWith(isPublic: isPublic) : p,
     ];
-    await _persistTabs();
     notifyListeners();
+    try {
+      await _persistTabs();
+    } catch (_) {
+      tabs = previousTabs;
+      products = previousProducts;
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> removeProduct(int id) async {
