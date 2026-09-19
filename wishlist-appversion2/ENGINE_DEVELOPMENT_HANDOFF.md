@@ -12,31 +12,36 @@ Git 저장소: `C:\0.My_Project\17.SoftStudio\2026-softstudio-project`
 
 이 문서는 새 대화에서 wishkit 엔진 개발을 즉시 이어가기 위한 기준 문서다. 아래의 "다음 대화 시작 프롬프트"와 함께 이 파일을 읽도록 지시하면 된다.
 
-## 0.14 2026-09-19 — 엔진 방향 재전환: 서버 AI 완전 의존 (읽기 시작점 갱신)
-
-**이 문서 아래쪽(0.9/0.8/1절/9절 11번)의 "Python 서버 폴백은 채택하지 않음, WebView 우선"
-결정은 2026-09-18에 뒤집혔다.** 새 결정("서버에서 AI가 상품 페이지를 읽어 구조화 추출,
-몰별 DOM 규칙은 전부 폐기")과 그 근거·실측 과정은 이 저장소 밖 `engine-ai-prototype/`
-폴더의 `design-doc-snapshot-2026-09-18.md`(0절, 18~26절)에 있다. 골든셋 36개 상품 기준
-정확도는 완전 일치 21/36(58%), 그라운딩 통과 31/36(86%)까지 실측 확인됨
-(`bakeoff_results_run6_final.json`).
-
-이 결정을 실제 서버로 포팅한 게 `parsing-engine/server/`(같은 커밋에서 새로 추가, 브랜치
-`feat/ai-extraction-server`)다 — 0.9절에서 삭제된 `parsing-engine/` 경로를 다른 내용으로
-되살린 것이며, 예전 DOM 규칙 기반 Python 코드와는 무관하다. 자세한 내용은
-`parsing-engine/README.md` 참고.
-
-**주의**: 이 노트 아래의 0.0~13절, 특히 "Python 서버 폴백 채택 안 함"이라고 적힌 부분들은
-이제 최신 결정과 어긋난다 — 다만 WebView 안정화 작업 이력 자체(어떤 몰이 왜 실패했는지 등)는
-여전히 유효한 참고 자료라 삭제하지 않고 그대로 남겨뒀다. 앱↔서버 연결 방식은 아직 결정된
-바 없다(엔진 API 응답 스키마 문서화까지만 이번 작업 범위였음).
-
 ## 0.0 2026-08-21 현황 (읽기 시작점)
 
 - **가격 엔진(50몰 live compare)**: Tab S7 MATCH 인증 완료. 지원/미지원 목록 → [`MALL_SUPPORT.md`](./MALL_SUPPORT.md)
 - **브랜치**: `fix/price-owner-spa` + `fix/price-teammate-cafe24` → `feat/webview-scraper-stabilize`에 병합됨
 - **남은 일**: PR #28 draft 해제·main 머지 준비, (선택) 50몰 전체 Tab 회귀
 - **의도적 미지원**: Gap·LF·NUGU·SHEIN·네이버(기권), 쿠팡(차단). 리바이스 대기 늘리지 않음
+
+## 0.0-A 2026-09-19 추가 — 엔진 방향 재확인 (Cowork 중간 검수)
+
+이 문서의 위 §0.0 및 §10-11번("Python 서버 폴백은 채택하지 않음. `parsing-engine/` 삭제")은
+2026-08-21 시점 결정이며, **이후 두 차례 공식적으로 뒤집혔다** — 이 문서 자체가 그 뒤로
+갱신되지 않아 최신 결정과 충돌하는 것처럼 보였던 것뿐, 실제로는 논의 중인 게 아니라 이미
+확정된 사안이다.
+
+1. `roadmap-overhaul-note.md` 2026-09-07 갱신 — "엔진: 온디바이스 WebView → 중앙 서버 방식
+   전환"을 방향성에서 확정으로 변경(호영 담당). 사유: iOS 온디바이스 WebView 안정화 문제가
+   구조적으로 반복됨(`fix/iphone-webview-extract-visible` 브랜치 커밋 이력으로 확인).
+2. 2026-09-18, Cowork 세션에서 서버 아키텍처를 "AI 완전 대체(프로토타입 B 확장)"로 확정 —
+   몰별 DOM 규칙 기반(Prototype A, `feat/server-side-rendering-tier`)이 아니라 Gemini 기반
+   순수 AI 추출로 감. `engine-ai-prototype/`(골든셋 36개 검증 완료) 파이프라인을
+   `feat/ai-extraction-server` 브랜치에서 실제 FastAPI 서버로 포팅 중 — 2026-09-19 기준
+   origin에 push 완료, PR은 아직 미생성. 상세는
+   `wishlist-appversion2/COWORK_HANDOFF_2026-09-19.md` 참고.
+
+**단, 베타 자체는 이 서버 전환과 무관하게 온디바이스 WebView(Tier 2.5)로 그대로 진행 중**
+(`roadmap-overhaul-note.md` 2026-09-07 2차 갱신 — 서버 이관은 별도 트랙, 베타 일정을 막지
+않음). 즉 이 문서(§0.0, §0.13 이하)에 담긴 온디바이스 엔진 작업 내용은 여전히 유효하고 현재
+프로덕션 경로다. 위 §0.0/§10의 "서버 폴백 채택 안 함"은 "당시(8/21) 기준 베타에 서버를 쓰지
+않는다"는 뜻으로 읽으면 되고, "앞으로도 서버로 안 간다"는 뜻이 아니었다 — 그 사이 방향이
+바뀌었을 뿐.
 
 ## 0. 2026-08-16 후속 작업 결과
 
