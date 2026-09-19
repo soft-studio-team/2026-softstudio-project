@@ -49,6 +49,11 @@ dependencies:
   cloud_firestore: ^6.8.0
   firebase_storage: ^13.0.0
   firebase_messaging: ^16.0.0
+  # 5.3.0+는 firebase_core ^4.14.0을 요구해서 연쇄적으로 firebase_auth/Kotlin까지
+  # 올려야 했다(firebase_auth 6.7.0의 네이티브 aar이 Kotlin 2.3.0 메타데이터를 요구,
+  # 이 프로젝트 Kotlin 플러그인은 2.1.0으로 고정) — 기존 firebase_core ^4.13.0과
+  # 그대로 맞는 5.2.7로 고정해서 그 연쇄를 피한다.
+  firebase_crashlytics: 5.2.7
   flutter_local_notifications: ^19.0.0
   image_picker: ^1.1.2
   # 온디바이스 Tier 2.5: 안 보이는 WebView로 렌더링된 페이지에서 상품정보 추출
