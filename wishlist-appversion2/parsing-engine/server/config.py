@@ -10,6 +10,13 @@ EXTRACT_TIMEOUT_S = float(os.environ.get("EXTRACT_TIMEOUT_S", "45"))
 # Playwright page.goto()의 네비게이션 타임아웃 (render.py에 전달).
 RENDER_NAV_TIMEOUT_MS = int(os.environ.get("RENDER_NAV_TIMEOUT_MS", "20000"))
 
+# 동시에 실행 가능한 render() 호출 수 상한(세마포어). REPORT_2026-09-19.md 2절에서 발견:
+# render()에는 원래 동시 실행 제한이 없어서, 트래픽이 몰리면 브라우저 컨텍스트가 무제한으로
+# 늘어날 수 있었다(동시 요청 1건당 peak_rss +400~650MB 실측 — config.py 어딘가 상한이
+# 없으면 메모리가 선형으로 계속 늘어난다). GEMINI_MAX_CONCURRENCY와 별개로 렌더링 단계
+# 자체를 제한해서 컨텍스트 수를 상한 이하로 유지한다.
+RENDER_MAX_CONCURRENCY = int(os.environ.get("RENDER_MAX_CONCURRENCY", "6"))
+
 # Gemini 429 재시도 최대 횟수 (providers.py의 DEFAULT_MAX_RETRIES와 동일 — 여기 있는 값은
 # main.py가 명시적으로 넘길 때 쓰고, providers.py 쪽 기본값도 같은 환경변수를 본다).
 GEMINI_MAX_RETRIES = int(os.environ.get("GEMINI_MAX_RETRIES", "4"))

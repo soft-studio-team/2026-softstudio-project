@@ -52,10 +52,11 @@ async def lifespan(app: FastAPI):
     app.state.playwright = playwright
     app.state.browser = browser
     app.state.gemini_semaphore = asyncio.Semaphore(config.GEMINI_MAX_CONCURRENCY)
+    app.state.render_semaphore = asyncio.Semaphore(config.RENDER_MAX_CONCURRENCY)
     app.state.cache = NoOpCache()  # 요구사항 5: 실제 캐시 백엔드는 아직 미구현
     logger.info(
-        "서버 시작 — 브라우저 준비 완료 (GEMINI_MAX_CONCURRENCY=%s, EXTRACT_TIMEOUT_S=%s)",
-        config.GEMINI_MAX_CONCURRENCY, config.EXTRACT_TIMEOUT_S,
+        "서버 시작 — 브라우저 준비 완료 (GEMINI_MAX_CONCURRENCY=%s, RENDER_MAX_CONCURRENCY=%s, EXTRACT_TIMEOUT_S=%s)",
+        config.GEMINI_MAX_CONCURRENCY, config.RENDER_MAX_CONCURRENCY, config.EXTRACT_TIMEOUT_S,
     )
     yield
     await browser.close()
@@ -92,7 +93,8 @@ async def _extract(url: str) -> dict:
         return {**cached.data, "metrics": {**cached.data.get("metrics", {}), "cache_hit": True}}
 
     t_render_start = now_ms()
-    r = await render(app.state.browser, url, nav_timeout_ms=config.RENDER_NAV_TIMEOUT_MS)
+    async with app.state.render_semaphore:
+        r = await render(app.state.browser, url, nav_timeout_ms=config.RENDER_NAV_TIMEOUT_MS)
     render_elapsed_ms = now_ms() - t_render_start
 
     if r.error:
