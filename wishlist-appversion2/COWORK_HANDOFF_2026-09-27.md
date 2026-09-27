@@ -53,47 +53,45 @@ Cowork가 확인할 수 있게 정리한 것이다.
    이유 없음 — 남은 정책은 `AmazonECS_FullAccess`/`AmazonEC2ContainerRegistryFullAccess`/
    `CloudWatchLogsFullAccess`/`AmazonEC2FullAccess`).
 
-## 아직 커밋 안 된 파일 (Cowork 확인 후 진행 예정)
+## 커밋·push — 완료
 
-브랜치 `feat/ai-extraction-server` 워킹 디렉터리에 아래 4개가 untracked 상태:
-
-- `wishlist-appversion2/parsing-engine/server/Dockerfile`
-- `wishlist-appversion2/parsing-engine/server/.dockerignore`
-- `wishlist-appversion2/parsing-engine/REPORT_FARGATE_VALIDATION_2026-09-24.md`
-- `wishlist-appversion2/COWORK_HANDOFF_2026-09-25.md` (이 문서 이전 버전)
-
-이번 문서(`COWORK_HANDOFF_2026-09-27.md`)까지 포함해서 커밋·push할지 사용자 확인 대기
-중 — PR #56이 이미 이 브랜치로 열려 있어서(Draft), 커밋하면 그 PR에 자동으로 반영된다.
+`Dockerfile`/`.dockerignore`/`requirements.txt`(playwright `==1.63.0` 고정)/두 보고서/
+이 문서까지 6개 파일 커밋(`160602f`) 후 `feat/ai-extraction-server`에 push 완료, Draft
+PR #56에 반영됨. 46시간 방치 비용은 **사용자가 직접 Billing 콘솔에서 확인하기로 함 —
+추가 조치 불필요**.
 
 ## 남아있는 결정 사항 (REPORT_FARGATE_VALIDATION_2026-09-24.md §5와 동일)
 
-- Gemini 유료 Tier RPM/TPM 정확한 값 (사용자 계정 콘솔 확인 필요, AI가 대신 못 함)
+- **[다음 작업]** Gemini 유료 Tier RPM/TPM 정확한 값 — https://aistudio.google.com/rate-limit
+  에서 사용자 본인 계정으로 확인 필요, AI가 대신 못 함
 - 7~9건 사이 정확한 동시성 손익분기점 (이번엔 1/3/6/10만 찍음)
 - ALB/오토스케일링 포함한 실제 서비스 형태의 수평 확장 검증
 - DB/캐시 백엔드 선정
-- 위 46시간 방치 건의 정확한 청구 금액 확인 (Cowork/사용자가 Billing 콘솔에서)
 
-## 다음 대화 시작 프롬프트 (Cowork 중간점검용)
+## 다음 대화 시작 프롬프트 (점검용)
 
 ```text
 2026-softstudio-project의 feat/ai-extraction-server 브랜치, AWS Fargate 실측 검증 건
-중간점검 부탁해.
+이어서 진행할게.
 
 먼저 읽을 것:
-1. wishlist-appversion2/COWORK_HANDOFF_2026-09-27.md — 이번 검증 전체 요약, 특히
-   "먼저 알아야 할 것 — 비용 사고(46시간 방치)" 항목부터.
+1. wishlist-appversion2/COWORK_HANDOFF_2026-09-27.md — 이번 검증 전체 요약과 현재 상태
+   (커밋·push 완료, PR #56 반영됨, 46시간 비용 건은 처리 완료).
 2. wishlist-appversion2/parsing-engine/REPORT_FARGATE_VALIDATION_2026-09-24.md —
    실측 결과 전체(골든 리그레션, 동시성 테스트, 9/19 로컬 기준선과의 비교, 실무 권장사항).
 
-확인/결정 필요한 것:
-- 46시간 방치로 발생한 비용 — 실제 Billing 콘솔 금액 확인, 문제 없는 수준인지 판단.
-- 브랜치에 미커밋 상태인 4개 파일(Dockerfile, .dockerignore, 두 보고서) 커밋·push 여부 —
-  push하면 이미 열려있는 Draft PR #56에 자동 반영됨.
-- REPORT_FARGATE_VALIDATION_2026-09-24.md §5에 남은 결정 사항(Gemini 유료 Tier 한도,
-  수평 확장 검증, DB/캐시 백엔드 선정) 우선순위 정리.
+이번 세션에서 할 일:
+- Gemini 유료 Tier RPM/TPM 확인 결과를 받아서 반영 (아래 "확인된 값" 참고 —
+  https://aistudio.google.com/rate-limit 에서 직접 확인한 값을 붙여넣고 시작)
+- 확인된 한도에 맞춰 GEMINI_MAX_CONCURRENCY 조정 필요 여부 판단
+- REPORT_FARGATE_VALIDATION_2026-09-24.md §5의 남은 항목(7~9건 동시성 손익분기점,
+  수평 확장 검증, DB/캐시 백엔드 선정) 중 우선순위 정하고 진행
+
+확인된 값:
+- Gemini 유료 Tier RPM/TPM: (여기에 채워서 시작)
 
 하지 말 것:
 - main 브랜치, Firebase Auth/Firestore/Storage/Messaging 관련 코드는 손대지 말 것.
-- AWS 리소스는 이미 전부 정리됨(태스크 stop, IAMFullAccess/AmazonSSMFullAccess 제거
-  확인됨) — 추가로 새 AWS 리소스를 만들 필요는 없음, 확인만 하면 됨.
+- 새 AWS 리소스(Fargate 태스크 등)를 띄우면 테스트 끝나고 반드시 stop — 이전에 세션
+  중단으로 46시간 방치된 적 있으니 각별히 주의.
 ```
