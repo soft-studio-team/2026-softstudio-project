@@ -23,10 +23,13 @@ GEMINI_MAX_RETRIES = int(os.environ.get("GEMINI_MAX_RETRIES", "4"))
 
 # 동시에 실행 가능한 Gemini 호출 수 상한(세마포어). 원본 providers.py엔 RPM/TPM 같은 고정
 # 한도가 코드로 박혀있지 않다(429의 retryDelay를 그때그때 따름) — 그 대신 여기서 "서버가
-# 한 번에 얼마나 많은 요청을 동시에 Gemini에 밀어넣을지"를 직접 제어한다. 무료 티어
-# 실측(분당 15회, 무거운 몰은 TPM 25만이 더 먼저 병목 → 실질 분당 4~5건)을 감안하면 기본값
-# 3 정도가 안전하고, 유료 티어로 전환하면 이 값을 올리면 된다.
-GEMINI_MAX_CONCURRENCY = int(os.environ.get("GEMINI_MAX_CONCURRENCY", "3"))
+# 한 번에 얼마나 많은 요청을 동시에 Gemini에 밀어넣을지"를 직접 제어한다.
+# 2026-09-29 Tier 1(유료) 전환 확인(RPM 4,000/TPM 4,000,000/RPD 150,000)에 맞춰 3→6으로
+# 올림 — RENDER_MAX_CONCURRENCY(6)와 맞춰서, Gemini 쪽이 렌더링보다 더 타이트한 병목이
+# 되지 않게 함. 무료 티어(RPM 15) 시절 기본값 3에 대한 근거는 REPORT_FARGATE_VALIDATION_
+# 2026-09-24.md §4 참고 — 그때는 태스크를 여러 개로 늘려도 계정 전체 RPM 한도를 나눠 쓰는
+# 것이라 병목이 그대로였다.
+GEMINI_MAX_CONCURRENCY = int(os.environ.get("GEMINI_MAX_CONCURRENCY", "6"))
 
 # 요청별 peak RSS 샘플링 주기 (metrics.py).
 RSS_SAMPLE_INTERVAL_MS = int(os.environ.get("RSS_SAMPLE_INTERVAL_MS", "100"))
